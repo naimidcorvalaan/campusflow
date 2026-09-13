@@ -20,7 +20,7 @@ def deliverable(relative):
     name = relative.name.lower()
     if name.startswith('.env') and relative.as_posix() != '.env.example':
         return False
-    if name in ('secrets.toml',) or any(mark in name for mark in ('.sqlite','.db','.log')):
+    if name in ('secrets.toml', 'model-service.json') or name.startswith('.model-service-') or any(mark in name for mark in ('.sqlite','.db','.log')):
         return False
     if relative.as_posix() == '.streamlit/config.toml':
         return True

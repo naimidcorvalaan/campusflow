@@ -36,7 +36,9 @@ def load_project_configuration(environ=None, loader=None, env_path=None):
         loader(PROJECT_ENV_PATH if env_path is None else env_path, override=False)
     except Exception:
         pass
-    return missing_configuration(values)
+    # Local credentials fill only gaps after the original .env loader.
+    from src.model_service_config import effective_configuration
+    return missing_configuration(effective_configuration(values))
 
 
 class TJUP1CallAdapter(object):

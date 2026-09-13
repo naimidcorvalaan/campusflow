@@ -20,17 +20,22 @@ class TJUClientError(LLMClientError):
     """Raised for configuration and request errors without exposing sensitive values."""
 
 
-def _require_env(name: str) -> str:
-    value = os.getenv(name, "").strip()
+def _require_env(name: str, values=None) -> str:
+    if values is None:
+        from src.model_service_config import effective_configuration
+        values = effective_configuration()
+    value = values.get(name, "").strip()
     if not value:
         raise TJUClientError(f"缺少配置：{name}。")
     return value
 
 
 def _require_all_envs() -> Tuple[str, str, str]:
-    base_url = _require_env("TJU_LLM_BASE_URL")
-    api_key = _require_env("TJU_LLM_API_KEY")
-    model_name = _require_env("TJU_LLM_MODEL")
+    from src.model_service_config import effective_configuration
+    values = effective_configuration()
+    base_url = _require_env("TJU_LLM_BASE_URL", values)
+    api_key = _require_env("TJU_LLM_API_KEY", values)
+    model_name = _require_env("TJU_LLM_MODEL", values)
     return base_url, api_key, model_name
 
 

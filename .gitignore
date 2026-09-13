@@ -46,3 +46,6 @@ logs/
 *.env
 !*.env.example
 .streamlit/secrets.toml
+# Local model credentials, including atomic-write temporary files.
+model-service.json
+.model-service-*.tmp

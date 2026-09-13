@@ -992,7 +992,7 @@ def _render_timetable_importer(
         st.caption("当前将识别已上传的课表截图；文字内容不会同时提交。")
     if recognize:
         if missing:
-            st.warning("课表识别服务暂未配置完成；手动录入仍可使用。")
+            st.warning("请先连接模型服务后再识别课表；手动录入仍可使用。")
             return
         try:
             with (st.spinner("THINKING.......") if callable(getattr(st, "spinner", None)) else nullcontext()):
@@ -1452,6 +1452,8 @@ def _render_personal_settings_panel(
             ), unsafe_allow_html=True)
         tabs = st.tabs(("我的偏好", "常用地点", "我的课表"))
         with tabs[0]:
+            from src.model_service_ui import render_settings_service
+            render_settings_service(st)
             with st.expander("个人档案", expanded=False):
                 if _render_profile_controls(st, persistence_factory, reference):
                     return True
@@ -1569,7 +1571,7 @@ def _render_task_estimator(st, session, adapter, missing, reference):
         )
         if estimate_submitted:
             if missing:
-                st.error("估时服务暂未配置完成，请稍后再试。")
+                st.error("请先连接模型服务后再估时，当前输入已保留。")
                 return False
             before = _business_snapshot(st.session_state)
             try:
@@ -1759,7 +1761,7 @@ def _render_task_estimator(st, session, adapter, missing, reference):
             st.caption("材料或确认范围已变化，先重新估算，再加入今日计划。")
         if reestimate:
             if missing:
-                st.error("估时服务暂未配置完成，请稍后再试。")
+                st.error("请先连接模型服务后再估时，当前输入已保留。")
                 return False
             before = _business_snapshot(st.session_state)
             try:
@@ -2143,7 +2145,7 @@ def _handle_intake_submit(
 ) -> bool:
     """“生成全天计划”：Intake -> 程序构造 state -> P3 空间 intake -> P2c start_day。"""
     if missing:
-        st.error("规划服务暂未配置完成，请稍后再试。")
+        st.error("请先连接模型服务后再生成计划，当前输入已保留。")
         return False
     if not user_text:
         st.warning("请先输入今天的情况和想完成的任务。")
@@ -2231,6 +2233,11 @@ def main(
     try:
         missing = configuration_loader()
         apply_configured_timezone()
+        from src.model_service_ui import render_first_run
+        if render_first_run(st, missing):
+            return
+        if st.session_state.get("cf_model_notice") and not st.session_state.get(PERSONAL_SETTINGS_PANEL_OPEN_KEY):
+            st.success(st.session_state.pop("cf_model_notice"))
         drawer = DeferredDrawerRerun(st)
         _render_live_page(
             st, missing, adapter_factory, now_provider,
@@ -2460,10 +2467,13 @@ def _render_live_page(
             quiet_button(st, '时间设置', key='cf_environment_time_inline',
                 on_click=toggle_environment, args=(st.session_state, 'time'))
     if missing:
-        st.caption("本机模型服务尚未配置；可以先查看页面和编辑设置，配置后再生成计划。")
-        with st.expander("如何配置本机模型服务", expanded=False):
-            st.write("在项目文件夹中复制 .env.example，改名为 .env（不要带 .txt）。用记事本填写学校提供的接口地址、模型名和密钥，保存后关闭启动窗口，再双击启动 CampusFlow。")
-            st.caption("密钥只保存在本机环境或未提交的 .env 中，不要填写在任务输入或个人设置里。")
+        st.caption("需要先连接模型服务；可以先查看页面和编辑设置。")
+        from src.model_service_ui import editor_allowed, open_service_settings
+        if editor_allowed(st):
+            st.button("连接模型服务", key="cf_model_open", on_click=open_service_settings,
+                      args=(st.session_state, PERSONAL_SETTINGS_PANEL_OPEN_KEY))
+        else:
+            st.caption("请由运行此服务的配置者补全模型配置。")
 
     view = st.session_state.get(VIEW_KEY, '今天')
     if not has_current_plan and view == '今天':
@@ -2538,7 +2548,7 @@ def _render_live_page(
                 feedback_submitted = st.form_submit_button("更新方案", type="primary")
     if feedback_submitted:
         if missing:
-            st.error("规划服务暂不可用，请稍后再试。")
+            st.error("请先连接模型服务后再更新方案，原方案已保留。")
         elif not str(feedback).strip():
             pass
         elif load_live_final_turn(st.session_state) is None and session.last_turn() is None:
