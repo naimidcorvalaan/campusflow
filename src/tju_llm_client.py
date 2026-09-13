@@ -1,8 +1,11 @@
-import json
+import ipaddress
+import re
+import socket
 import logging
 import os
 from pathlib import Path
 from typing import Optional, Tuple
+from urllib.parse import urlsplit
 
 import requests
 from dotenv import load_dotenv
@@ -12,11 +15,6 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT_DIR / ".env")
 
 logger = logging.getLogger("campusflow.tju_client")
-
-# 开发侧 HTTP 诊断日志：只输出到终端，绝不展示给用户页面。
-# 响应体最多打印约 1500 字符；API key / Authorization 一律脱敏。
-_MAX_RESPONSE_BODY_LOG_CHARS = 1500
-_SENSITIVE_TEXT_PATTERNS = ("authorization", "proxy-authorization", "bearer ")
 
 
 class TJUClientError(RuntimeError):
@@ -48,96 +46,102 @@ def _safe_error_message(status_code: Optional[int] = None, detail: Optional[str]
     return detail or "TJU LLM 请求失败。"
 
 
-def _redact_sensitive(text: str, api_key: Optional[str] = None) -> str:
-    """把日志文本中的敏感内容替换为 ***（API key 原文 + 常见敏感标记）。"""
-    if not isinstance(text, str):
-        return ""
-    cleaned = text
-    if api_key:
-        cleaned = cleaned.replace(api_key, "***")
-    lower = cleaned.lower()
-    for marker in _SENSITIVE_TEXT_PATTERNS:
-        if marker in lower:
-            cleaned = cleaned.replace(marker, "***")
-    return cleaned
-
-
-def _log_request_summary(url: str, payload: dict, api_key: Optional[str] = None) -> None:
-    """打印请求结构摘要（不含任何敏感值 / API key / 完整 prompt 内容）。"""
-    try:
-        endpoint = url.split("//", 1)[1] if "//" in url else url
-    except Exception:  # noqa: BLE001 - 日志兜底
-        endpoint = url
-    messages = payload.get("messages") or ()
-    system_chars = 0
-    user_chars = 0
-    for message in messages:
-        if not isinstance(message, dict):
+def _exception_chain(exc):
+    """Inspect exception objects only, never their messages or request data."""
+    found, pending, seen = [], [exc], set()
+    while pending and len(found) < 12:
+        current = pending.pop(0)
+        if not isinstance(current, BaseException) or id(current) in seen:
             continue
-        content = message.get("content")
-        text_length = 0
-        if isinstance(content, str):
-            text_length = len(content)
-        elif isinstance(content, list):
-            # Multimodal payloads may contain large base64 image URLs.  Count
-            # only text parts and never log or inspect encoded image content.
-            text_length = sum(
-                len(item.get("text", ""))
-                for item in content
-                if isinstance(item, dict) and isinstance(item.get("text"), str)
-            )
-        if message.get("role") == "system":
-            system_chars += text_length
-        elif message.get("role") == "user":
-            user_chars += text_length
-    logger.info(
-        "[CampusFlow][TJU] request endpoint=%s model=%s messages=%s temperature=%s max_tokens=%s",
-        endpoint,
-        payload.get("model"),
-        len(messages),
-        payload.get("temperature"),
-        payload.get("max_tokens"),
-    )
-    logger.info(
-        "[CampusFlow][TJU] system_chars=%s user_chars=%s payload_keys=%s",
-        system_chars,
-        user_chars,
-        sorted(str(key) for key in payload.keys()),
-    )
+        seen.add(id(current))
+        found.append(current)
+        pending.extend((current.__cause__, current.__context__,
+                        getattr(current, "reason", None)))
+        pending.extend(arg for arg in current.args if isinstance(arg, BaseException))
+    return found
 
 
-def _safe_response_body(response) -> str:
-    """安全提取响应体：JSON 优先打印 error/message/detail 等字段，否则纯文本。"""
-    text = getattr(response, "text", "")
-    if not isinstance(text, str):
-        text = ""
+def _failure_kind(exc):
+    chain = _exception_chain(exc)
+    names = {type(item).__name__ for item in chain}
+    if any(isinstance(item, socket.gaierror) for item in chain) or "NameResolutionError" in names:
+        return "dns_error", False
+    if names & {"SSLError", "SSLCertVerificationError", "CertificateError"}:
+        return "tls_error", False
+    if names & {"ConnectTimeout", "ConnectTimeoutError"}:
+        return "connect_timeout", True
+    if names & {"ReadTimeout", "ReadTimeoutError"}:
+        return "read_timeout", True
+    if any(isinstance(item, requests.exceptions.Timeout) for item in chain) or names & {
+        "TimeoutException", "TimeoutError", "PoolTimeout", "WriteTimeout"
+    }:
+        return "timeout", True
+    if any(isinstance(item, requests.exceptions.ConnectionError) for item in chain):
+        return "connection_error", False
+    if any(type(item).__module__.split(".")[0] == "httpx" for item in chain):
+        return "httpx_exception", False
+    if isinstance(exc, requests.exceptions.RequestException):
+        return "requests_exception", False
+    return "unexpected_exception", False
+
+
+def _safe_endpoint(url, api_key):
+    """Only known public hosts/IPs and generic API path segments may be logged.
+
+    Unknown service subdomains and tenant paths can identify a user. Omit them,
+    as well as userinfo, port, query and fragment. Never log the original URL.
+    """
+    host, path = "redacted", "redacted"
     try:
-        data = response.json()
-    except Exception:  # noqa: BLE001 - 非 JSON 响应直接走文本
-        return text
-    if isinstance(data, dict):
-        safe = {}
-        for key in ("error", "message", "detail", "code", "type"):
-            if key in data:
-                safe[key] = data[key]
-        if safe:
-            try:
-                return json.dumps(safe, ensure_ascii=False)
-            except (TypeError, ValueError):
-                return text
-    return text
+        parsed = urlsplit(url)
+        hostname = parsed.hostname or ""
+        try:
+            ipaddress.ip_address(hostname)
+            host = hostname
+        except ValueError:
+            if hostname in {"ai.tju.edu.cn", "api.tju.edu.cn", "llm.tju.edu.cn",
+                            "model.invalid"}:
+                host = hostname
+        segments = parsed.path.split("/")
+        if all(part in {"", "api", "openai", "compatible-mode", "chat", "completions"}
+               or re.fullmatch(r"v[0-9]{1,2}", part) for part in segments):
+            path = parsed.path
+        else:
+            path = "/redacted/chat/completions"
+    except (ValueError, TypeError):
+        pass
+    return tuple(_safe_diagnostic_token(value, api_key) for value in (host, path))
 
 
-def _log_response_error(response, api_key: Optional[str] = None) -> None:
-    """HTTP 错误时打印 status / content-type / 截断后的安全响应体。"""
+def _safe_diagnostic_token(value, api_key):
+    if api_key and api_key.casefold() in value.casefold():
+        return "redacted"
+    return value if re.fullmatch(r"[A-Za-z0-9_./:\-]{1,180}", value) else "redacted"
+
+
+def _log_failure(url, api_key, *, stage, category, exc=None, response=None,
+                 timeout=False):
+    """Fixed metadata only: no str(exc), traceback, headers, body or payload."""
+    if response is None and exc is not None:
+        response = getattr(exc, "response", None)
     status = getattr(response, "status_code", None)
-    headers = getattr(response, "headers", None) or {}
-    content_type = headers.get("Content-Type", "") if isinstance(headers, dict) else ""
-    body = _redact_sensitive(_safe_response_body(response), api_key)
-    body = body[:_MAX_RESPONSE_BODY_LOG_CHARS]
-    logger.error("[CampusFlow][TJU] status=%s", status)
-    logger.error("[CampusFlow][TJU] response_content_type=%s", content_type)
-    logger.error("[CampusFlow][TJU] response_body=%s", body)
+    status = status if type(status) is int and 100 <= status <= 599 else None
+    chain = _exception_chain(exc)
+    exception_type = _safe_diagnostic_token(type(exc).__name__, api_key) if exc else "none"
+    cause_type = _safe_diagnostic_token(type(chain[-1]).__name__, api_key) if chain else "none"
+    host, path = _safe_endpoint(url, api_key)
+    logger.error(
+        "[CampusFlow][TJU] stage=%s category=%s exception_type=%s cause_type=%s "
+        "status=%s timeout=%s response_received=%s endpoint_host=%s endpoint_path=%s",
+        stage, category, exception_type, cause_type, status, timeout,
+        response is not None, host, path,
+    )
+
+
+def _log_transport_failure(url, api_key, exc):
+    category, timeout = _failure_kind(exc)
+    _log_failure(url, api_key, stage="request", category=category, exc=exc,
+                 timeout=timeout)
 
 
 def call_tju_llm_messages(
@@ -169,23 +173,32 @@ def call_tju_llm_messages(
     try:
         response = requests.post(url, headers=headers, json=payload, timeout=timeout)
     except requests.exceptions.Timeout as exc:
+        _log_transport_failure(url, api_key, exc)
         raise TJUClientError("TJU LLM 请求超时。") from exc
     except requests.exceptions.ConnectionError as exc:
+        _log_transport_failure(url, api_key, exc)
         raise TJUClientError("TJU LLM 连接失败。") from exc
     except requests.exceptions.RequestException as exc:
+        _log_transport_failure(url, api_key, exc)
         raise TJUClientError(f"TJU LLM 请求失败：{exc.__class__.__name__}。") from exc
+    except Exception as exc:
+        # Preserve unexpected/httpx exception semantics; add metadata only.
+        _log_transport_failure(url, api_key, exc)
+        raise
 
     status_code = response.status_code
 
-    if status_code >= 400:
-        # 开发侧诊断：用户侧仍只收到安全 TJUClientError，详情只进终端。
-        _log_request_summary(url, payload, api_key)
-        _log_response_error(response, api_key)
+    if status_code != 200:
+        category = "http_5xx" if 500 <= status_code <= 599 else "http_{}".format(status_code)
+        _log_failure(url, api_key, stage="http_response", category=category,
+                     response=response)
 
     if status_code == 200:
         try:
             data = response.json()
         except ValueError as exc:
+            _log_failure(url, api_key, stage="response_json", category="response_parse_error",
+                         exc=exc, response=response)
             raise TJUClientError("TJU LLM 返回了非 JSON 响应。") from exc
 
         try:
@@ -207,6 +220,8 @@ def call_tju_llm_messages(
                 raise ValueError("响应 content 不是字符串。")
             return content
         except (KeyError, IndexError, TypeError, ValueError) as exc:
+            _log_failure(url, api_key, stage="response_structure", category="response_parse_error",
+                         exc=exc, response=response)
             raise TJUClientError("TJU LLM 响应结构错误。") from exc
 
     if status_code == 401:

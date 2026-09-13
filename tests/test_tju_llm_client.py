@@ -212,7 +212,7 @@ class _Text500Response:
         raise ValueError("not json")
 
 
-def test_server_error_json_body_logged_safely(valid_env, monkeypatch, caplog):
+def test_server_error_json_body_omitted(valid_env, monkeypatch, caplog):
     import logging
 
     monkeypatch.setattr("requests.post", lambda *a, **k: _Json500Response())
@@ -222,23 +222,15 @@ def test_server_error_json_body_logged_safely(valid_env, monkeypatch, caplog):
         call_tju_llm("只回复：连接成功")
 
     records = caplog.text
-    assert "[CampusFlow][TJU] status=500" in records
-    assert "[CampusFlow][TJU] response_content_type=application/json" in records
-    assert "response_body=" in records
-    assert "upstream model timeout" in records
-    # 请求结构摘要
-    assert "request endpoint=ai.tju.edu.cn/api/v3/chat/completions" in records
-    assert "model=tju-llm" in records
-    assert "messages=1" in records
-    assert "system_chars=0" in records and "user_chars=8" in records
-    assert "payload_keys=" in records
-    # 敏感信息绝不出现
-    assert "test-api-key-123" not in records
-    assert "Authorization" not in records
-    assert "Bearer" not in records
+    assert "stage=http_response category=http_5xx" in records
+    assert "status=500 timeout=False response_received=True" in records
+    assert "endpoint_host=ai.tju.edu.cn endpoint_path=/api/v3/chat/completions" in records
+    for private in ("response_body=", "upstream model timeout", "abc-123",
+                    "model=tju-llm", "test-api-key-123", "Authorization", "Bearer"):
+        assert private not in records
 
 
-def test_server_error_text_body_truncated(valid_env, monkeypatch, caplog):
+def test_server_error_text_body_omitted(valid_env, monkeypatch, caplog):
     import logging
 
     monkeypatch.setattr("requests.post", lambda *a, **k: _Text500Response())
@@ -247,12 +239,10 @@ def test_server_error_text_body_truncated(valid_env, monkeypatch, caplog):
     with pytest.raises(TJUClientError, match="500"):
         call_tju_llm("只回复：连接成功")
 
-    records = caplog.text
-    body_start = records.find("response_body=") + len("response_body=")
-    body = records[body_start:]
-    assert len(body) <= 1500 + 4  # 截断长度上限（预留日志行尾换行）
-    assert "server exploded" in records
-    assert "test-api-key-123" not in records
+    assert "status=500" in caplog.text
+    assert "response_body=" not in caplog.text
+    assert "server exploded" not in caplog.text
+    assert "test-api-key-123" not in caplog.text
 
 
 def test_server_error_user_side_stays_safe(valid_env, monkeypatch, caplog):
@@ -277,7 +267,7 @@ def test_server_error_user_side_stays_safe(valid_env, monkeypatch, caplog):
     assert "TJU LLM 服务端返回 500。" == user_message
     assert "boom" not in user_message
     assert "test-api-key-123" not in user_message
-    assert "boom" in caplog.text  # 详情只在开发日志
+    assert "boom" not in caplog.text  # Error bodies stay private on the server too.
 
 
 def test_success_200_behavior_unchanged_no_error_logs(valid_env, monkeypatch, caplog):
@@ -296,3 +286,177 @@ def test_success_200_behavior_unchanged_no_error_logs(valid_env, monkeypatch, ca
     assert response == "连接成功"
     assert "[CampusFlow][TJU] status=" not in caplog.text
     assert "response_body=" not in caplog.text
+
+
+@pytest.mark.parametrize("error, category, timed_out", [
+    (requests.exceptions.ConnectTimeout("private exception text"), "connect_timeout", True),
+    (requests.exceptions.ReadTimeout("private exception text"), "read_timeout", True),
+    (requests.exceptions.Timeout("private exception text"), "timeout", True),
+    (requests.exceptions.SSLError("private exception text"), "tls_error", False),
+    (requests.exceptions.ConnectionError("private exception text"), "connection_error", False),
+    (requests.exceptions.ChunkedEncodingError("private exception text"), "requests_exception", False),
+    (requests.exceptions.InvalidURL("private exception text"), "requests_exception", False),
+])
+def test_transport_diagnostics_preserve_cause(valid_env, monkeypatch, caplog,
+                                             error, category, timed_out):
+    def post(*args, **kwargs):
+        raise error
+    monkeypatch.setattr(requests, "post", post)
+    with pytest.raises(TJUClientError) as caught:
+        call_tju_llm("private user material")
+    assert caught.value.__cause__ is error
+    assert "stage=request category=" + category in caplog.text
+    assert "exception_type=" + type(error).__name__ in caplog.text
+    assert "timeout={} response_received=False".format(timed_out) in caplog.text
+    assert "private exception text" not in caplog.text
+    assert "private user material" not in caplog.text
+    assert all(r.exc_info is None and r.stack_info is None for r in caplog.records)
+
+
+def test_nested_dns_failure_without_logging_exception_text(valid_env, monkeypatch, caplog):
+    import socket
+    from urllib3.exceptions import MaxRetryError
+    reason = socket.gaierror(-2, "private hostname and key")
+    wrapped = MaxRetryError(None, "https://private.invalid/person", reason)
+    error = requests.exceptions.ConnectionError(wrapped)
+    def post(*args, **kwargs):
+        raise error
+    monkeypatch.setattr(requests, "post", post)
+    with pytest.raises(TJUClientError):
+        call_tju_llm("private material")
+    assert "category=dns_error" in caplog.text
+    assert "cause_type=gaierror" in caplog.text
+    assert "timeout=False response_received=False" in caplog.text
+    assert "private" not in caplog.text
+
+
+@pytest.mark.parametrize("status", [401, 403, 404, 429, 500, 502, 503, 302])
+def test_http_metadata_never_reads_headers_or_body(valid_env, monkeypatch, caplog, status):
+    class Response:
+        status_code = status
+        @property
+        def text(self):
+            raise AssertionError("must not read body")
+        @property
+        def headers(self):
+            raise AssertionError("must not read headers")
+        def json(self):
+            raise AssertionError("must not parse error body")
+    monkeypatch.setattr(requests, "post", lambda *a, **k: Response())
+    with pytest.raises(TJUClientError):
+        call_tju_llm("private material")
+    category = "http_5xx" if status >= 500 else "http_{}".format(status)
+    assert "stage=http_response category=" + category in caplog.text
+    assert "status={} timeout=False response_received=True".format(status) in caplog.text
+    assert len([r for r in caplog.records if r.name == "campusflow.tju_client"]) == 1
+
+
+@pytest.mark.parametrize("body,stage,original", [
+    (ValueError("private response body"), "response_json", "ValueError"),
+    ({"choices": []}, "response_structure", "ValueError"),
+    ({"choices": [{"message": {}}]}, "response_structure", "KeyError"),
+    (None, "response_structure", "TypeError"),
+])
+def test_200_response_parse_failure_is_distinct(valid_env, monkeypatch, caplog,
+                                               body, stage, original):
+    class Response:
+        status_code = 200
+        def json(self):
+            if isinstance(body, Exception):
+                raise body
+            return body
+    calls = []
+    def post(*args, **kwargs):
+        calls.append(True)
+        return Response()
+    monkeypatch.setattr(requests, "post", post)
+    with pytest.raises(TJUClientError):
+        call_tju_llm("private material")
+    assert calls == [True]
+    assert "stage={} category=response_parse_error".format(stage) in caplog.text
+    assert "exception_type=" + original in caplog.text
+    assert "status=200 timeout=False response_received=True" in caplog.text
+    assert "private" not in caplog.text
+
+
+def test_response_on_exception_is_not_lost_due_to_false_bool(valid_env, monkeypatch, caplog):
+    response = requests.Response()
+    response.status_code = 403
+    assert not response
+    error = requests.exceptions.HTTPError("private details", response=response)
+    def post(*args, **kwargs):
+        raise error
+    monkeypatch.setattr(requests, "post", post)
+    with pytest.raises(TJUClientError):
+        call_tju_llm("private material")
+    assert "category=requests_exception" in caplog.text
+    assert "status=403 timeout=False response_received=True" in caplog.text
+
+
+@pytest.mark.parametrize("base", [
+    "https://private-user:private-password@ai.tju.edu.cn/api/v3?secret=private-query#private-fragment",
+    "https://ai.tju.edu.cn/tenant/private-person/private-token",
+    "https://private-person.example.invalid/api/v3",
+    "https://[malformed",
+])
+def test_endpoint_privacy_and_response_echoes(valid_env, monkeypatch, caplog, base):
+    key = "tk-" + "synthetic-private-key" * 2
+    monkeypatch.setenv("TJU_LLM_API_KEY", key)
+    monkeypatch.setenv("TJU_LLM_BASE_URL", base)
+    monkeypatch.setenv("TJU_LLM_MODEL", "private-person-model")
+    class Response:
+        status_code = 401
+        headers = {"Content-Type": "private-person"}
+        text = key + " private-user-material Authorization: Bearer another-private-token"
+        def json(self):
+            return {"error": self.text}
+    monkeypatch.setattr(requests, "post", lambda *a, **k: Response())
+    with pytest.raises(TJUClientError):
+        call_tju_llm("private-user-material", system_prompt="private-system")
+    assert key not in caplog.text
+    for value in ("private", "Authorization", "Bearer", "response_body", "model="):
+        assert value not in caplog.text
+    assert "status=401" in caplog.text
+
+
+def test_key_cannot_escape_via_endpoint_or_exception_class(valid_env, monkeypatch, caplog):
+    key = "SensitiveDiagnosticMarker"
+    monkeypatch.setenv("TJU_LLM_API_KEY", key)
+    monkeypatch.setenv("TJU_LLM_BASE_URL", "https://" + key + ".invalid/" + key)
+    error_type = type(key, (requests.exceptions.ConnectionError,), {})
+    def post(*args, **kwargs):
+        raise error_type(key)
+    monkeypatch.setattr(requests, "post", post)
+    with pytest.raises(TJUClientError):
+        call_tju_llm(key)
+    assert key.casefold() not in caplog.text.casefold()
+    assert "exception_type=redacted" in caplog.text
+
+
+@pytest.mark.parametrize("name,category", [("RemoteProtocolError", "httpx_exception"),
+                                         ("ReadTimeout", "read_timeout")])
+def test_unexpected_httpx_exception_keeps_original_semantics(valid_env, monkeypatch, caplog,
+                                                           name, category):
+    # The real client uses requests. No httpx dependency or new request flow:
+    # an injected third-party failure is logged then re-raised unchanged.
+    error_type = type(name, (Exception,), {"__module__": "httpx"})
+    error = error_type("private message")
+    def post(*args, **kwargs):
+        raise error
+    monkeypatch.setattr(requests, "post", post)
+    with pytest.raises(error_type) as caught:
+        call_tju_llm("private material")
+    assert caught.value is error
+    assert "category=" + category in caplog.text
+    assert "private" not in caplog.text
+
+
+def test_cyclic_exception_chain_is_bounded(valid_env, monkeypatch, caplog):
+    error = requests.exceptions.ConnectionError("private message")
+    error.__cause__ = error
+    def post(*args, **kwargs):
+        raise error
+    monkeypatch.setattr(requests, "post", post)
+    with pytest.raises(TJUClientError):
+        call_tju_llm("private material")
+    assert "category=connection_error" in caplog.text
