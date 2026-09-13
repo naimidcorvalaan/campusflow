@@ -4,3 +4,4 @@ requests==2.31.0
 python-dotenv==1.0.1
 pypdfium2==5.13.0
 defusedxml==0.7.1
+Pillow==10.2.0
