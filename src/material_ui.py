@@ -162,6 +162,11 @@ def handle_material_action(st, session, adapter, action, reference, item_id=None
         st.session_state[live.LOCAL_PROFILE_STALE_KEY] = False
         return True
     except MaterialError as exc:
+        from src.llm_errors import VisionUnavailable
+        if action == 'extract' and isinstance(exc.__cause__, VisionUnavailable):
+            flow = st.session_state.get('cf_material_flow')
+            if isinstance(flow, dict):
+                flow['message'] = '当前图片理解服务暂不可用，材料和补充说明已保留。'
         if action == 'extract' and source_draft is None:
             save_material_edit(st,replace(inbox,draft=replace(draft,status='failed',message=str(exc),
                 diagnostics=dict(source_type=draft.source_type,parse_status='request_failed',
@@ -341,7 +346,7 @@ def _render_material_surface(st, session, adapter, missing, reference):
                 flow.update(phase=completed.diagnostics.get('request_outcome','result'),
                     source_open=False,message='')
             else:
-                flow.update(phase='result' if ready else 'error',message=(
+                flow.update(phase='result' if ready else 'error',message=flow.get('message') or (
                     '继续保留上次估时，你的补充说明也已保留。' if ready else
                     '目前还没读到可判断工作量的内容，材料和补充说明已保留。'))
             # Preserve both the submitted supplement and the user's disclosure

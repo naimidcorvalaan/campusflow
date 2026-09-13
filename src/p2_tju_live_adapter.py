@@ -1,9 +1,7 @@
-"""P2 真实模型页面的 TJU adapter（Python 3.8 兼容）。
+"""Existing P2 call budgets and image preparation over a selected provider.
 
-复用 P1 的 tju_llm_client，但 P2 Agent 输出是较长的 JSON（intake / reconciliation /
-day plan intent / review），256 token 的默认输出上限会截断。本 adapter 只提高输出
-预算与请求超时，不改变 temperature=0，不引入第三方服务。导入本模块无网络副作用
-（懒加载 client，避免 import 时读取 .env）。
+Historical class name remains compatible. Provider imports are lazy; injection,
+prompt separation, token budgets and timeouts retain the existing contracts.
 """
 
 MAX_P2_OUTPUT_TOKENS = 2048
@@ -31,7 +29,7 @@ class TJUP2CallAdapter(object):
 
     def agent_caller(self, system_prompt, user_prompt):
         if self._call_function is None:
-            from src.tju_llm_client import call_tju_llm
+            from src.llm_provider import call_llm as call_tju_llm
             call_function = call_tju_llm
         else:
             call_function = self._call_function
@@ -64,7 +62,7 @@ class TJUP2CallAdapter(object):
             {"role": "user", "content": material.image_content(user_prompt)},
         ]
         if self._message_call_function is None:
-            from src.tju_llm_client import call_tju_llm_messages
+            from src.llm_provider import call_llm_messages as call_tju_llm_messages
             message_call = call_tju_llm_messages
         else:
             message_call = self._message_call_function
@@ -79,7 +77,7 @@ class TJUP2CallAdapter(object):
         """One short text-only calculation from already recognized workload."""
         call_function = self._call_function
         if call_function is None:
-            from src.tju_llm_client import call_tju_llm
+            from src.llm_provider import call_llm as call_tju_llm
             call_function = call_tju_llm
         return call_function(user_prompt, system_prompt=system_prompt,
             temperature=0, max_tokens=768, timeout=30)
@@ -97,7 +95,7 @@ class TJUP2CallAdapter(object):
             content.extend(material.image_content('')[1:])
         message_call = self._message_call_function
         if message_call is None:
-            from src.tju_llm_client import call_tju_llm_messages
+            from src.llm_provider import call_llm_messages as call_tju_llm_messages
             message_call = call_tju_llm_messages
         return message_call([{'role':'system','content':system_prompt},
                              {'role':'user','content':content}], temperature=0,

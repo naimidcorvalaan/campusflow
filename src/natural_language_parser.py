@@ -4,7 +4,8 @@ from datetime import datetime
 from src.extraction_models import ParseResult
 from src.prompt_builder import build_system_prompt, build_user_prompt
 from src.structured_parser import StructuredParser
-from src.tju_llm_client import TJUClientError, call_tju_llm
+from src.llm_errors import LLMClientError as TJUClientError
+from src.llm_provider import call_llm as call_tju_llm
 
 
 def _validate_user_text(user_text: str) -> None:
@@ -107,7 +108,7 @@ def parse_natural_language(user_text: str, current_time: str) -> ParseResult:
         return ParseResult(
             status="rejected",
             error_type="api_error",
-            message="TJU LLM API 错误：请求失败。",
+            message="模型服务暂时不可用，当前计划未改变。",
             missing_fields=[],
             questions=[],
             planning_request=None,

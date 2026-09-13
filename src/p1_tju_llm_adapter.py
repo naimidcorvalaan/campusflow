@@ -1,6 +1,7 @@
 """P1k: adapt the existing TJU client to P1 callables without eager I/O."""
 import os
 from pathlib import Path
+from src.llm_provider import required_environment
 
 
 REQUIRED_ENV = ("TJU_LLM_BASE_URL", "TJU_LLM_API_KEY", "TJU_LLM_MODEL")
@@ -11,7 +12,7 @@ PROJECT_ENV_PATH = PROJECT_ROOT / ".env"
 def missing_configuration(environ=None):
     """Return missing variable names only; never expose configuration values."""
     values = os.environ if environ is None else environ
-    return tuple(name for name in REQUIRED_ENV if not str(values.get(name, "")).strip())
+    return tuple(name for name in required_environment(values) if not str(values.get(name, "")).strip())
 
 
 def configuration_available(environ=None):
@@ -47,7 +48,7 @@ class TJUP1CallAdapter(object):
     def _call(self, system_prompt, user_prompt):
         if self._call_function is None:
             # Lazy import avoids client/.env side effects during page import and tests.
-            from src.tju_llm_client import call_tju_llm
+            from src.llm_provider import call_llm as call_tju_llm
             call_function = call_tju_llm
         else:
             call_function = self._call_function

@@ -14,7 +14,8 @@ from src.replanning_prompt_builder import (
     build_replanning_system_prompt,
     build_replanning_user_prompt,
 )
-from src.tju_llm_client import TJUClientError, call_tju_llm
+from src.llm_errors import LLMClientError as TJUClientError
+from src.llm_provider import call_llm as call_tju_llm
 
 
 @dataclass(frozen=True)

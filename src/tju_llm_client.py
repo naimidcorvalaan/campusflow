@@ -1,14 +1,13 @@
-import ipaddress
-import re
-import socket
 import logging
 import os
 from pathlib import Path
 from typing import Optional, Tuple
-from urllib.parse import urlsplit
 
 import requests
 from dotenv import load_dotenv
+from src.llm_errors import LLMClientError
+from src.llm_messages import validate_messages
+from src.llm_diagnostics import _log_failure, _log_transport_failure
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -17,7 +16,7 @@ load_dotenv(ROOT_DIR / ".env")
 logger = logging.getLogger("campusflow.tju_client")
 
 
-class TJUClientError(RuntimeError):
+class TJUClientError(LLMClientError):
     """Raised for configuration and request errors without exposing sensitive values."""
 
 
@@ -44,104 +43,6 @@ def _safe_error_message(status_code: Optional[int] = None, detail: Optional[str]
     if status_code is not None:
         return f"TJU LLM 请求失败，HTTP 状态码为 {status_code}。"
     return detail or "TJU LLM 请求失败。"
-
-
-def _exception_chain(exc):
-    """Inspect exception objects only, never their messages or request data."""
-    found, pending, seen = [], [exc], set()
-    while pending and len(found) < 12:
-        current = pending.pop(0)
-        if not isinstance(current, BaseException) or id(current) in seen:
-            continue
-        seen.add(id(current))
-        found.append(current)
-        pending.extend((current.__cause__, current.__context__,
-                        getattr(current, "reason", None)))
-        pending.extend(arg for arg in current.args if isinstance(arg, BaseException))
-    return found
-
-
-def _failure_kind(exc):
-    chain = _exception_chain(exc)
-    names = {type(item).__name__ for item in chain}
-    if any(isinstance(item, socket.gaierror) for item in chain) or "NameResolutionError" in names:
-        return "dns_error", False
-    if names & {"SSLError", "SSLCertVerificationError", "CertificateError"}:
-        return "tls_error", False
-    if names & {"ConnectTimeout", "ConnectTimeoutError"}:
-        return "connect_timeout", True
-    if names & {"ReadTimeout", "ReadTimeoutError"}:
-        return "read_timeout", True
-    if any(isinstance(item, requests.exceptions.Timeout) for item in chain) or names & {
-        "TimeoutException", "TimeoutError", "PoolTimeout", "WriteTimeout"
-    }:
-        return "timeout", True
-    if any(isinstance(item, requests.exceptions.ConnectionError) for item in chain):
-        return "connection_error", False
-    if any(type(item).__module__.split(".")[0] == "httpx" for item in chain):
-        return "httpx_exception", False
-    if isinstance(exc, requests.exceptions.RequestException):
-        return "requests_exception", False
-    return "unexpected_exception", False
-
-
-def _safe_endpoint(url, api_key):
-    """Only known public hosts/IPs and generic API path segments may be logged.
-
-    Unknown service subdomains and tenant paths can identify a user. Omit them,
-    as well as userinfo, port, query and fragment. Never log the original URL.
-    """
-    host, path = "redacted", "redacted"
-    try:
-        parsed = urlsplit(url)
-        hostname = parsed.hostname or ""
-        try:
-            ipaddress.ip_address(hostname)
-            host = hostname
-        except ValueError:
-            if hostname in {"ai.tju.edu.cn", "api.tju.edu.cn", "llm.tju.edu.cn",
-                            "model.invalid"}:
-                host = hostname
-        segments = parsed.path.split("/")
-        if all(part in {"", "api", "openai", "compatible-mode", "chat", "completions"}
-               or re.fullmatch(r"v[0-9]{1,2}", part) for part in segments):
-            path = parsed.path
-        else:
-            path = "/redacted/chat/completions"
-    except (ValueError, TypeError):
-        pass
-    return tuple(_safe_diagnostic_token(value, api_key) for value in (host, path))
-
-
-def _safe_diagnostic_token(value, api_key):
-    if api_key and api_key.casefold() in value.casefold():
-        return "redacted"
-    return value if re.fullmatch(r"[A-Za-z0-9_./:\-]{1,180}", value) else "redacted"
-
-
-def _log_failure(url, api_key, *, stage, category, exc=None, response=None,
-                 timeout=False):
-    """Fixed metadata only: no str(exc), traceback, headers, body or payload."""
-    if response is None and exc is not None:
-        response = getattr(exc, "response", None)
-    status = getattr(response, "status_code", None)
-    status = status if type(status) is int and 100 <= status <= 599 else None
-    chain = _exception_chain(exc)
-    exception_type = _safe_diagnostic_token(type(exc).__name__, api_key) if exc else "none"
-    cause_type = _safe_diagnostic_token(type(chain[-1]).__name__, api_key) if chain else "none"
-    host, path = _safe_endpoint(url, api_key)
-    logger.error(
-        "[CampusFlow][TJU] stage=%s category=%s exception_type=%s cause_type=%s "
-        "status=%s timeout=%s response_received=%s endpoint_host=%s endpoint_path=%s",
-        stage, category, exception_type, cause_type, status, timeout,
-        response is not None, host, path,
-    )
-
-
-def _log_transport_failure(url, api_key, exc):
-    category, timeout = _failure_kind(exc)
-    _log_failure(url, api_key, stage="request", category=category, exc=exc,
-                 timeout=timeout)
 
 
 def call_tju_llm_messages(
@@ -258,34 +159,7 @@ def call_tju_llm(
 
 
 def _validated_messages(messages):
-    if not isinstance(messages, (list, tuple)) or not messages:
-        raise TJUClientError("TJU LLM messages 必须是非空列表。")
-    result = []
-    for message in messages:
-        if not isinstance(message, dict) or message.get("role") not in (
-            "system", "user", "assistant"
-        ):
-            raise TJUClientError("TJU LLM message 结构错误。")
-        content = message.get("content")
-        if not isinstance(content, (str, list)):
-            raise TJUClientError("TJU LLM message content 结构错误。")
-        if isinstance(content, list):
-            for part in content:
-                if not isinstance(part, dict) or part.get("type") not in (
-                    "text", "image_url"
-                ):
-                    raise TJUClientError("TJU LLM 多模态消息结构错误。")
-                if part.get("type") == "text" and not isinstance(part.get("text"), str):
-                    raise TJUClientError("TJU LLM 多模态文本结构错误。")
-                if part.get("type") == "image_url":
-                    image = part.get("image_url")
-                    url = image.get("url") if isinstance(image, dict) else None
-                    if not isinstance(url, str) or not url.startswith(
-                        ("data:image/png;base64,", "data:image/jpeg;base64,")
-                    ):
-                        raise TJUClientError("图片必须以内嵌 JPG 或 PNG 数据发送。")
-        result.append({"role": message["role"], "content": content})
-    return tuple(result)
+    return validate_messages(messages, error_type=TJUClientError, prefix="TJU LLM")
 
 
 if __name__ == "__main__":

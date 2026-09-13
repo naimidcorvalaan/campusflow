@@ -12,7 +12,9 @@ dotenv.load_dotenv = lambda *args, **kwargs: False
 @pytest.fixture(autouse=True)
 def offline_test_boundary(monkeypatch, tmp_path):
     monkeypatch.setenv("CAMPUSFLOW_DATA_DIR", str(tmp_path / "profile"))
-    for name in ("TJU_LLM_BASE_URL", "TJU_LLM_API_KEY", "TJU_LLM_MODEL"):
+    for name in ("TJU_LLM_BASE_URL", "TJU_LLM_API_KEY", "TJU_LLM_MODEL",
+                 "CAMPUSFLOW_LLM_PROVIDER", "DEEPSEEK_API_KEY", "DEEPSEEK_BASE_URL",
+                 "DEEPSEEK_MODEL", "DEEPSEEK_VISION_MODEL"):
         monkeypatch.delenv(name, raising=False)
 
     def no_network(*args, **kwargs):

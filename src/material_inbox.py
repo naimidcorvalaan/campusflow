@@ -470,11 +470,24 @@ def extract_material(draft, caller, existing_tasks=(), image_caller=None,
                     status='uncertain|missing',message='简短说明',evidence='原文短引用')],
                 possible_task_ref='已给出的ref|null',estimate=estimate_schema,
                 )}, ensure_ascii=False)
+    vision_unavailable = False
     def request(request_system, request_user):
+        nonlocal vision_unavailable
+        if vision_unavailable:
+            payload = json.loads(request_user)
+            payload['attached_image_pages_in_order'] = []
+            payload['source_limits'] = list(payload.get('source_limits') or []) + [
+                '图片理解服务暂不可用；仅处理已读取文字，图片页未纳入。']
+            return caller(request_system, json.dumps(payload, ensure_ascii=False))
         if file_source is not None and file_source.images:
             if not image_supported or not callable(images_caller):
                 raise MaterialError('当前服务不能读取这份PDF的图片页，请改用文字材料。')
-            return images_caller(request_system, request_user, file_source.images)
+            from src.llm_errors import VisionUnavailable
+            try:
+                return images_caller(request_system, request_user, file_source.images)
+            except VisionUnavailable:
+                vision_unavailable = True
+                raise
         elif draft.source_type == 'image':
             if not image_supported or not callable(image_caller):
                 raise MaterialError('图片理解暂不可用，请改用文字输入。')

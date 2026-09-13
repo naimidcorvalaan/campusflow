@@ -183,6 +183,10 @@ TJU_LLM_API_KEY=<你的服务密钥>
 ```
 
 接口地址、模型与权限以当前服务账号为准。真实模型调用需要相应 TJU 账号和校园网 / VPN 等网络条件。
+
+本地默认仍使用 TJU。公网受限试用可在 Streamlit Secrets 中显式设置
+`CAMPUSFLOW_LLM_PROVIDER="deepseek"`，文字和图片共用现有产品流程。配置、当前模型名称与
+最小真实验收见[模型服务配置](docs/llm_providers.md)及[Cloud Secrets 模板](deploy/streamlit-community.secrets.toml.example)。
 保存配置后重启；进程环境变量优先于 `.env`。不要提交或分享自己的 `.env`，也不要将密钥填入任务、课表或个人设置。
 
 `CAMPUSFLOW_DATA_DIR` 可指定档案目录；本地使用可留空，Windows 默认使用 `%LOCALAPPDATA%\CampusFlow`。
@@ -191,7 +195,7 @@ TJU_LLM_API_KEY=<你的服务密钥>
 ## 技术栈与项目结构
 
 Python 3.8–3.12 · Streamlit 1.31.1 · SQLite · Requests · pypdfium2 · defusedxml · pytest。
-依赖版本以 [requirements.txt](requirements.txt) 为准；模型通过可配置的 TJU 服务接口接入。
+依赖版本以 [requirements.txt](requirements.txt) 为准；模型通过统一接口接入 TJU / DeepSeek。
 
 - `src/p2_live_main.py`：正式 Streamlit 入口，组织今天、时间线、任务估时与个人设置。
 - `src/`：任务状态、决策与执行、路线校验、独立工作量、课表和本地持久化。

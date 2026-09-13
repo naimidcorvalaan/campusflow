@@ -1,6 +1,7 @@
 """Independent workload resolution followed by best-effort formal-task binding."""
 import json
 from dataclasses import replace
+from src.llm_errors import VisionUnavailable
 
 from src.material_workload import source_workload, model_workloads, estimate_workloads
 
@@ -38,8 +39,25 @@ def run_material_intake(draft, request, caller, system, user, refs, file_source=
     def has_time(result):
         return bool(result.estimate_fallbacks or any(i.kind=='task' and i.minutes for i in result.items))
 
+    recognition_retry_used = False
     try:
         responses.append(receive(system,user))
+    except VisionUnavailable as exc:
+        if not file_source or not file_source.text.strip():
+            raise MaterialError('当前图片理解服务暂不可用，原材料已保留，请稍后重试。') from exc
+        # Reuse one recognition repair slot for text already read locally.
+        recognition_retry_used = True
+        visual = False
+        file_source = replace(file_source, warnings=file_source.warnings + (
+            '图片理解服务暂不可用；视觉部分未纳入。',))
+        request_error = 'vision_unavailable'
+        repair_kind = 'readable_text'
+        try:
+            responses.append(receive(system,user))
+        except Exception:
+            if not workloads:
+                raise MaterialError('模型服务暂时不可用，原材料已保留，请稍后重试。') from None
+            responses.append('{}')
     except Exception as exc:
         if not workloads:
             raise MaterialError('整理服务暂时无法连接，原材料已保留，请稍后重试。') from exc
@@ -52,7 +70,7 @@ def run_material_intake(draft, request, caller, system, user, refs, file_source=
     # If there is measurable work, go directly to its independent estimator.
     # Otherwise spend at most one correction on understanding the source; a
     # known action is never sent back to this stage to be questioned again.
-    if not workloads and not (has_time(result) or only_arrangements):
+    if not recognition_retry_used and not workloads and not (has_time(result) or only_arrangements):
         repair_kind='estimate_completion'
         payload=json.loads(user)
         payload.pop('formal_item_format',None)
@@ -70,7 +88,7 @@ def run_material_intake(draft, request, caller, system, user, refs, file_source=
             result,formal_ok=interpret()
         except Exception:
             request_error='repair_request_failed'
-    elif has_time(result) and not formal_ok:
+    elif not recognition_retry_used and has_time(result) and not formal_ok:
         repair_kind='structure'
         try:
             responses.append(receive(system+' 上次结构未通过校验，仅修复一次；保留已有工作量和估时，不补造事实。',
