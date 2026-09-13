@@ -1,0 +1,45 @@
+{
+  "metadata": {
+    "campus": "测试校区",
+    "data_status": "synthetic_test_data"
+  },
+  "locations": [
+    {
+      "id": "dormitory",
+      "name": "测试宿舍",
+      "aliases": ["宿舍", "学生宿舍"],
+      "category": "dormitory"
+    },
+    {
+      "id": "library",
+      "name": "测试图书馆",
+      "aliases": ["图书馆"],
+      "category": "library"
+    },
+    {
+      "id": "canteen",
+      "name": "测试食堂",
+      "aliases": ["食堂"],
+      "category": "dining"
+    },
+    {
+      "id": "teaching_hall",
+      "name": "测试教学楼",
+      "aliases": ["教学楼", "教室楼"],
+      "category": "teaching"
+    },
+    {
+      "id": "gate",
+      "name": "测试校门",
+      "aliases": ["校门", "门"],
+      "category": "gate"
+    }
+  ],
+  "edges": [
+    {"source": "dormitory", "target": "library", "walk_minutes": 8},
+    {"source": "dormitory", "target": "canteen", "walk_minutes": 6},
+    {"source": "library", "target": "teaching_hall", "walk_minutes": 10},
+    {"source": "library", "target": "gate", "walk_minutes": 12},
+    {"source": "canteen", "target": "teaching_hall", "walk_minutes": 7}
+  ]
+}

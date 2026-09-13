@@ -1,0 +1,154 @@
+{
+  "metadata": {
+    "schema_version": "p3.campus-map.v1",
+    "campus": "测试校区（P3a 合成）",
+    "data_status": "synthetic_test_data",
+    "provenance": "synthetic_test",
+    "note": "仅用于寻路逻辑测试，不代表真实道路"
+  },
+  "nodes": [
+    {
+      "id": "gate",
+      "name": "东门",
+      "aliases": [
+        "校门",
+        "东门"
+      ],
+      "category": "gate",
+      "latitude": 39.1,
+      "longitude": 117.1,
+      "source": "synthetic"
+    },
+    {
+      "id": "main",
+      "name": "主楼",
+      "aliases": [
+        "主楼"
+      ],
+      "category": "teaching",
+      "latitude": 39.11,
+      "longitude": 117.11,
+      "source": "synthetic"
+    },
+    {
+      "id": "library",
+      "name": "图书馆",
+      "aliases": [
+        "图书馆"
+      ],
+      "category": "library",
+      "latitude": 39.12,
+      "longitude": 117.12,
+      "source": "synthetic"
+    },
+    {
+      "id": "canteen",
+      "name": "食堂",
+      "aliases": [
+        "食堂"
+      ],
+      "category": "dining",
+      "latitude": 39.13,
+      "longitude": 117.13,
+      "source": "synthetic"
+    },
+    {
+      "id": "gym",
+      "name": "体育馆",
+      "aliases": [
+        "体育馆"
+      ],
+      "category": "sports",
+      "latitude": 39.14,
+      "longitude": 117.14,
+      "source": "synthetic"
+    },
+    {
+      "id": "dorm",
+      "name": "宿舍",
+      "aliases": [
+        "宿舍"
+      ],
+      "category": "dorm",
+      "latitude": 39.15,
+      "longitude": 117.15,
+      "source": "synthetic"
+    }
+  ],
+  "edges": [
+    {
+      "from": "gate",
+      "to": "main",
+      "distance_m": 800,
+      "modes": [
+        "walk",
+        "bike"
+      ],
+      "bidirectional": true,
+      "source": "synthetic"
+    },
+    {
+      "from": "main",
+      "to": "library",
+      "distance_m": 600,
+      "modes": [
+        "walk",
+        "bike"
+      ],
+      "bidirectional": true,
+      "source": "synthetic"
+    },
+    {
+      "from": "gate",
+      "to": "library",
+      "distance_m": 1500,
+      "modes": [
+        "walk",
+        "bike"
+      ],
+      "bidirectional": true,
+      "source": "synthetic"
+    },
+    {
+      "from": "main",
+      "to": "canteen",
+      "distance_m": 500,
+      "modes": [
+        "walk"
+      ],
+      "bidirectional": true,
+      "source": "synthetic"
+    },
+    {
+      "from": "canteen",
+      "to": "gym",
+      "distance_m": 700,
+      "modes": [
+        "walk"
+      ],
+      "bidirectional": true,
+      "source": "synthetic"
+    },
+    {
+      "from": "library",
+      "to": "gym",
+      "distance_m": 900,
+      "modes": [
+        "bike"
+      ],
+      "bidirectional": true,
+      "source": "synthetic"
+    },
+    {
+      "from": "gate",
+      "to": "gym",
+      "distance_m": 2200,
+      "modes": [
+        "walk",
+        "bike"
+      ],
+      "bidirectional": false,
+      "source": "synthetic"
+    }
+  ]
+}

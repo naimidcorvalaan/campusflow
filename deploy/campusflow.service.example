@@ -1,0 +1,23 @@
+[Unit]
+Description=CampusFlow trusted test server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=campusflow
+Group=campusflow
+WorkingDirectory=/opt/campusflow
+EnvironmentFile=/etc/campusflow/campusflow.env
+ExecStart=/opt/campusflow/.venv/bin/python -m streamlit run src/p2_live_main.py --server.address=127.0.0.1 --server.port=8501 --server.headless=true --browser.gatherUsageStats=false
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/campusflow
+
+[Install]
+WantedBy=multi-user.target

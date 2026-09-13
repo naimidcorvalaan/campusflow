@@ -1,0 +1,118 @@
+/* Final visual checks against the production renderer with offline fixtures. */
+const fs=require('fs'), path=require('path');
+module.exports=async function(browser,base='http://127.0.0.1:8577/') {
+  if(!/^http:\/\/(127\.0\.0\.1|localhost):\d+\/$/.test(base))throw Error('Offline localhost only');
+  const out=path.resolve('artifacts/frontend-freeze');fs.mkdirSync(out,{recursive:true});
+  let page;const results=[];
+  const record=(name,value=true)=>{results.push({name,value});fs.writeFileSync(path.join(out,'browser-results.json'),JSON.stringify(results,null,2));};
+  const assert=(value,message)=>{if(!value)throw Error(message);};
+  const displayName=name=>name==='材料估时'?'任务估时':name;
+  const button=name=>page.getByRole('button',{name:displayName(name),exact:true});
+  // Allow the widget's websocket event to start its rerun before waiting for
+  // the status to disappear. The pre-event idle gap is not completion.
+  const idle=async()=>{await page.waitForTimeout(400);await page.locator('[data-testid=stStatusWidget]').waitFor({state:'hidden',timeout:30000});await page.waitForTimeout(200);};
+  const sidebar=async()=>{if(await page.locator('[data-testid=stSidebar]').getAttribute('aria-expanded')==='false')await page.locator('[data-testid=collapsedControl]').click();};
+  const closeSidebar=async()=>{if(page.viewportSize().width<800&&await page.locator('[data-testid=stSidebar]').getAttribute('aria-expanded')==='true')await page.locator('[data-testid=stSidebarContent]>div:first-child button').click();};
+  const nav=async(name)=>{await sidebar();await button(name).click();await page.waitForFunction(name=>document.querySelector('.cf-workspace-header')?.innerText.includes(name),displayName(name));await idle();await closeSidebar();};
+  const open=async(query)=>{
+    const context=await browser.newContext({viewport:{width:1440,height:900}});context.setDefaultTimeout(6000);
+    page=await context.newPage();await page.goto(base+'?identity=anonymous&ui_probe=1&profile=visual&'+query);
+    await button('材料估时').waitFor({timeout:20000});await idle();
+  };
+  const shot=async(name)=>{await page.waitForTimeout(400);await page.evaluate(()=>{document.querySelector('section.main').scrollTop=0;const d=document.querySelector('[data-campusflow-dialog]');if(d)d.scrollTop=0;});await page.screenshot({path:path.join(out,name+'.png')});};
+  const probe=async()=>{
+    const exp=page.locator('details').filter({has:page.getByText('开发演示 · synthetic demo · 不连接真实模型',{exact:true})});
+    if(!await exp.evaluate(e=>e.open))await exp.locator('summary').first().click();
+    const raw=(await page.locator('pre').allTextContents()).find(t=>t.includes('"material_attached"'));
+    await exp.locator('summary').first().click();return JSON.parse(raw);
+  };
+  const environmentHidden=async()=>assert(!await page.getByRole('combobox',{name:'当前校区'}).isVisible(),'Large campus control still visible');
+  const noOverflow=async()=>assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.querySelector('section.main').scrollWidth<=document.querySelector('section.main').clientWidth+1),'Horizontal overflow');
+  const tool=()=>page.locator('[data-testid=stVerticalBlock]').filter({has:page.locator(':scope > [data-testid=element-container] .cf-add-task-marker')});
+  try {
+    await open('');
+    await environmentHidden();assert(!await page.getByRole('textbox',{name:'我现在的位置（可选）'}).isVisible(),'Location input dominates empty page');
+    assert(!await page.locator('[data-testid=stSidebarContent]>div:first-child button').isVisible(),'Desktop sidebar close remains');
+    await shot('01-today-empty-1440');record('empty today: quiet environment, optional location, no desktop close');
+    const before=await probe();
+    await button('切换校区').click();await idle();
+    await page.getByRole('combobox',{name:'当前校区'}).click();await page.getByRole('option',{name:'卫津路校区',exact:true}).click();await idle();
+    await button('时间设置').click();await idle();
+    const hour=page.locator('[data-testid=stSelectbox]').filter({hasText:'小时'}).getByRole('combobox');
+    await hour.fill('15');await page.getByRole('option',{name:'15',exact:true}).click();await idle();
+    await nav('材料估时');await environmentHidden();
+    assert((await page.locator('.cf-environment-summary').innerText()).includes('15:00'),'Manual time lost');
+    assert((await probe()).calls===before.calls,'Environment/navigation called model');
+    await button('时间设置').click();await idle();
+    await button('使用当前时间').click();await idle();await nav('今天');await environmentHidden();
+    assert((await page.locator('.cf-environment-summary').innerText()).includes('14:00'),'Clock reset lost');
+    record('environment switch, manual clock, navigation collapse and system reset');
+    await page.getByRole('textbox',{name:'接下来想做什么？',exact:true}).fill('在图书馆写90分钟作业，然后背60分钟单词，可以拆开。19:00去9教上课，上一小时半，上课前吃晚饭。');
+    await page.getByRole('textbox',{name:'接下来想做什么？',exact:true}).press('Tab');
+    await page.getByText('补充当前位置（可选）',{exact:true}).click();
+    await page.getByRole('textbox',{name:'我现在的位置（可选）',exact:true}).fill('图书馆');
+    await page.getByRole('textbox',{name:'我现在的位置（可选）',exact:true}).press('Tab');
+    assert((await page.getByRole('textbox',{name:'接下来想做什么？',exact:true}).inputValue()).includes('写90分钟作业'),'Task draft lost before submit');
+    await button('帮我安排').click();await page.locator('.cf-focus-action').waitFor({timeout:20000});await idle();
+    const planned=await probe();assert((await page.locator('.cf-focus-action').innerText())==='写作业','Current action missing');
+    assert((await page.locator('.cf-side-card').innerText()).includes('18:46 出发'),'Published route missing');
+    await environmentHidden();await shot('02-today-planned-1440');record('current action, optional location submitted, published departure');
+    await button('个人设置').click();await idle();const dialog=page.getByRole('dialog');
+    assert(Math.abs((await dialog.boundingBox()).width-1440*.48)<2,'Drawer width changed');
+    await page.getByRole('tab',{name:'我的偏好',exact:true}).click();await shot('04-settings-1440');
+    await page.getByRole('tab',{name:'常用地点',exact:true}).click();await page.getByRole('tab',{name:'我的课表',exact:true}).click();
+    await button('关闭个人设置').click();await page.getByRole('dialog').waitFor({state:'detached'});await idle();
+    assert((await probe()).plan===planned.plan,'Settings changed plan');record('48% grouped settings and close preserve plan');
+    await page.setViewportSize({width:390,height:844});await page.waitForTimeout(400);await closeSidebar();await shot('check-today-390');await noOverflow();
+    await nav('时间线');await shot('check-timeline-390');await noOverflow();
+    await sidebar();await button('个人设置').click();await idle();
+    const close=await button('关闭个人设置').boundingBox();assert(close.width>=43&&close.x+close.width<=390,'Narrow settings close unreachable');
+    await shot('check-settings-390');await noOverflow();await page.keyboard.press('Escape');await dialog.waitFor({state:'detached'});await idle();
+    await closeSidebar();assert((await probe()).plan===planned.plan,'Narrow navigation changed plan');record('390 today/timeline/settings, drawer close, no overflow');
+    await page.context().close();
+
+    await open('documents=1&estimate_rehearsal=workload');await nav('材料估时');await environmentHidden();
+    assert(await page.locator('details').filter({has:page.locator('.cf-add-task-marker')}).count()===0,'Material has a second entry');
+    assert(await page.getByRole('textbox',{name:'任务、通知或说明',exact:true}).isVisible(),'Material input not direct');
+    const dz=page.getByRole('button',{name:'上传任务材料',exact:true});
+    assert(!(await tool().innerText()).includes('Drag and drop'),'English uploader visible');
+    assert((await dz.evaluate(e=>getComputedStyle(e,'::before').content)).includes('选择或拖入材料'),'Chinese dropzone missing');
+    await shot('check-material-empty-1440');
+    const file=path.resolve('artifacts/document_material/workload/assessment.docx');
+    let chooser=page.waitForEvent('filechooser');await dz.focus();await page.keyboard.press('Enter');await(await chooser).setFiles([]);
+    chooser=page.waitForEvent('filechooser');await dz.click();await(await chooser).setFiles([]);
+    const bytes=fs.readFileSync(file).toString('base64');
+    await dz.evaluate((e,b64)=>{const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0)),data=new DataTransfer();data.items.add(new File([bytes],'assessment.docx',{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}));e.dispatchEvent(new DragEvent('drop',{bubbles:true,dataTransfer:data}));},bytes);
+    await page.getByText(/已读取材料/).waitFor({state:'attached',timeout:15000});await idle();
+    record('native Chinese uploader: mouse, Enter, real drop event, accepted DOCX');
+    await button('补充我的情况').click();await idle();await page.getByRole('textbox',{name:'补充说明',exact:true}).fill('填表');await page.getByRole('textbox',{name:'补充说明',exact:true}).press('Tab');await idle();
+    const attached=await probe();await nav('今天');await nav('材料估时');
+    await button('个人设置').click();await idle();await button('关闭个人设置').click();await page.getByRole('dialog').waitFor({state:'detached'});await idle();
+    const retained=await probe();assert(retained.material_attached&&retained.material_bytes===attached.material_bytes&&retained.supplement==='填表','Upload or intent lost');
+    assert(retained.calls===attached.calls,'Presentation calls model');
+    await page.evaluate(()=>{window.freezeFrames=[];window.freezeWatch=setInterval(()=>{const visible=e=>e.getClientRects().length;window.freezeFrames.push({supplements:[...document.querySelectorAll('textarea[aria-label="补充说明"]')].filter(visible).length,buttons:[...document.querySelectorAll('button')].filter(visible).filter(e=>/^(帮我看看|重新估算)$/.test(e.innerText.trim())).length,thinking:document.body.innerText.includes('THINKING.......')});},30);});
+    await button('帮我看看').click();await page.locator('.cf-material-estimate').waitFor({timeout:30000});await idle();
+    const frames=await page.evaluate(()=>{clearInterval(window.freezeWatch);return window.freezeFrames;});
+    assert(frames.some(f=>f.thinking)&&frames.every(f=>f.supplements<=1&&f.buttons<=1),'Thinking duplicates');
+    assert((await tool().innerText()).includes('35–65'),'Estimate changed');
+    assert((await probe()).plan===null,'Estimate crossed confirmation gate');
+    // Fold the optional footer only; the tool itself is never an accordion.
+    await button('补充我的情况').click();await idle();await shot('03-material-1440');
+    assert(!await dz.isVisible(),'Result did not compact uploader');
+    await button('更换材料').click();await idle();assert(await dz.isVisible(),'Change material unreachable');
+    await button('收起材料').click();await idle();assert((await probe()).material_attached,'Source collapse lost file');
+    record('material result, source expansion, confirmation gate and thinking single input',{frames:frames.length,maxSupplement:Math.max(...frames.map(f=>f.supplements)),maxSubmit:Math.max(...frames.map(f=>f.buttons))});
+    await page.setViewportSize({width:390,height:844});await shot('check-material-result-390');await noOverflow();
+    await button('更换材料').click();await idle();await shot('check-material-input-390');await noOverflow();
+    assert((await dz.evaluate(e=>getComputedStyle(e,'::before').content)).includes('选择或拖入材料'),'Narrow upload text');
+    await sidebar();assert(await page.locator('[data-testid=stSidebarContent]>div:first-child button').isVisible(),'Narrow sidebar cannot close');await closeSidebar();
+    record('390 material input/result, Chinese uploader, sidebar close, no overflow');
+    await page.context().close();
+    await open('documents=1&estimate_rehearsal=workload_partial');await nav('材料估时');
+    await page.locator('input[type=file]').setInputFiles(path.resolve('artifacts/document_material/workload/assessment-partial.docx'));
+    await page.getByText(/已读取材料/).waitFor({state:'attached',timeout:15000});await idle();await button('帮我看看').click();
+    await page.locator('.cf-material-estimate').waitFor({timeout:30000});await idle();
+    assert((await tool().innerText()).includes('可能需要更久'),'Partial scope lost');await shot('check-material-partial-1440');record('partial coverage remains explicit');
+    await page.context().close();record('complete');return{out,results};
+  } catch(error) {if(page&&!page.isClosed()){await page.screenshot({path:path.join(out,'failure.png')});record('failure text',(await page.locator('body').innerText()).slice(-4500));}record('failure',String(error));throw error;}
+};

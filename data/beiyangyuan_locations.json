@@ -1,0 +1,70 @@
+{
+  "metadata": {
+    "campus": "天津大学北洋园校区",
+    "data_status": "locations_only",
+    "walking_times_verified": false,
+    "note": "步行时间尚未采集，不可用于真实路线规划"
+  },
+  "locations": [
+    {
+      "id": "beiyangyuan_east_gate",
+      "name": "北洋园校区东门",
+      "aliases": ["北洋园东门", "东门"],
+      "category": "gate"
+    },
+    {
+      "id": "main_building",
+      "name": "北洋园校区主楼",
+      "aliases": ["主楼", "校区主楼"],
+      "category": "teaching"
+    },
+    {
+      "id": "qiushui_hall",
+      "name": "求实会堂",
+      "aliases": ["会堂"],
+      "category": "teaching"
+    },
+    {
+      "id": "zhengdong_library",
+      "name": "郑东图书馆",
+      "aliases": ["图书馆"],
+      "category": "library"
+    },
+    {
+      "id": "datong_student_center",
+      "name": "大通学生中心",
+      "aliases": ["学生中心", "大通中心"],
+      "category": "student_service"
+    },
+    {
+      "id": "sports_hall",
+      "name": "综合体育馆",
+      "aliases": ["体育馆", "综合体"],
+      "category": "sports"
+    },
+    {
+      "id": "xuesi_cafeteria",
+      "name": "学四食堂",
+      "aliases": ["食堂"],
+      "category": "dining"
+    },
+    {
+      "id": "tailei_square",
+      "name": "太雷广场",
+      "aliases": ["广场"],
+      "category": "square"
+    },
+    {
+      "id": "xuanhuai_square",
+      "name": "宣怀广场",
+      "aliases": ["宣怀"],
+      "category": "square"
+    },
+    {
+      "id": "building_50",
+      "name": "50楼（化工学院）",
+      "aliases": ["50楼", "化工学院", "化工楼"],
+      "category": "teaching"
+    }
+  ]
+}

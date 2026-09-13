@@ -1,0 +1,14 @@
+# Product presentation only. No model, network or credential configuration.
+[theme]
+base = "light"
+primaryColor = "#1d5aa6"
+backgroundColor = "#f4f7fb"
+secondaryBackgroundColor = "#eef3f9"
+textColor = "#172b46"
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"
+
+[server]
+maxUploadSize = 5

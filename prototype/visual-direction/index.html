@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CampusFlow · 今日工作台 / 视觉提案</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="app" id="app">
+  <aside class="rail">
+    <a class="brand" href="#today" aria-label="CampusFlow 今日"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 25v-8h12a6 6 0 0 0 6-6V7"/><circle cx="7" cy="25" r="2"/><circle cx="25" cy="7" r="2"/></svg><span>CampusFlow</span></a>
+    <div class="rail-caption">校园里的每一天</div>
+    <nav aria-label="主导航">
+      <a href="#today" data-nav="today"><span class="nav-icon">◷</span>今天<span class="nav-count">3</span></a>
+      <a href="#timeline" data-nav="timeline"><span class="nav-icon">☷</span>时间线</a>
+      <div class="nav-divider"></div><div class="nav-label">辅助工具</div>
+      <a href="#material" data-nav="material"><span class="nav-icon">▤</span>材料估时</a>
+    </nav>
+    <div class="rail-bottom"><button class="rail-setting" data-settings><span class="nav-icon">⚙</span>个人设置<span class="arrow">↗</span></button><div class="campus-note"><span class="status-dot"></span>天津大学 · 卫津路校区</div></div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar"><div class="breadcrumb" id="breadcrumb">我的工作台 <span>/</span> 今天</div><div class="top-actions"><span>9 月 12 日 · 周六</span><button class="quiet compact" data-settings>卫津路校区 <span>⌄</span></button><span class="avatar" aria-label="示例用户">同</span></div></header>
+    <main id="main" tabindex="-1"></main>
+    <footer class="app-footer"><span>CampusFlow</span><span>让接下来的一段时间，有着落。</span><button class="quiet small" data-about>使用说明</button></footer>
+  </div>
+</div>
+<div class="overlay" id="overlay" hidden></div>
+<aside class="settings" id="settings" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+ <header class="drawer-head"><div><p class="eyebrow">你的日常</p><h2 id="settings-title">个人设置</h2></div><button class="icon-button close" id="close-settings" aria-label="关闭个人设置">×</button></header>
+ <div class="settings-scroll">
+  <div class="settings-tabs" role="tablist" aria-label="设置分组"><button role="tab" aria-selected="true" data-setting-tab="preferences">偏好</button><button role="tab" aria-selected="false" data-setting-tab="places">常用地点</button><button role="tab" aria-selected="false" data-setting-tab="courses">我的课表</button></div>
+  <div id="settings-content"></div>
+ </div>
+ <footer class="drawer-foot"><span id="settings-status">修改后保存，对后续安排生效。</span><button class="primary" id="save-settings">保存设置</button></footer>
+</aside>
+<dialog id="detail-dialog"><div class="detail-head"><h2 id="detail-title"></h2><button class="icon-button" data-close-detail aria-label="关闭详情">×</button></div><div id="detail-content"></div></dialog>
+<div id="toast" class="toast" role="status" hidden></div>
+<div class="review-toolbar" aria-label="原型状态切换"><strong>设计提案 <span>· 示例数据</span></strong><div class="review-states"><button data-scene="empty">A 空首页</button><button data-scene="today">B 当前行动</button><button data-scene="timeline">C 时间线</button><button data-scene="material">D 材料估时</button><button data-scene="settings">E 设置</button><button data-scene="touch">F 按压反馈</button></div><a href="review.html" title="设计说明">说明 ↗</a></div>
+<script src="app.js"></script>
+</body></html>

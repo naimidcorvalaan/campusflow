@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="560" viewBox="0 0 1080 560" role="img" aria-labelledby="title desc">
+  <title id="title">CampusFlow 从现实事实到下一步行动</title>
+  <desc id="desc">任务与材料、时间与固定安排、校园地点与个人偏好进入理解和事实整理，候选策略与规划通过路线和硬约束校验后原子发布，用户反馈再进入下一轮。</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M1 1 L7 4 L1 7" fill="none" stroke="#58708a" stroke-width="1.3"/></marker></defs>
+  <style>text{font-family:"Microsoft YaHei","PingFang SC",sans-serif;fill:#223342} .heading{font-size:22px;font-weight:600} .label{font-size:18px;font-weight:600} .detail{font-size:15px;fill:#536575} .edge{fill:none;stroke:#58708a;stroke-width:1.5;marker-end:url(#arrow)} .box{fill:#fff;stroke:#cdd7df;stroke-width:1.2}</style>
+  <rect width="1080" height="560" fill="#f7f9fa"/>
+  <text x="36" y="40" class="heading">理解现实 → 计算可行方案 → 继续行动</text>
+  <rect class="box" x="36" y="68" width="312" height="70" rx="5"/><text x="58" y="98" class="label">任务 / 材料 / 实际进度</text><text x="58" y="122" class="detail">识别动作与工作量，保留不确定性</text>
+  <rect class="box" x="384" y="68" width="312" height="70" rx="5"/><text x="406" y="98" class="label">当前时间 / 课程与固定承诺</text><text x="406" y="122" class="detail">明确可用窗口与不可随意改变的事实</text>
+  <rect class="box" x="732" y="68" width="312" height="70" rx="5"/><text x="754" y="98" class="label">校园地点 / 路网 / 个人偏好</text><text x="754" y="122" class="detail">地点、移动与长期上下文共同参与</text>
+  <path class="edge" d="M192 138 V158 H540 V178"/><path class="edge" d="M540 138 V178"/><path class="edge" d="M888 138 V158 H540 V178"/>
+  <rect class="box" x="320" y="178" width="440" height="70" rx="5"/><text x="540" y="207" text-anchor="middle" class="label">理解、必要确认与事实整理</text><text x="540" y="232" text-anchor="middle" class="detail">稳定引用 · 实际完成与计划分配分开</text>
+  <path class="edge" d="M540 248 V270 H234 V293"/>
+  <rect class="box" x="36" y="293" width="396" height="80" rx="5"/><text x="58" y="325" class="label">候选策略与规划</text><text x="58" y="353" class="detail">模型判断取舍，程序计算时间与任务分配</text>
+  <path class="edge" d="M432 333 H492"/>
+  <rect class="box" x="492" y="293" width="552" height="80" rx="5"/><text x="514" y="325" class="label">路线与硬约束校验</text><text x="514" y="353" class="detail">移动 · 固定安排 · 剩余工作量 · 并行授权与重叠</text>
+  <path class="edge" d="M768 373 V401"/>
+  <rect x="492" y="401" width="552" height="106" rx="5" fill="#edf3fa" stroke="#2862a2"/><text x="514" y="433" class="label">一致性核验 → 持久化与原子发布</text><text x="514" y="467" class="heading" fill="#245b96">当前行动 + 完整时间线</text><text x="514" y="492" class="detail">通过后整体替换；失败保留原可靠方案</text>
+  <path class="edge" d="M492 454 H432"/>
+  <rect class="box" x="36" y="415" width="396" height="80" rx="5"/>
+  <text x="58" y="448" class="label">用户反馈变化，进入下一轮</text><text x="58" y="476" class="detail">最新时间、位置、进度或新任务</text>
+  <path class="edge" d="M36 455 H18 V213 H320"/>
+  <text x="36" y="540" class="detail">LLM-led, program-guarded · 模型理解和判断，程序计算并守住事实</text>
+</svg>

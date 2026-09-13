@@ -1,0 +1,6 @@
+pytest==7.4.0
+streamlit==1.31.1
+requests==2.31.0
+python-dotenv==1.0.1
+pypdfium2==5.13.0
+defusedxml==0.7.1

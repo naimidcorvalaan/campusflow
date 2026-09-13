@@ -1,0 +1,691 @@
+{
+  "metadata": {
+    "schema_version": "p3.campus-map.v1",
+    "campus": "卫津路校区",
+    "campus_id": "weijinlu",
+    "data_status": "routable",
+    "provenance": "real_map",
+    "official_source": "天津大学电子地图 https://www.tju.edu.cn/tdgk/tdxq/dzdt.htm；卫津路校区导览 https://fw.tju.edu.cn/Weijin.html",
+    "collection_note": "开发期以高德 place/text 核验坐标，以 direction/walking v3 与 direction/bicycling v4 采集路线；CampusFlow runtime 不调用高德。"
+    ,"routing_node_model": "poi_road_access_v1",
+    "linear_features": [
+      {"name":"玉泉路","kind":"road","status":"DONE","segments":["weijinlu_junction_yuquan_huying"],"role":"routing-only","source":"AMap walking/bicycling step from 三村门 corridor explicitly names 玉泉路."},
+      {"name":"求是路","kind":"road","status":"DONE","segments":["weijinlu_junction_qiushi_mingde","weijinlu_road_west_service_access"],"role":"routing-only","source":"AMap shared route steps explicitly identify 求是路 and its 铭德道 transition."},
+      {"name":"金晖路","kind":"road","status":"DONE","segments":["weijinlu_road_jinhui_hubin","weijinlu_junction_jinhui_mingde"],"role":"routing-only","source":"AMap development walking v3 and bicycling v4 from the audited 金晖路/湖滨道 parking anchor to 铭德道: 金晖路 step=138m, then 铭德道 step=71m; the named transition is retained as a shared-road fact."},
+      {"name":"铭德道","kind":"road","status":"DONE","segments":["weijinlu_road_mingde_west","weijinlu_road_mingde_east","weijinlu_junction_mingde_huadi"],"role":"routing-only","source":"AMap walking/bicycling shared route steps explicitly name 铭德道."},
+      {"name":"湖滨道","kind":"road","status":"DONE","segments":["weijinlu_road_hubin_jingye_west"],"role":"routing-only","source":"AMap West Gate and meeting-building steps explicitly name 湖滨道."},
+      {"name":"鞍山西道","kind":"road","status":"DONE","segments":["weijinlu_junction_anshanxidao_taile"],"role":"campus-boundary routing","source":"AMap north-dorm and North Gate steps explicitly name 鞍山西道; only campus-side boundary access is modeled."},
+      {"name":"集贤道","kind":"road","status":"DONE","segments":["weijinlu_road_north_math_access"],"role":"routing-only","source":"AMap around query returns a Tianjin University parking anchor addressed on 集贤道; official map places this north-side skeleton on 集贤道."},
+      {"name":"花堤路","kind":"road","status":"DONE","segments":["weijinlu_road_huadi_north","weijinlu_road_huadi_core","weijinlu_junction_huadi_yizhi"],"role":"routing-only","source":"AMap shared teaching-area steps explicitly identify 花堤路."},
+      {"name":"益智道","kind":"road","status":"DONE","segments":["weijinlu_junction_huadi_yizhi"],"role":"routing-only","source":"AMap core shared route identifies the 花堤路—益智道 transition."},
+      {"name":"敬业道","kind":"road","status":"DONE","segments":["weijinlu_junction_jingye_huadi","weijinlu_junction_taile_jingye"],"role":"routing-only","source":"AMap shared core/south steps explicitly identify 敬业道."},
+      {"name":"北洋道","kind":"road","status":"DONE","segments":["weijinlu_junction_beiyang_taile_east"],"role":"routing-only","source":"AMap East Gate walking/bicycling steps explicitly identify 北洋道."},
+      {"name":"太雷路","kind":"road","status":"DONE","segments":["weijinlu_road_taile_south","weijinlu_road_taile_southeast","weijinlu_road_sports_taile_north"],"role":"routing-only","source":"AMap shared north/east/southeast route steps explicitly identify 太雷路."},
+      {"name":"旭东路","kind":"road","status":"DONE","segments":["weijinlu_road_xudong_east","weijinlu_junction_xudong_taile"],"role":"routing-only","source":"AMap development walking v3 and bicycling v4 from the audited 旭东路 parking anchor toward 太雷路: 旭东路 step=238m, then 太雷路 step=46m; the named transition is retained as a shared-road fact."},
+      {"name":"卫津路","kind":"road","status":"DONE","segments":[],"role":"boundary-only","source":"Official map and East Gate reporting establish the east campus boundary; no city-road edge is added to Dijkstra."},
+      {"name":"卫津河","kind":"water_boundary","status":"DONE","segments":[],"role":"boundary-obstacle-only","source":"Official East Gate reporting identifies the gate at 卫津河畔; no river route or crossing edge exists in the campus graph."}
+    ]
+  },
+  "nodes": [
+    {"id":"weijinlu_dorm_1","name":"一斋","aliases":["1斋","一号斋"],"category":"dormitory","latitude":39.1112,"longitude":117.1665,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，位于三村门—金晖路西部宿舍组；以鹏翔学生公寓、三斋、学五食堂为控制锚点投影到高德实测道路，approximate anchor。"},
+    {"id":"weijinlu_dorm_2","name":"二斋","aliases":["2斋","二号斋"],"category":"dormitory","latitude":39.1115,"longitude":117.167,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，位于三村门—金晖路西部宿舍组；以鹏翔学生公寓、三斋、学五食堂为控制锚点投影到高德实测道路，approximate anchor。"},
+    {"id":"weijinlu_dorm_4","name":"四斋","aliases":["4斋","四号斋"],"category":"dormitory","latitude":39.1121,"longitude":117.168,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，位于三村门—金晖路西部宿舍组；以鹏翔学生公寓、三斋、学五食堂为控制锚点投影到高德实测道路，approximate anchor。"},
+    {"id":"weijinlu_dorm_5","name":"五斋","aliases":["5斋","五号斋"],"category":"dormitory","latitude":39.1123,"longitude":117.1684,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，位于三村门—金晖路西部宿舍组；以鹏翔学生公寓、三斋、学五食堂为控制锚点投影到高德实测道路，approximate anchor。"},
+    {"id":"weijinlu_dorm_25","name":"25斋","aliases":["二十五斋"],"category":"dormitory","latitude":39.11325,"longitude":117.1703,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，青年湖北侧北部宿舍组；以青年湖、34斋及鞍山西道/求是路实测路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_26","name":"26斋","aliases":["二十六斋"],"category":"dormitory","latitude":39.11335,"longitude":117.171,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，青年湖北侧北部宿舍组；以青年湖、34斋及鞍山西道/求是路实测路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_31","name":"31斋","aliases":["三十一斋"],"category":"dormitory","latitude":39.1123,"longitude":117.1694,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，青年湖西侧靠求是路；以青年湖、25斋和三斋道路路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_32","name":"32斋","aliases":["三十二斋"],"category":"dormitory","latitude":39.112,"longitude":117.1697,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，青年湖西侧靠求是路；以青年湖、25斋和三斋道路路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_35","name":"35斋","aliases":["三十五斋"],"category":"dormitory","latitude":39.1143,"longitude":117.166,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，求是路西侧/西北宿舍区；以北部已完成宿舍、求是路和实测路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_36","name":"36斋","aliases":["三十六斋"],"category":"dormitory","latitude":39.1141,"longitude":117.1664,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，求是路西侧/西北宿舍区；以北部已完成宿舍、求是路和实测路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_37","name":"37斋","aliases":["三十七斋"],"category":"dormitory","latitude":39.1139,"longitude":117.1668,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，求是路西侧/西北宿舍区；以北部已完成宿舍、求是路和实测路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_38","name":"38斋","aliases":["三十八斋"],"category":"dormitory","latitude":39.1137,"longitude":117.1672,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，求是路西侧/西北宿舍区；以北部已完成宿舍、求是路和实测路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_39","name":"39斋","aliases":["三十九斋"],"category":"dormitory","latitude":39.1135,"longitude":117.1676,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，求是路西侧/西北宿舍区；以北部已完成宿舍、求是路和实测路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_40","name":"40斋","aliases":["四十斋"],"category":"dormitory","latitude":39.1133,"longitude":117.168,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，求是路西侧/西北宿舍区；以北部已完成宿舍、求是路和实测路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_41","name":"41斋","aliases":["四十一斋"],"category":"dormitory","latitude":39.1131,"longitude":117.1684,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，求是路西侧/西北宿舍区；以北部已完成宿舍、求是路和实测路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_45","name":"45斋","aliases":["四十五斋"],"category":"dormitory","latitude":39.1129,"longitude":117.1688,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，求是路西侧/西北宿舍区；以三斋及实测道路路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_46","name":"46斋","aliases":["四十六斋"],"category":"dormitory","latitude":39.1127,"longitude":117.1692,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，求是路西侧/西北宿舍区；以三斋及实测道路路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_57","name":"57斋","aliases":["五十七斋"],"category":"dormitory","latitude":39.109,"longitude":117.1674,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，西部/中西宿舍区；以鹏翔学生公寓、金晖路和实测道路路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_23","name":"23斋","aliases":["二十三斋"],"category":"dormitory","latitude":39.1082,"longitude":117.176,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，东门附近东南宿舍组；以学三食堂、学四食堂、第九教学楼和实测路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_24","name":"24斋","aliases":["二十四斋"],"category":"dormitory","latitude":39.108,"longitude":117.1764,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，东门附近东南宿舍组；以学三食堂、学四食堂、第九教学楼和实测路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_47","name":"47斋","aliases":["四十七斋"],"category":"dormitory","latitude":39.1078,"longitude":117.1768,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，东门附近东南宿舍组；以学三食堂、学四食堂和实测路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_48","name":"48斋","aliases":["四十八斋"],"category":"dormitory","latitude":39.1076,"longitude":117.1772,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，东门附近东南宿舍组；以学三食堂、学四食堂和实测路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_49","name":"49斋","aliases":["四十九斋"],"category":"dormitory","latitude":39.1074,"longitude":117.1776,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，东门附近东南宿舍组；以学三食堂、学四食堂和实测路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_50","name":"50斋","aliases":["五十斋"],"category":"dormitory","latitude":39.1072,"longitude":117.1778,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，东门附近东南宿舍组；以学三食堂、学四食堂和实测路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_51","name":"51斋","aliases":["五十一斋"],"category":"dormitory","latitude":39.1069,"longitude":117.1777,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，东门附近东南宿舍组；以学三食堂、学四食堂和实测路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_52","name":"52斋","aliases":["五十二斋"],"category":"dormitory","latitude":39.1067,"longitude":117.1773,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，东门附近东南宿舍组；以学三食堂、学四食堂和实测路线为控制，approximate anchor。"},
+    {"id":"weijinlu_dorm_53","name":"53斋","aliases":["五十三斋"],"category":"dormitory","latitude":39.1065,"longitude":117.1769,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，东门附近东南宿舍组；以学三食堂、学四食堂和实测路线为控制，approximate anchor。"},
+    {"id":"weijinlu_youyuan","name":"友园","aliases":[],"category":"dormitory","latitude":39.1063,"longitude":117.1764,"precision":"approximate","provenance":"tju_official_map_approximate","source":"官方导览目标清单确认，东门附近东南学生居住区；以学三/学四食堂和实测路线为控制，approximate anchor。"},
+    {
+      "id": "weijinlu_junction_anshanxidao_taile",
+      "name": "鞍山西道—太雷路路口",
+      "aliases": [],
+      "category": "road",
+      "node_kind": "road_waypoint",
+      "latitude": 39.114154,
+      "longitude": 117.175477,
+      "precision": "precise",
+      "provenance": "amap_route_step",
+      "source": "高德开发期 direction/walking v3：34斋、43斋至第九教学楼的共同 road-name change，鞍山西道→太雷路，路线 step 端点。"
+    },
+    {
+      "id": "weijinlu_road_taile_south",
+      "name": "太雷路南段路点",
+      "aliases": [],
+      "category": "road",
+      "node_kind": "road_waypoint",
+      "latitude": 39.109219,
+      "longitude": 117.175421,
+      "precision": "precise",
+      "provenance": "amap_route_step",
+      "source": "高德开发期 direction/walking v3：太雷路 step 终点；34斋、43斋至第九教学楼共享。"
+    },
+    {
+      "id": "weijinlu_road_mingde_west",
+      "name": "铭德道西段路点",
+      "aliases": [],
+      "category": "road",
+      "node_kind": "road_waypoint",
+      "latitude": 39.109922,
+      "longitude": 117.167630,
+      "precision": "precise",
+      "provenance": "amap_route_step",
+      "source": "高德开发期 direction/walking v3：鹏翔学生公寓至第九教学楼，进入铭德道前的 step 端点。"
+    },
+    {
+      "id": "weijinlu_road_mingde_east",
+      "name": "铭德道东段路点",
+      "aliases": [],
+      "category": "road",
+      "node_kind": "road_waypoint",
+      "latitude": 39.109687,
+      "longitude": 117.173351,
+      "precision": "precise",
+      "provenance": "amap_route_step",
+      "source": "高德开发期 direction/walking v3：铭德道 493m step 终点。"
+    },
+    {
+      "id": "weijinlu_road_jinhui_hubin",
+      "name": "金晖路—湖滨道路段点",
+      "aliases": [],
+      "category": "road",
+      "node_kind": "road_waypoint",
+      "latitude": 39.108659,
+      "longitude": 117.168333,
+      "precision": "precise",
+      "provenance": "amap_route_step",
+      "source": "高德开发期 direction/walking v3 与 direction/bicycling v4：金晖路/湖滨道停车场锚点出发的金晖路 138m step 起点；该节点是线性道路事实，不是普通地点。"
+    },
+    {
+      "id": "weijinlu_junction_jinhui_mingde",
+      "name": "金晖路—铭德道转接点",
+      "aliases": [],
+      "category": "road",
+      "node_kind": "road_waypoint",
+      "latitude": 39.109913,
+      "longitude": 117.168451,
+      "precision": "precise",
+      "provenance": "amap_route_step",
+      "source": "高德开发期 direction/walking v3 与 direction/bicycling v4：金晖路 138m step 终点、铭德道 71m step 起点的真实 road-name change。"
+    },
+    {
+      "id": "weijinlu_road_xudong_east",
+      "name": "旭东路东段路点",
+      "aliases": [],
+      "category": "road",
+      "node_kind": "road_waypoint",
+      "latitude": 39.109583,
+      "longitude": 117.178199,
+      "precision": "precise",
+      "provenance": "amap_route_step",
+      "source": "高德开发期 direction/walking v3 与 direction/bicycling v4：旭东路停车场锚点至太雷路路线中的旭东路 238m step 端点。"
+    },
+    {
+      "id": "weijinlu_junction_xudong_taile",
+      "name": "旭东路—太雷路转接点",
+      "aliases": [],
+      "category": "road",
+      "node_kind": "road_waypoint",
+      "latitude": 39.109635,
+      "longitude": 117.175425,
+      "precision": "precise",
+      "provenance": "amap_route_step",
+      "source": "高德开发期 direction/walking v3 与 direction/bicycling v4：旭东路 238m step 后进入太雷路 46m step 的真实 road-name change。"
+    },
+    {
+      "id": "weijinlu_road_taile_southeast",
+      "name": "太雷路东南段路点",
+      "aliases": [],
+      "category": "road",
+      "node_kind": "road_waypoint",
+      "latitude": 39.106228,
+      "longitude": 117.175247,
+      "precision": "precise",
+      "provenance": "amap_route_step",
+      "source": "高德开发期 direction/walking v3：友园至第九教学楼，进入太雷路的 step 端点。"
+    },
+    {
+      "id": "weijinlu_junction_taile_jingye",
+      "name": "太雷路—敬业道路口",
+      "aliases": [],
+      "category": "road",
+      "node_kind": "road_waypoint",
+      "latitude": 39.108663,
+      "longitude": 117.175165,
+      "precision": "precise",
+      "provenance": "amap_route_step",
+      "source": "高德开发期 direction/walking v3：太雷路→敬业道 road-name change，友园至第九教学楼 route step 端点。"
+    },
+    {
+      "id": "weijinlu_junction_east_core_roadside",
+      "name": "东部核心教学区道路侧路口",
+      "aliases": [],
+      "category": "road",
+      "node_kind": "road_waypoint",
+      "latitude": 39.109141,
+      "longitude": 117.174540,
+      "precision": "precise",
+      "provenance": "amap_route_step",
+      "source": "高德开发期 direction/walking v3 与 direction/bicycling v4：花堤路 core 至第九教学楼道路侧入口的 24m shared step 终点；该独立路口承接道路网络，第九教学楼 access 仅保留为本楼入口。"
+    },
+    {
+      "id": "weijinlu_dorm_28",
+      "name": "28斋",
+      "aliases": ["二十八斋"],
+      "category": "dormitory",
+      "latitude": 39.114275,
+      "longitude": 117.175300,
+      "precision": "approximate",
+      "provenance": "tju_official_map_approximate",
+      "source": "天津大学卫津路校区官方导览目标清单确认28斋存在并位于北部宿舍组；官方空间关系给出北侧连续组34斋、43斋、44斋、33斋、28斋、29斋、30斋。以43斋关联服务 POI 坐标为控制锚点，将官方相对顺序投影至高德 direction/walking 已验证的鞍山西道路段；坐标为可审计 approximate anchor，不冒充独立高德 POI；运行时不调用高德"
+    },
+    {
+      "id": "weijinlu_dorm_29",
+      "name": "29斋",
+      "aliases": ["二十九斋"],
+      "category": "dormitory",
+      "latitude": 39.114275,
+      "longitude": 117.176375,
+      "precision": "approximate",
+      "provenance": "tju_official_map_approximate",
+      "source": "天津大学卫津路校区官方导览目标清单确认29斋存在并位于北部宿舍组；按官方北侧连续组相对顺序，以43斋关联服务 POI为控制锚点投影至高德已验证的鞍山西道路段。坐标为可审计 approximate anchor，不冒充独立高德 POI；运行时不调用高德"
+    },
+    {
+      "id": "weijinlu_dorm_30",
+      "name": "30斋",
+      "aliases": ["三十斋"],
+      "category": "dormitory",
+      "latitude": 39.114275,
+      "longitude": 117.177450,
+      "precision": "approximate",
+      "provenance": "tju_official_map_approximate",
+      "source": "天津大学卫津路校区官方导览目标清单确认30斋存在并位于北部宿舍组；北洋园同名30斋候选已排除。按官方北侧连续组相对顺序，以43斋关联服务 POI为控制锚点投影至高德已验证的鞍山西道路段。坐标为可审计 approximate anchor；运行时不调用高德"
+    },
+    {
+      "id": "weijinlu_dorm_33",
+      "name": "33斋",
+      "aliases": ["三十三斋"],
+      "category": "dormitory",
+      "latitude": 39.114275,
+      "longitude": 117.174225,
+      "precision": "approximate",
+      "provenance": "tju_official_map_approximate",
+      "source": "天津大学卫津路校区官方导览目标清单确认33斋存在并位于北部宿舍组；按官方北侧连续组相对顺序，以43斋关联服务 POI为控制锚点投影至高德已验证的鞍山西道路段。坐标为可审计 approximate anchor，不冒充独立高德 POI；运行时不调用高德"
+    },
+    {
+      "id": "weijinlu_dorm_34",
+      "name": "34斋",
+      "aliases": ["三十四斋"],
+      "category": "dormitory",
+      "latitude": 39.114275,
+      "longitude": 117.171000,
+      "precision": "approximate",
+      "provenance": "tju_official_map_approximate",
+      "source": "天津大学卫津路校区官方导览目标清单确认34斋存在并位于北部宿舍组；高德对34斋仅返回校区泛化 POI，已拒绝。按官方北侧连续组相对顺序，以43斋关联服务 POI为控制锚点投影至高德已验证的鞍山西道路段。坐标为可审计 approximate anchor；运行时不调用高德"
+    },
+    {
+      "id": "weijinlu_dorm_44",
+      "name": "44斋",
+      "aliases": ["四十四斋"],
+      "category": "dormitory",
+      "latitude": 39.114275,
+      "longitude": 117.173150,
+      "precision": "approximate",
+      "provenance": "tju_official_map_approximate",
+      "source": "天津大学卫津路校区官方导览目标清单确认44斋存在并位于北部宿舍组；按官方北侧连续组相对顺序，以43斋关联服务 POI为控制锚点投影至高德已验证的鞍山西道路段。坐标为可审计 approximate anchor，不冒充独立高德 POI；运行时不调用高德"
+    },
+    {
+      "id": "weijinlu_dorm_3",
+      "name": "三斋",
+      "aliases": ["3斋", "三号斋"],
+      "category": "dormitory",
+      "latitude": 39.112575,
+      "longitude": 117.168875,
+      "precision": "approximate",
+      "provenance": "amap_related_poi_anchor",
+      "source": "天津大学卫津路校区官方导览目标清单（地点存在与名称）；高德开发期 place/text：天津大学鹏翔三斋快递驿站（位于三斋，玉泉路与湖影道交叉口附近）坐标核验；运行时不调用高德"
+    },
+    {
+      "id": "weijinlu_dorm_43",
+      "name": "43斋",
+      "aliases": ["四十三斋"],
+      "category": "dormitory",
+      "latitude": 39.114275,
+      "longitude": 117.172075,
+      "precision": "approximate",
+      "provenance": "amap_related_poi_anchor",
+      "source": "天津大学卫津路校区官方导览目标清单（地点存在与名称）；高德开发期 place/text：天大43斋2号柜外卖柜坐标参考。该第三方服务 POI 的地址文本同时出现南开大学学生宿舍，故仅作待复核 anchor，未接入正式路网；运行时不调用高德"
+    },
+    {
+      "id": "weijinlu_pengxiang_student_apartment",
+      "name": "鹏翔学生公寓",
+      "aliases": ["鹏翔公寓"],
+      "category": "dormitory",
+      "latitude": 39.110787,
+      "longitude": 117.167543,
+      "precision": "precise",
+      "provenance": "amap_poi_verified",
+      "source": "天津大学卫津路校区官方导览目标清单（地点存在与名称）；高德开发期 place/text：天津大学卫津路校区鹏翔学生公寓（金晖路）坐标核验；运行时不调用高德"
+    },
+    {
+      "id": "weijinlu_building_9",
+      "name": "第九教学楼",
+      "aliases": ["9教", "9教学楼", "第9教学楼"],
+      "category": "teaching",
+      "latitude": 39.109321,
+      "longitude": 117.174811,
+      "precision": "precise",
+      "provenance": "amap_poi",
+      "source": "天津大学官方电子地图/卫津路校区导览；高德开发期 POI 坐标核验"
+    },
+    {
+      "id": "weijinlu_chunshui_library",
+      "name": "春水图书馆",
+      "aliases": ["北馆", "春水馆"],
+      "category": "library",
+      "latitude": 39.109159,
+      "longitude": 117.172699,
+      "precision": "precise",
+      "provenance": "amap_poi",
+      "source": "天津大学卫津路校区导览；高德开发期 POI 坐标核验"
+    },
+    {"id":"weijinlu_building_2","name":"第二教学楼","aliases":["2教","二教","2教学楼","第2教学楼"],"category":"teaching_building","latitude":39.109882,"longitude":117.173779,"precision":"precise","provenance":"amap_related_poi_anchor","source":"AMap development place/text: Tianjin University graduate textbook office address explicitly states 第2教学楼; official Weijinlu inventory confirms canonical."},
+    {"id":"weijinlu_building_3","name":"第三教学楼","aliases":["3教","三教","3教学楼","第3教学楼"],"category":"teaching_building","latitude":39.10862,"longitude":117.17275,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official Weijinlu inventory and supplied official-map relation: core teaching area south of 青年湖, between 第二教学楼/第六教学楼 and 敬业道; approximate anchor is explicitly not an AMap building centroid."},
+    {"id":"weijinlu_building_4","name":"第四教学楼","aliases":["4教","四教","4教学楼","第4教学楼"],"category":"teaching_building","latitude":39.10945,"longitude":117.17335,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official Weijinlu inventory and supplied official-map relation: core teaching area near 第十五教学楼、第二教学楼 and 益智道/铭德道; approximate anchor."},
+    {"id":"weijinlu_building_5","name":"第五教学楼","aliases":["5教","五教","5教学楼","第5教学楼"],"category":"teaching_building","latitude":39.107403,"longitude":117.17625,"precision":"precise","provenance":"amap_related_poi_anchor","source":"AMap development place/text: Tianjin University 社会科学与外国语学院 address explicitly states 第5教学楼; official inventory confirms canonical."},
+    {"id":"weijinlu_building_6","name":"第六教学楼","aliases":["6教","六教","6教学楼","第6教学楼"],"category":"teaching_building","latitude":39.108932,"longitude":117.173848,"precision":"precise","provenance":"amap_related_poi_anchor","source":"AMap development place/text: Tianjin University 博士后流动站 address explicitly states 第6教学楼; official inventory confirms canonical."},
+    {"id":"weijinlu_building_7","name":"第七教学楼","aliases":["7教","七教","7教学楼","第7教学楼"],"category":"teaching_building","latitude":39.1082,"longitude":117.17305,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official Weijinlu inventory and supplied official-map relation: core teaching area south of 图书馆/near 第六教学楼 and 敬业道; approximate anchor."},
+    {"id":"weijinlu_building_8","name":"第八教学楼","aliases":["8教","八教","8教学楼","第8教学楼"],"category":"teaching_building","latitude":39.1101,"longitude":117.1757,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official inventory and supplied official-map relation: east teaching area near 第九教学楼、花堤路/太雷路; approximate anchor."},
+    {"id":"weijinlu_building_10","name":"第十教学楼","aliases":["10教","十教","10教学楼","第10教学楼"],"category":"teaching_building","latitude":39.10883,"longitude":117.17839,"precision":"precise","provenance":"amap_related_poi_anchor","source":"AMap development place/text: 天津大学机械学院 address explicitly states 第10教学楼; official inventory confirms canonical."},
+    {"id":"weijinlu_building_11","name":"第十一教学楼","aliases":["11教","十一教","11教学楼","第11教学楼"],"category":"teaching_building","latitude":39.110357,"longitude":117.170547,"precision":"precise","provenance":"amap_related_poi_anchor","source":"AMap development place/text: 天津大学分子+研究院 address explicitly states 第11教学楼; official inventory confirms canonical."},
+    {"id":"weijinlu_building_12","name":"第十二教学楼","aliases":["12教","十二教","12教学楼","第12教学楼"],"category":"teaching_building","latitude":39.110668,"longitude":117.173962,"precision":"precise","provenance":"amap_related_poi_anchor","source":"AMap development place/text: 天津大学专用集成电路设计中心 address explicitly states 第12教学楼; official inventory confirms canonical."},
+    {"id":"weijinlu_building_14","name":"第十四教学楼","aliases":["14教","十四教","14教学楼","第14教学楼"],"category":"teaching_building","latitude":39.10955,"longitude":117.17572,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official inventory and supplied official-map relation: east teaching area adjacent to 第九教学楼; approximate anchor."},
+    {"id":"weijinlu_building_15","name":"第十五教学楼","aliases":["15教","十五教","15教学楼","第15教学楼"],"category":"teaching_building","latitude":39.110171,"longitude":117.172987,"precision":"precise","provenance":"amap_related_poi_anchor","source":"AMap development place/text verified coordinate for 天津大学卫津路校区第15教学楼; official inventory confirms canonical."},
+    {"id":"weijinlu_building_16","name":"第十六教学楼","aliases":["16教","十六教","16教学楼","第16教学楼"],"category":"teaching_building","latitude":39.110175,"longitude":117.170375,"precision":"precise","provenance":"amap_poi","source":"AMap development place/text: 天津大学卫津路校区第16教学楼 at 求是路与益智道交叉口; official inventory confirms canonical."},
+    {"id":"weijinlu_building_17","name":"第十七教学楼","aliases":["17教","十七教","17教学楼","第17教学楼"],"category":"teaching_building","latitude":39.108975,"longitude":117.17667,"precision":"precise","provenance":"amap_related_poi_anchor","source":"AMap development place/text: 天津大学精仪学院 address explicitly states 第17教学楼; official inventory confirms canonical."},
+    {"id":"weijinlu_building_18","name":"第十八教学楼","aliases":["18教","十八教","18教学楼","第18教学楼"],"category":"teaching_building","latitude":39.109045,"longitude":117.1702,"precision":"precise","provenance":"amap_related_poi_anchor","source":"AMap development place/text: 天津大学影视学院/农业与生物工程学院 addresses explicitly state 第18教学楼; official inventory confirms canonical."},
+    {"id":"weijinlu_building_19","name":"第十九教学楼","aliases":["19教","十九教","19教学楼","第19教学楼"],"category":"teaching_building","latitude":39.107321,"longitude":117.173382,"precision":"precise","provenance":"amap_related_poi_anchor","source":"AMap development place/text: 天津大学出版社 address explicitly states 第19教学楼东配楼; official inventory confirms canonical."},
+    {"id":"weijinlu_building_20","name":"第二十教学楼","aliases":["20教","二十教","20教学楼","第20教学楼"],"category":"teaching_building","latitude":39.1112,"longitude":117.1738,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official inventory and supplied official-map relation: core teaching area south of 青年湖 near 第十二教学楼; approximate anchor."},
+    {"id":"weijinlu_building_21","name":"第二十一教学楼","aliases":["21教","二十一教","21教学楼","第21教学楼"],"category":"teaching_building","latitude":39.1092,"longitude":117.1715,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official inventory and supplied official-map relation: west teaching area near 第十一/第十八/第二十三教学楼; approximate anchor."},
+    {"id":"weijinlu_building_23","name":"第二十三教学楼","aliases":["23教","二十三教","23教学楼","第23教学楼"],"category":"teaching_building","latitude":39.1096,"longitude":117.17095,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official inventory and supplied official-map relation: west teaching area south of 第十一教学楼; approximate anchor."},
+    {"id":"weijinlu_building_24","name":"第二十四教学楼","aliases":["24教","二十四教","24教学楼","第24教学楼"],"category":"teaching_building","latitude":39.109911,"longitude":117.176256,"precision":"precise","provenance":"amap_related_poi_anchor","source":"AMap development place/text: 天津大学环境科学与工程学院 address explicitly states 第24教学楼; official inventory confirms canonical."},
+    {"id":"weijinlu_building_26","name":"第二十六教学楼","aliases":["26教","二十六教","26教学楼","第26教学楼"],"category":"teaching_building","latitude":39.1068,"longitude":117.1733,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official inventory identifies 第二十六教学楼 A/B/C/D/E building complex south of 敬业湖; representative approximate access anchor, not an individual block centroid."},
+    {"id":"weijinlu_building_35","name":"第三十五教学楼","aliases":["35教","三十五教","35教学楼","第35教学楼"],"category":"teaching_building","latitude":39.10715,"longitude":117.1753,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official inventory and supplied official-map relation: southeast/east teaching area near 学三食堂、学四食堂 and east dormitory group; approximate anchor."},
+    {"id":"weijinlu_road_huadi_core","name":"花堤路核心路点","aliases":[],"category":"road","node_kind":"road_waypoint","latitude":39.109158,"longitude":117.174266,"precision":"precise","provenance":"amap_route_step","source":"AMap development direction/walking v3 shared 花堤路 step endpoint for 第2/6/12教学楼 routes."},
+    {"id":"weijinlu_road_huadi_north","name":"花堤路北段路点","aliases":[],"category":"road","node_kind":"road_waypoint","latitude":39.110885,"longitude":117.174306,"precision":"precise","provenance":"amap_route_step","source":"AMap development direction/walking v3 第12教学楼 route step endpoint."},
+    {"id":"weijinlu_junction_huadi_yizhi","name":"花堤路—益智道连接点","aliases":[],"category":"road","node_kind":"road_waypoint","latitude":39.11003,"longitude":117.174284,"precision":"precise","provenance":"amap_route_step","source":"AMap development direction/walking v3 第2教学楼 route road-name transition / step endpoint."},
+    {"id":"weijinlu_junction_mingde_huadi","name":"铭德道—花堤路连接点","aliases":[],"category":"road","node_kind":"road_waypoint","latitude":39.109687,"longitude":117.173351,"precision":"precise","provenance":"amap_route_step","source":"AMap development direction/walking v3 第11/16教学楼 shared 铭德道 step endpoint."},
+    {"id":"weijinlu_junction_qiushi_mingde","name":"求是路—铭德道连接点","aliases":[],"category":"road","node_kind":"road_waypoint","latitude":39.109731,"longitude":117.170686,"precision":"precise","provenance":"amap_route_step","source":"AMap development direction/walking v3 第11/16教学楼 shared 求是路→铭德道 transition."},
+    {"id":"weijinlu_junction_jingye_huadi","name":"敬业道—花堤路连接点","aliases":[],"category":"road","node_kind":"road_waypoint","latitude":39.108676,"longitude":117.174262,"precision":"precise","provenance":"amap_route_step","source":"AMap development direction/walking v3 第6教学楼 route transition from 敬业道 to 花堤路."},
+    {"id":"weijinlu_road_jingye_east","name":"敬业道东段路点","aliases":[],"category":"road","node_kind":"road_waypoint","latitude":39.108672,"longitude":117.174839,"precision":"precise","provenance":"amap_route_step","source":"AMap development direction/walking v3 第5/10教学楼 shared 敬业道路点."}
+    ,{"id":"weijinlu_building_1","name":"第一教学楼","aliases":["1教","一教","1教学楼","第1教学楼"],"category":"teaching_building","latitude":39.109500,"longitude":117.176300,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official Weijinlu map relation: east teaching area, west of Xudong Road, south of Medical Teaching Building and north of building 17; constrained by building 17 and verified Taile Road local access."}
+    ,{"id":"weijinlu_building_13","name":"第十三教学楼","aliases":["13教","十三教","13教学楼","第13教学楼"],"category":"teaching_building","latitude":39.110550,"longitude":117.173750,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official Weijinlu map relation: core teaching area, east of 电工队, west of Huadi Road and north of building 2; constrained by buildings 2/12, Yizhi Road and verified Huadi Road local access."}
+    ,{"id":"weijinlu_road_taile_bike_final","name":"太雷路南段骑行接入点","aliases":[],"category":"road","node_kind":"road_waypoint","latitude":39.109115,"longitude":117.174570,"precision":"precise","provenance":"amap_route_step","source":"AMap development direction/bicycling v4 Taile Road south to building 9 final local route endpoint."}
+    ,{"id":"weijinlu_canteen_1","name":"学一食堂","aliases":["学一"],"category":"canteen","latitude":39.113382,"longitude":117.170809,"precision":"precise","provenance":"amap_poi","source":"AMap development place/text coordinate cross-checked against official Weijinlu map relation: north dormitory area."}
+    ,{"id":"weijinlu_canteen_3","name":"学三食堂","aliases":["学三"],"category":"canteen","latitude":39.107052,"longitude":117.174982,"precision":"precise","provenance":"amap_poi","source":"AMap development place/text coordinate cross-checked against official southeast dormitory-area relation."}
+    ,{"id":"weijinlu_canteen_4","name":"学四食堂","aliases":["学四"],"category":"canteen","latitude":39.106913,"longitude":117.175644,"precision":"precise","provenance":"amap_poi","source":"AMap development place/text coordinate cross-checked against official southeast dormitory-area relation."}
+    ,{"id":"weijinlu_canteen_5","name":"学五食堂","aliases":["学五"],"category":"canteen","latitude":39.111437,"longitude":117.168030,"precision":"precise","provenance":"amap_poi","source":"AMap development place/text coordinate cross-checked against official San-Cun-Men/Jinhui Road relation."}
+    ,{"id":"weijinlu_library_main","name":"图书馆","aliases":[],"category":"library","latitude":39.108600,"longitude":117.172800,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official Weijinlu map relation: core teaching area near buildings 3/6/7; anchor constrained by Jingye/Huadi shared road access."}
+    ,{"id":"weijinlu_science_library","name":"科学图书馆","aliases":[],"category":"library","latitude":39.107000,"longitude":117.172900,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official Weijinlu map relation: south of Jingye Lake near Beiyang Science Building, building 19 and building 26; anchor constrained by Jingye/Huadi shared road access."}
+    ,{"id":"weijinlu_lecture_hall","name":"阶梯教室","aliases":[],"category":"teaching_auxiliary","latitude":39.110500,"longitude":117.173500,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official map relation: core teaching area near building 12, building 15 and 3.5KV station; anchor constrained by Huadi Road north access."}
+    ,{"id":"weijinlu_east_lecture_hall","name":"东阶梯教室","aliases":[],"category":"teaching_auxiliary","latitude":39.110400,"longitude":117.174700,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official map distinguishes east lecture hall; anchor constrained by Huadi/Yizhi shared road access."}
+    ,{"id":"weijinlu_west_lecture_hall","name":"西阶梯教室","aliases":[],"category":"teaching_auxiliary","latitude":39.108800,"longitude":117.172500,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official map distinguishes west lecture hall; anchor constrained by Jingye/Huadi shared road access."}
+    ,{"id":"weijinlu_remote_education_college","name":"远教学院","aliases":["远程与继续教育学院"],"category":"academic_institution","latitude":39.112872,"longitude":117.168990,"precision":"precise","provenance":"amap_poi_verified","source":"Official Weijinlu map inventory identity; AMap development place/text verified Tianjin University Weijinlu Remote and Continuing Education College coordinate, then local route access was collected."}
+    ,{"id":"weijinlu_international_education_college","name":"国教学院","aliases":["国际教育学院"],"category":"academic_institution","latitude":39.111537,"longitude":117.174087,"precision":"precise","provenance":"amap_poi_verified","source":"Official Weijinlu map inventory identity and youth-lake east relation; AMap development place/text verified Tianjin University Weijinlu International Education College coordinate."}
+    ,{"id":"weijinlu_applied_math_center","name":"应数中心","aliases":["应用数学中心"],"category":"academic_institution","latitude":39.112613,"longitude":117.170543,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official Weijinlu map relation places the Applied Mathematics Center north of Youth Lake near dorms 25/26; distinct approximate anchor uses the AMap-verified north-campus route-step endpoint, not the conflicting south-campus AMap text candidate."}
+    ,{"id":"weijinlu_information_network_center","name":"信息与网络中心","aliases":[],"category":"academic_institution","latitude":39.111137,"longitude":117.173951,"precision":"precise","provenance":"amap_poi_verified","source":"Official Weijinlu map inventory and youth-lake east relation; AMap development place/text verified Tianjin University Weijinlu Information and Network Center coordinate."}
+    ,{"id":"weijinlu_feng_jicai_literature_art_institute","name":"冯骥才文学艺术研究院","aliases":[],"category":"academic_institution","latitude":39.111610,"longitude":117.175018,"precision":"precise","provenance":"amap_poi_verified","source":"Official Weijinlu map inventory and east-campus relation; AMap development place/text verified the institute near the Huadi-road east-campus area."}
+    ,{"id":"weijinlu_wang_xuezhong_art_institute","name":"王学仲艺术研究所","aliases":[],"category":"academic_institution","latitude":39.109087,"longitude":117.170859,"precision":"precise","provenance":"amap_poi_verified","source":"Official Weijinlu map inventory and core-teaching-area relation; AMap development place/text verified the institute coordinate near the library/building 6/7 controls."}
+    ,{"id":"weijinlu_strategy_institute","name":"战略院","aliases":[],"category":"academic_institution","latitude":39.108620,"longitude":117.172700,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official Weijinlu map inventory and core-west relation near building 3/library/west lecture hall; distinct representative anchor constrained by the AMap-verified local route to the Jingye/Huadi shared junction."}
+    ,{"id":"weijinlu_road_north_math_access","name":"北部应数中心接入路点","aliases":[],"category":"road","node_kind":"road_waypoint","latitude":39.112526,"longitude":117.170825,"precision":"precise","provenance":"amap_route_step","source":"AMap development walking/bicycling route-step endpoint on the north-campus route between the Applied Mathematics Center control area and the Anshanxi Road/Taile junction."}
+    ,{"id":"weijinlu_beiyang_science_building","name":"北洋科学楼","aliases":[],"category":"academic_research_building","latitude":39.106780,"longitude":117.173333,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official Weijinlu map relation: south of Jingye Lake near Science Library and buildings 19/26; distinct representative anchor constrained by AMap-verified south research-area route steps."}
+    ,{"id":"weijinlu_medical_teaching_building","name":"医学部教学楼","aliases":[],"category":"academic_research_building","latitude":39.109936,"longitude":117.177444,"precision":"precise","provenance":"amap_poi_verified","source":"Official Weijinlu map inventory and east teaching-area relation; AMap development place/text verified Tianjin University Medical Department coordinate."}
+    ,{"id":"weijinlu_comprehensive_experiment_building","name":"综合实验楼","aliases":[],"category":"academic_research_building","latitude":39.109627,"longitude":117.176441,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official east teaching-area relation near Medical Teaching Building, buildings 1/5/17 and Xudong/Taile roads; representative anchor constrained by AMap-verified local east-campus route steps."}
+    ,{"id":"weijinlu_internal_combustion_engine_building","name":"内燃机大楼","aliases":[],"category":"academic_research_building","latitude":39.110622,"longitude":117.177444,"precision":"precise","provenance":"amap_poi_verified","source":"Official Weijinlu map inventory; AMap development place/text verified the Weijinlu internal-combustion-engine laboratory candidate at this coordinate, then route access was cross-checked. Institution evidence is retained as anchor provenance and does not replace the official building canonical name."}
+    ,{"id":"weijinlu_electrical_engineering_team","name":"电工队","aliases":[],"category":"academic_research_building","latitude":39.110574,"longitude":117.173063,"precision":"precise","provenance":"amap_poi_verified","source":"Official Weijinlu map inventory and core teaching-area relation; AMap development place/text verified the Electrical Engineering Team coordinate."}
+    ,{"id":"weijinlu_power_station_3_5kv","name":"3.5KV电站","aliases":[],"category":"academic_research_building","latitude":39.110291,"longitude":117.173490,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official map canonical spelling and core-area relation near Electrical Engineering Team, building 12, lecture hall, buildings 15/20; distinct representative anchor constrained by AMap-verified local route steps. No voltage-level canonical substitution was made."}
+    ,{"id":"weijinlu_road_south_research_access","name":"南部科研区共享路点","aliases":[],"category":"road","node_kind":"road_waypoint","latitude":39.106727,"longitude":117.174128,"precision":"precise","provenance":"amap_route_step","source":"AMap development walking/bicycling route-step endpoint linking the south research area to the Jingye/Huadi shared junction."}
+    ,{"id":"weijinlu_road_east_lab_access","name":"东部实验区共享路点","aliases":[],"category":"road","node_kind":"road_waypoint","latitude":39.109627,"longitude":117.176992,"precision":"precise","provenance":"amap_route_step","source":"AMap development walking/bicycling route-step endpoint on the verified east teaching-area route toward Taile Road."}
+    ,{"id":"weijinlu_student_activity_center","name":"大学生活动中心","aliases":["学生活动中心"],"category":"campus_service","latitude":39.112260,"longitude":117.171121,"precision":"precise","provenance":"amap_poi_verified","source":"Official Weijinlu map inventory and Youth-Lake southwest relation; AMap development place/text verified Tianjin University Weijinlu Student Activity Center coordinate."}
+    ,{"id":"weijinlu_union","name":"工会","aliases":[],"category":"campus_service","latitude":39.110058,"longitude":117.174853,"precision":"precise","provenance":"amap_poi_verified","source":"Official Weijinlu map inventory and west teaching/lakes relation; AMap development place/text verified Tianjin University Weijinlu Union POI coordinate."}
+    ,{"id":"weijinlu_staff_home","name":"员工之家","aliases":[],"category":"campus_service","latitude":39.113221,"longitude":117.175368,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official east-area relation near Huadi Road and Feng Jicai Literature and Art Institute; representative anchor constrained by nearby AMap staff/family-area control POI and verified local route access."}
+    ,{"id":"weijinlu_alumni_home","name":"校友之家","aliases":[],"category":"campus_service","latitude":39.109167,"longitude":117.170221,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official west-south relation near Union, Love-Evening/Friendship lakes and buildings 18/21/23; distinct representative anchor constrained by AMap route-step evidence to the west shared service road."}
+    ,{"id":"weijinlu_liuyuan","name":"留园","aliases":[],"category":"campus_service","latitude":39.109275,"longitude":117.170668,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official west-south relation near Alumni Home and west teaching area; distinct representative anchor constrained by AMap local route access to the Qiushi/Mingde shared junction."}
+    ,{"id":"weijinlu_tianan_building","name":"天南楼","aliases":[],"category":"campus_service","latitude":39.107365,"longitude":117.175243,"precision":"approximate","provenance":"tju_official_map_approximate","source":"Official southeast relation near building 35, canteens 3/4 and southeast dormitory area; representative anchor constrained by AMap route-step access to the Taile/Jingye shared junction."}
+    ,{"id":"weijinlu_school_hospital","name":"校医院","aliases":[],"category":"campus_service","latitude":39.111845,"longitude":117.169193,"precision":"precise","provenance":"amap_poi_verified","source":"Official Weijinlu map inventory; AMap development place/text verified Tianjin University Weijinlu Campus Hospital coordinate, then local route access was collected."}
+    ,{"id":"weijinlu_road_west_service_access","name":"西部服务区共享路点","aliases":[],"category":"road","node_kind":"road_waypoint","latitude":39.109162,"longitude":117.170664,"precision":"precise","provenance":"amap_route_step","source":"AMap development walking/bicycling route-step endpoint on the verified west service-area route to the Qiushi/Mingde junction."}
+    ,{"id":"weijinlu_road_youth_lake_west","name":"青年湖西侧共享路点","aliases":[],"category":"road","node_kind":"road_waypoint","latitude":39.111736,"longitude":117.170781,"precision":"precise","provenance":"amap_route_step","source":"AMap development walking/bicycling route-step endpoint on the verified Youth-Lake west to core-teaching-area corridor."}
+    ,{"id":"weijinlu_junction_youth_lake_southwest","name":"青年湖西南连接点","aliases":[],"category":"road","node_kind":"road_waypoint","latitude":39.111128,"longitude":117.170747,"precision":"precise","provenance":"amap_route_step","source":"AMap development walking/bicycling route-step endpoint at the southward turn of the verified Youth-Lake west corridor."}
+    ,{"id":"weijinlu_school_history_museum","name":"校史博物馆","aliases":[],"category":"campus_service","latitude":39.109500,"longitude":117.176300,"precision":"approximate","provenance":"tju_official_map_representative_access","source":"Official Tianjin University news states that the Weijinlu Campus History Museum is in front of Building 1; its representative visitor-access anchor deliberately reuses the already verified Building-1 road-side entrance, rather than claiming an independent building centroid."}
+    ,{"id":"weijinlu_press","name":"出版社","aliases":[],"category":"campus_service","latitude":39.107321,"longitude":117.173382,"precision":"precise","provenance":"tju_official_co_located_anchor","physical_anchor_id":"weijinlu_building_19_east_annex","source":"Official Tianjin University material and AMap development place/text both identify Tianjin University Press at the east annex of Building 19. This is a co-located user-facing entity, not an alias of the Periodicals Center."}
+    ,{"id":"weijinlu_periodicals_center","name":"期刊中心","aliases":[],"category":"campus_service","latitude":39.107321,"longitude":117.173382,"precision":"precise","provenance":"tju_official_co_located_anchor","physical_anchor_id":"weijinlu_building_19_east_annex","source":"Official Tianjin University Periodicals Center page gives the address as the east annex of Building 19; the official news also records its meeting room in Building 19. It therefore shares the verified physical anchor and entrance with the Press, while retaining separate user-facing identity."}
+    ,{"id":"weijinlu_meeting_building","name":"会议楼","aliases":["会议接待中心"],"category":"campus_service","latitude":39.108541,"longitude":117.167779,"precision":"precise","provenance":"amap_poi_verified","source":"Official Tianjin University pages identify the Weijinlu Campus meeting building/service hall; AMap development place/text returns 天津大学会议接待中心 at the Weijinlu west-gate address, and walking/bicycling route steps verify its 342m local access to the Mingde Road west shared node."}
+    ,{"id":"weijinlu_stadium","name":"体育场","aliases":[],"category":"sports_facility","latitude":39.111617,"longitude":117.177217,"precision":"precise","provenance":"amap_poi_verified_representative","physical_anchor_id":"weijinlu_stadium_sports_area","source":"Official Weijinlu campus guide labels the representative 体育场; AMap development place/text returns 天津大学卫津路校区体育场 at this coordinate. This is the guide-labelled representative stadium, not a claim that the campus has only one stadium."}
+    ,{"id":"weijinlu_sports_department","name":"体育部","aliases":[],"category":"campus_service","latitude":39.111588,"longitude":117.177723,"precision":"precise","provenance":"tju_official_colocated_anchor","physical_anchor_id":"weijinlu_stadium_sports_area","source":"天津大学体育部 official page gives the Weijinlu office as 体育场二层A205室; AMap development place/text independently returns 天津大学卫津路校区体育部 at this coordinate. The department is retained as a separate user-facing entity and shares the stadium-area access corridor."}
+    ,{"id":"weijinlu_road_sports_taile_north","name":"体育区太雷路北接入点","aliases":[],"category":"road","node_kind":"road_waypoint","latitude":39.112409,"longitude":117.175482,"precision":"precise","provenance":"amap_route_step","source":"AMap development walking/bicycling route steps from the representative Weijinlu stadium/sports-department coordinates: 191m unnamed campus-lane step reaches this shared Taile Road entry, followed by a 349m Taile Road step to the existing south Taile waypoint."}
+    ,{"id":"weijinlu_road_hubin_jingye_west","name":"湖滨道—敬业道西段路点","aliases":[],"category":"road","node_kind":"road_waypoint","latitude":39.108381,"longitude":117.169175,"precision":"precise","provenance":"amap_route_step","source":"AMap development walking/bicycling route from the meeting building to the core: Hubin Road step ends here, followed by the shared 449m Jingye Road corridor to the Jingye/Huadi junction."}
+    ,{"id":"weijinlu_gate_sancun","name":"三村门","aliases":["卫津路三村门"],"category":"gate","latitude":39.112362,"longitude":117.168784,"precision":"approximate","provenance":"tju_official_map_amap_controlled_anchor","source":"Official Weijinlu guide inventory identifies 三村门 at the west dormitory boundary; its relation to the 一号至五斋/鹏翔/金晖路 area is cross-checked against the official map. AMap development input tips returns the adjacent campus 西1门 corridor and walking/bicycling steps follow 玉泉路、湖影道和铭德道 into the existing campus skeleton. This is an audited representative gate anchor, not a campus-centre substitute."}
+    ,{"id":"weijinlu_gate_mingde","name":"铭德道门","aliases":["卫津路铭德道门"],"category":"gate","latitude":39.109903,"longitude":117.166827,"precision":"precise","provenance":"amap_gate_inputtip_route_verified","source":"Official Tianjin University reporting lists 铭德道门 as a Weijinlu entrance. AMap development input tips returns 天津大学卫津路校区(铭德道门) at this campus-boundary coordinate; walking and bicycling steps verify the 69m 铭德道 connection to the west shared road node."}
+    ,{"id":"weijinlu_gate_west","name":"西门","aliases":["卫津路西门"],"category":"gate","latitude":39.108384,"longitude":117.168125,"precision":"precise","provenance":"amap_gate_inputtip_route_verified","source":"Official Tianjin University reporting lists 西门 as a Weijinlu entrance and places it at the Hubin Road side. AMap development input tips returns 天津大学卫津路校区(西门) at this coordinate; walking and bicycling steps verify the 92m Hubin Road campus-side connection."}
+    ,{"id":"weijinlu_gate_north","name":"北门","aliases":["卫津路北门"],"category":"gate","latitude":39.113570,"longitude":117.175504,"precision":"precise","provenance":"amap_gate_inputtip_route_verified","source":"Official Tianjin University reporting lists 北门 as a Weijinlu entrance near 天大宿舍站/鞍山西道. AMap development input tips returns 天津大学卫津路校区(北门) at this coordinate; short walking and bicycling steps connect only to the campus-side Anshanxi Road–Taile Road junction."}
+    ,{"id":"weijinlu_gate_east","name":"东门","aliases":["卫津路东门"],"category":"gate","latitude":39.108136,"longitude":117.178785,"precision":"precise","provenance":"amap_gate_inputtip_route_verified","source":"Official Tianjin University reporting identifies 东门 as the Weijinlu campus main gate at the Weijin River side. AMap development input tips returns 天津大学卫津路校区(东门) at this coordinate; walking/bicycling steps verify the campus-side Jingye Road, Beiyang Road and Taile Road connection without adding an external-road graph."}
+    ,{"id":"weijinlu_junction_yuquan_huying","name":"玉泉路—湖影道路口","aliases":[],"category":"road","node_kind":"road_waypoint","latitude":39.111914,"longitude":117.168611,"precision":"precise","provenance":"amap_route_step","source":"AMap development walking/bicycling route step endpoint from the audited 三村门 representative anchor: 玉泉路 turns into 湖影道 here."}
+    ,{"id":"weijinlu_road_huying_west","name":"湖影道西段路点","aliases":[],"category":"road","node_kind":"road_waypoint","latitude":39.111910,"longitude":117.166740,"precision":"precise","provenance":"amap_route_step","source":"AMap development walking/bicycling step endpoint on the 三村门—铭德道 campus-side route; it is the west end of the verified 湖影道 segment."}
+    ,{"id":"weijinlu_road_sancun_internal_south","name":"三村片区南向内部道路点","aliases":[],"category":"road","node_kind":"road_waypoint","latitude":39.109931,"longitude":117.166706,"precision":"precise","provenance":"amap_route_step","source":"AMap development walking/bicycling step endpoint on the audited 三村门 representative route: unnamed campus-internal lane reaches 铭德道 here. The stable internal label intentionally does not invent an official road name."}
+    ,{"id":"weijinlu_junction_beiyang_taile_east","name":"北洋道—太雷路东侧路口","aliases":[],"category":"road","node_kind":"road_waypoint","latitude":39.107734,"longitude":117.175208,"precision":"precise","provenance":"amap_route_step","source":"AMap development walking/bicycling route step endpoint from the verified East Gate anchor: the shared 北洋道 segment changes to 太雷路 here."}
+    ,{"id":"weijinlu_lake_youth","name":"青年湖","aliases":[],"category":"landmark","latitude":39.112292,"longitude":117.171437,"precision":"approximate","provenance":"amap_lake_shoreline_anchor","source":"Official Weijinlu guide identifies 青年湖 and its north/west/east/south control areas. AMap development place/text identifies 天津大学青年湖; walking/bicycling route snapping selects this audited reachable west-north shoreline representative, not a lake-centre road node."}
+    ,{"id":"weijinlu_lake_aiwan","name":"爱晚湖","aliases":[],"category":"landmark","latitude":39.109293,"longitude":117.169319,"precision":"approximate","provenance":"amap_lake_shoreline_anchor","source":"Official Weijinlu guide identifies 爱晚湖 in the west teaching/service area. AMap development lake candidate plus walk/bike route snapping selects this reachable east-shore representative toward the verified west-service road, not a claim of a single lake point."}
+    ,{"id":"weijinlu_lake_youyi","name":"友谊湖","aliases":[],"category":"landmark","latitude":39.107578,"longitude":117.168108,"precision":"approximate","provenance":"amap_lake_shoreline_anchor","source":"Official Weijinlu guide identifies 友谊湖 as a distinct west-area water landmark. AMap development lake candidate and its walk/bike steps select this reachable shoreline representative via Hubin Road and Qiushi Road; it is independent of 爱晚湖."}
+    ,{"id":"weijinlu_lake_jingye","name":"敬业湖","aliases":[],"category":"landmark","latitude":39.108550,"longitude":117.172695,"precision":"approximate","provenance":"amap_lake_shoreline_anchor","source":"Official Weijinlu guide identifies 敬业湖 between the core and south research areas. AMap development place/text and walking/bicycling steps select this reachable north-east shoreline representative and verified Jingye Road access, not a lake-centre road node."}
+    ,{"id":"weijinlu_landmark_beiyang_garden","name":"北洋园","aliases":[],"category":"landmark","latitude":39.108194,"longitude":117.175754,"precision":"approximate","provenance":"tju_official_landscape_amap_anchor","source":"This is the Weijinlu-campus internal 北洋园 landscape, not 北洋园校区. Official Tianjin University reporting places 北洋大学堂纪念亭 within the garden; AMap returns the verified adjacent memorial landmark and route steps to the Taile Road campus skeleton."}
+    ,{"id":"weijinlu_landmark_beiyang_square","name":"北洋广场","aliases":[],"category":"landmark","latitude":39.108195,"longitude":117.176319,"precision":"precise","provenance":"amap_poi_verified","source":"AMap development place/text returns 天津大学卫津路校区北洋广场 at this coordinate; official Tianjin University Weijinlu guide lists 北洋广场 as a campus landscape."}
+    ,{"id":"weijinlu_landmark_qiushi_pavilion","name":"求是亭","aliases":[],"category":"landmark","latitude":39.108550,"longitude":117.172695,"precision":"approximate","provenance":"tju_official_lake_shore_viewing_anchor","physical_anchor_id":"weijinlu_jingye_lake_northeast_shore","source":"Official Tianjin University records 求是亭 as a pavilion in 敬业湖. To avoid inventing a route across water, this user-facing destination uses the already verified reachable north-east shoreline viewing/access anchor, not a road through the lake."}
+  ],
+  "edges": [
+    {"from":"weijinlu_dorm_34","to":"weijinlu_junction_anshanxidao_taile","distance_m":389,"distance_by_mode":{"walk":389,"bike":388},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3=389m; direction/bicycling v4=388m along the audited Anshan West Road north-dorm access."},
+    {"from":"weijinlu_dorm_43","to":"weijinlu_junction_anshanxidao_taile","distance_m":296,"distance_by_mode":{"walk":296,"bike":295},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3=296m; direction/bicycling v4=295m along the audited Anshan West Road north-dorm access."},
+    {"from":"weijinlu_dorm_44","to":"weijinlu_junction_anshanxidao_taile","distance_m":204,"distance_by_mode":{"walk":204,"bike":203},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3=204m; direction/bicycling v4=203m along the audited Anshan West Road north-dorm access."},
+    {"from":"weijinlu_dorm_33","to":"weijinlu_junction_anshanxidao_taile","distance_m":112,"distance_by_mode":{"walk":112,"bike":111},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3=112m; direction/bicycling v4=111m along the audited Anshan West Road north-dorm access."},
+    {"from":"weijinlu_dorm_28","to":"weijinlu_junction_anshanxidao_taile","distance_m":19,"distance_by_mode":{"walk":19,"bike":21},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3=19m; direction/bicycling v4=21m along the audited Anshan West Road north-dorm access."},
+    {"from":"weijinlu_dorm_29","to":"weijinlu_junction_anshanxidao_taile","distance_m":70,"distance_by_mode":{"walk":70,"bike":232},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3=70m; direction/bicycling v4=232m on the permitted Anshan West Road approach."},
+    {"from":"weijinlu_dorm_30","to":"weijinlu_junction_anshanxidao_taile","distance_m":164,"distance_by_mode":{"walk":164,"bike":714},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3=164m; direction/bicycling v4=714m on the permitted Anshan West Road approach; the longer bike maneuver is preserved rather than copied from walking."},
+    {"from":"weijinlu_junction_anshanxidao_taile","to":"weijinlu_road_taile_south","distance_m":543,"distance_by_mode":{"walk":543,"bike":542},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development shared Taile Road segment: walking v3=543m; bicycling v4=542m."},
+    {"from":"weijinlu_road_taile_south","to":"weijinlu_junction_east_core_roadside","distance_m":95,"distance_by_mode":{"walk":95,"bike":96},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development Taile Road south final approach: walking v3=95m; bicycling v4=96m; endpoint is modeled as the shared roadside junction rather than a building-specific access."},
+    {"from":"weijinlu_pengxiang_student_apartment","to":"weijinlu_road_mingde_west","distance_m":96,"distance_by_mode":{"walk":96,"bike":97},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=96m; bicycling v4=97m (step polyline follows the San-Cun-Men/Jinhui-area internal lane to Mingde Road west)."},
+    {"from":"weijinlu_road_mingde_west","to":"weijinlu_road_mingde_east","distance_m":493,"modes":["walk"],"bidirectional":true,"source":"高德 direction/walking v3 step：铭德道 493m。"},
+    {"from":"weijinlu_road_mingde_east","to":"weijinlu_junction_east_core_roadside","distance_m":156,"modes":["walk"],"bidirectional":true,"source":"高德 direction/walking v3 后两步：56m+100m，铭德道东端至第九教学楼道路侧；端点按道路语义迁移到 shared roadside junction。"},
+    {"from":"weijinlu_youyuan","to":"weijinlu_road_taile_southeast","distance_m":98,"distance_by_mode":{"walk":98,"bike":99},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: direction/walking v3=98m; direction/bicycling v4=99m on the same east-southeast internal campus lane to the Taile Road shared node."},
+    {"from":"weijinlu_road_taile_southeast","to":"weijinlu_junction_taile_jingye","distance_m":268,"modes":["walk"],"bidirectional":true,"source":"高德 direction/walking v3 step：太雷路 268m。"},
+    {"from":"weijinlu_junction_taile_jingye","to":"weijinlu_junction_east_core_roadside","distance_m":91,"modes":["walk"],"bidirectional":true,"source":"高德 direction/walking v3 后三步：敬业道及内部道路至第九教学楼道路侧；端点按道路语义迁移到 shared roadside junction。"},
+    {"from":"weijinlu_dorm_1","to":"weijinlu_dorm_2","distance_m":603,"distance_by_mode":{"walk":603,"bike":605},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，西部宿舍入口道路。"},
+    {"from":"weijinlu_dorm_2","to":"weijinlu_dorm_3","distance_m":494,"distance_by_mode":{"walk":494,"bike":494},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，西部宿舍入口道路。"},
+    {"from":"weijinlu_dorm_3","to":"weijinlu_dorm_4","distance_m":1043,"distance_by_mode":{"walk":1043,"bike":1298},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，西部宿舍入口道路。"},
+    {"from":"weijinlu_dorm_4","to":"weijinlu_dorm_5","distance_m":41,"distance_by_mode":{"walk":41,"bike":41},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，西部宿舍入口道路。"},
+    {"from":"weijinlu_dorm_5","to":"weijinlu_pengxiang_student_apartment","distance_m":622,"distance_by_mode":{"walk":622,"bike":622},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，西部宿舍入口道路。"},
+    {"from":"weijinlu_dorm_3","to":"weijinlu_pengxiang_student_apartment","distance_m":622,"distance_by_mode":{"walk":622,"bike":622},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，西部主干接入。"},
+    {"from":"weijinlu_dorm_35","to":"weijinlu_dorm_36","distance_m":304,"distance_by_mode":{"walk":304,"bike":562},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，求是路西侧宿舍入口道路。"},
+    {"from":"weijinlu_dorm_36","to":"weijinlu_dorm_37","distance_m":38,"distance_by_mode":{"walk":38,"bike":38},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，北部宿舍入口道路。"},
+    {"from":"weijinlu_dorm_37","to":"weijinlu_dorm_38","distance_m":106,"distance_by_mode":{"walk":106,"bike":126},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，北部宿舍入口道路。"},
+    {"from":"weijinlu_dorm_38","to":"weijinlu_dorm_39","distance_m":45,"distance_by_mode":{"walk":45,"bike":45},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，北部宿舍入口道路。"},
+    {"from":"weijinlu_dorm_39","to":"weijinlu_dorm_40","distance_m":107,"distance_by_mode":{"walk":107,"bike":107},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，北部宿舍入口道路。"},
+    {"from":"weijinlu_dorm_40","to":"weijinlu_dorm_41","distance_m":46,"distance_by_mode":{"walk":46,"bike":46},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，北部宿舍入口道路。"},
+    {"from":"weijinlu_dorm_41","to":"weijinlu_dorm_3","distance_m":1137,"distance_by_mode":{"walk":1137,"bike":1137},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，求是路宿舍组至三斋接入。"},
+    {"from":"weijinlu_dorm_45","to":"weijinlu_dorm_46","distance_m":126,"distance_by_mode":{"walk":126,"bike":126},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，北部宿舍入口道路。"},
+    {"from":"weijinlu_dorm_46","to":"weijinlu_dorm_31","distance_m":59,"distance_by_mode":{"walk":59,"bike":59},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，青年湖西侧入口道路。"},
+    {"from":"weijinlu_dorm_31","to":"weijinlu_dorm_32","distance_m":73,"distance_by_mode":{"walk":73,"bike":73},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，青年湖西侧入口道路。"},
+    {"from":"weijinlu_dorm_32","to":"weijinlu_dorm_25","distance_m":189,"distance_by_mode":{"walk":189,"bike":189},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，青年湖周边道路。"},
+    {"from":"weijinlu_dorm_25","to":"weijinlu_dorm_26","distance_m":209,"distance_by_mode":{"walk":209,"bike":209},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，青年湖北侧道路。"},
+    {"from":"weijinlu_dorm_26","to":"weijinlu_dorm_34","distance_m":867,"distance_by_mode":{"walk":867,"bike":1599},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，北部宿舍组接入鞍山西道路骨架。"},
+    {"from":"weijinlu_dorm_45","to":"weijinlu_dorm_3","distance_m":36,"distance_by_mode":{"walk":36,"bike":36},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，北部宿舍入口接入三斋。"},
+    {"from":"weijinlu_dorm_57","to":"weijinlu_pengxiang_student_apartment","distance_m":339,"distance_by_mode":{"walk":339,"bike":339},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，西部/中西宿舍道路接入。"},
+    {"from":"weijinlu_dorm_23","to":"weijinlu_dorm_24","distance_m":57,"distance_by_mode":{"walk":57,"bike":57},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，东南宿舍入口道路。"},
+    {"from":"weijinlu_dorm_24","to":"weijinlu_dorm_47","distance_m":60,"distance_by_mode":{"walk":60,"bike":60},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，东南宿舍入口道路。"},
+    {"from":"weijinlu_dorm_47","to":"weijinlu_dorm_48","distance_m":46,"distance_by_mode":{"walk":46,"bike":46},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，东南宿舍入口道路。"},
+    {"from":"weijinlu_dorm_48","to":"weijinlu_dorm_49","distance_m":51,"distance_by_mode":{"walk":51,"bike":51},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，东南宿舍入口道路。"},
+    {"from":"weijinlu_dorm_49","to":"weijinlu_dorm_50","distance_m":89,"distance_by_mode":{"walk":89,"bike":89},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，东南宿舍入口道路。"},
+    {"from":"weijinlu_dorm_50","to":"weijinlu_dorm_51","distance_m":94,"distance_by_mode":{"walk":94,"bike":94},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，东南宿舍入口道路。"},
+    {"from":"weijinlu_dorm_51","to":"weijinlu_dorm_52","distance_m":46,"distance_by_mode":{"walk":46,"bike":46},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，东南宿舍入口道路。"},
+    {"from":"weijinlu_dorm_52","to":"weijinlu_dorm_53","distance_m":47,"distance_by_mode":{"walk":47,"bike":47},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，东南宿舍入口道路。"},
+    {"from":"weijinlu_dorm_53","to":"weijinlu_youyuan","distance_m":175,"distance_by_mode":{"walk":175,"bike":175},"modes":["walk","bike"],"bidirectional":true,"source":"高德开发期 walking/bicycling 实测，东南宿舍入口道路。"},
+    {
+      "from": "weijinlu_dorm_34",
+      "to": "weijinlu_junction_east_core_roadside",
+      "distance_m": 1027,
+      "modes": ["bike"],
+      "bidirectional": true,
+      "source": "高德开发期 direction/bicycling v4：34斋 approximate anchor至第九教学楼1027m，经鞍山西道、太雷路；运行时不调用高德"
+    },
+    {
+      "from": "weijinlu_dorm_43",
+      "to": "weijinlu_junction_east_core_roadside",
+      "distance_m": 934,
+      "modes": ["bike"],
+      "bidirectional": true,
+      "source": "高德开发期 direction/bicycling v4：43斋 approximate anchor至第九教学楼934m，经鞍山西道、太雷路；运行时不调用高德"
+    },
+    {
+      "from": "weijinlu_dorm_44",
+      "to": "weijinlu_junction_east_core_roadside",
+      "distance_m": 842,
+      "modes": ["bike"],
+      "bidirectional": true,
+      "source": "高德开发期 direction/bicycling v4：44斋 approximate anchor至第九教学楼842m，经鞍山西道、太雷路；运行时不调用高德"
+    },
+    {
+      "from": "weijinlu_dorm_33",
+      "to": "weijinlu_junction_east_core_roadside",
+      "distance_m": 750,
+      "modes": ["bike"],
+      "bidirectional": true,
+      "source": "高德开发期 direction/bicycling v4：33斋 approximate anchor至第九教学楼750m，经鞍山西道、太雷路；运行时不调用高德"
+    },
+    {
+      "from": "weijinlu_dorm_34",
+      "to": "weijinlu_dorm_43",
+      "distance_m": 92,
+      "modes": ["walk"],
+      "bidirectional": true,
+      "source": "高德开发期 direction/walking v3：两个官方北部宿舍 approximate anchor 间92m，路线道路名为鞍山西道；运行时不调用高德"
+    },
+    {
+      "from": "weijinlu_dorm_43",
+      "to": "weijinlu_dorm_44",
+      "distance_m": 91,
+      "modes": ["walk"],
+      "bidirectional": true,
+      "source": "高德开发期 direction/walking v3：两个官方北部宿舍 approximate anchor 间91m，路线道路名为鞍山西道；运行时不调用高德"
+    },
+    {
+      "from": "weijinlu_dorm_44",
+      "to": "weijinlu_dorm_33",
+      "distance_m": 92,
+      "modes": ["walk"],
+      "bidirectional": true,
+      "source": "高德开发期 direction/walking v3：两个官方北部宿舍 approximate anchor 间92m，路线道路名为鞍山西道；运行时不调用高德"
+    },
+    {
+      "from": "weijinlu_dorm_33",
+      "to": "weijinlu_dorm_28",
+      "distance_m": 92,
+      "modes": ["walk"],
+      "bidirectional": true,
+      "source": "高德开发期 direction/walking v3：两个官方北部宿舍 approximate anchor 间92m，路线道路名为鞍山西道；运行时不调用高德"
+    },
+    {
+      "from": "weijinlu_dorm_28",
+      "to": "weijinlu_dorm_29",
+      "distance_m": 94,
+      "distance_by_mode": {"walk": 94, "bike": 89},
+      "modes": ["walk", "bike"],
+      "bidirectional": true,
+      "source": "AMap development direction/walking v3=94m; direction/bicycling v4=89m between the audited adjacent north-dorm anchors on the Anshan West Road corridor."
+    },
+    {
+      "from": "weijinlu_dorm_29",
+      "to": "weijinlu_dorm_30",
+      "distance_m": 93,
+      "distance_by_mode": {"walk": 93, "bike": 93},
+      "modes": ["walk", "bike"],
+      "bidirectional": true,
+      "source": "AMap development direction/walking v3=93m; direction/bicycling v4=93m between the audited adjacent north-dorm anchors on the Anshan West Road corridor."
+    },
+    {
+      "from": "weijinlu_dorm_28",
+      "to": "weijinlu_junction_east_core_roadside",
+      "distance_m": 657,
+      "distance_by_mode": {"walk": 657, "bike": 657},
+      "modes": ["walk", "bike"],
+      "bidirectional": true,
+      "source": "高德开发期 direction/walking v3：28斋 approximate anchor至第九教学楼657m，路线道路名为鞍山西道、太雷路；与官方北部宿舍区—东部教学区道路关系交叉核验；运行时不调用高德"
+    },
+    {
+      "from": "weijinlu_dorm_29",
+      "to": "weijinlu_junction_east_core_roadside",
+      "distance_m": 708,
+      "distance_by_mode": {"walk": 708, "bike": 871},
+      "modes": ["walk", "bike"],
+      "bidirectional": true,
+      "source": "高德开发期 direction/walking v3：29斋 approximate anchor至第九教学楼708m，路线道路名为鞍山西道、太雷路；作为共享宿舍骨架的实测东侧接入，运行时不调用高德"
+    },
+    {
+      "from": "weijinlu_dorm_30",
+      "to": "weijinlu_junction_east_core_roadside",
+      "distance_m": 802,
+      "distance_by_mode": {"walk": 802, "bike": 1377},
+      "modes": ["walk", "bike"],
+      "bidirectional": true,
+      "source": "高德开发期 direction/walking v3：30斋 approximate anchor至第九教学楼802m，路线道路名为鞍山西道、太雷路；作为共享宿舍骨架的实测东侧接入，运行时不调用高德"
+    },
+    {
+      "from": "weijinlu_dorm_3",
+      "to": "weijinlu_junction_east_core_roadside",
+      "distance_m": 855,
+      "modes": ["walk"],
+      "bidirectional": true,
+      "source": "高德开发期 direction/walking v3：三斋关联服务 POI至第九教学楼 855m；路线经校园内求是路、铭德道、花堤路，结合官方卫津路校区导览道路关系复核；运行时不调用高德"
+    },
+    {
+      "from": "weijinlu_pengxiang_student_apartment",
+      "to": "weijinlu_junction_east_core_roadside",
+      "distance_m": 745,
+      "distance_by_mode": {"walk": 745, "bike": 750},
+      "modes": ["walk", "bike"],
+      "bidirectional": true,
+      "source": "高德开发期 direction/walking v3=745m、direction/bicycling v4=750m：鹏翔学生公寓至第九教学楼；路线经校园内铭德道、花堤路，结合官方卫津路校区导览道路关系复核；运行时不调用高德"
+    },
+    {
+      "from": "weijinlu_building_9",
+      "to": "weijinlu_chunshui_library",
+      "distance_m": 150,
+      "modes": ["walk", "bike"],
+      "bidirectional": true,
+      "source": "高德开发期 direction/walking v3=150m；direction/bicycling v4=150m；端点坐标均经天津大学官方地图/导览名称核验，运行时不调用高德。"
+    },
+    {"from":"weijinlu_building_2","to":"weijinlu_junction_huadi_yizhi","distance_m":43,"distance_by_mode":{"walk":43,"bike":49},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=43m, bicycling v4=49m."},
+    {"from":"weijinlu_junction_huadi_yizhi","to":"weijinlu_road_huadi_core","distance_m":96,"distance_by_mode":{"walk":96,"bike":96},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3 and direction/bicycling v4: shared Huadi Road step."},
+    {"from":"weijinlu_road_huadi_core","to":"weijinlu_junction_east_core_roadside","distance_m":24,"distance_by_mode":{"walk":24,"bike":24},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3 and direction/bicycling v4: verified 24m 花堤路 core shared step to the east-core roadside junction."},
+    {"from":"weijinlu_building_12","to":"weijinlu_road_huadi_north","distance_m":28,"distance_by_mode":{"walk":28,"bike":29},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=28m, bicycling v4=29m."},
+    {"from":"weijinlu_road_huadi_north","to":"weijinlu_junction_huadi_yizhi","distance_m":189,"distance_by_mode":{"walk":189,"bike":189},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3 and direction/bicycling v4: Huadi Road north shared step."},
+    {"from":"weijinlu_building_6","to":"weijinlu_junction_jingye_huadi","distance_m":36,"distance_by_mode":{"walk":36,"bike":41},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=36m, bicycling v4=41m."},
+    {"from":"weijinlu_junction_jingye_huadi","to":"weijinlu_road_huadi_core","distance_m":53,"distance_by_mode":{"walk":53,"bike":54},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development shared step: walking v3=53m, bicycling v4=54m."},
+    {"from":"weijinlu_building_11","to":"weijinlu_junction_qiushi_mingde","distance_m":67,"distance_by_mode":{"walk":67,"bike":67},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=67m, bicycling v4=67m."},
+    {"from":"weijinlu_building_16","to":"weijinlu_junction_qiushi_mingde","distance_m":47,"distance_by_mode":{"walk":47,"bike":47},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=47m, bicycling v4=47m."},
+    {"from":"weijinlu_junction_qiushi_mingde","to":"weijinlu_junction_mingde_huadi","distance_m":228,"distance_by_mode":{"walk":228,"bike":228},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development shared Mingde Road segment: walking v3=228m, bicycling v4=228m."},
+    {"from":"weijinlu_junction_mingde_huadi","to":"weijinlu_road_huadi_core","distance_m":156,"distance_by_mode":{"walk":156,"bike":135},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development shared step: walking v3=156m, bicycling v4=135m."},
+    {"from":"weijinlu_building_15","to":"weijinlu_junction_mingde_huadi","distance_m":101,"distance_by_mode":{"walk":101,"bike":101},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=101m, bicycling v4=101m."},
+    {"from":"weijinlu_building_18","to":"weijinlu_junction_jingye_huadi","distance_m":294,"distance_by_mode":{"walk":294,"bike":385},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=294m, bicycling v4=385m through Qiushi/Jingye roads."},
+    {"from":"weijinlu_building_19","to":"weijinlu_junction_jingye_huadi","distance_m":247,"distance_by_mode":{"walk":247,"bike":247},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=247m, bicycling v4=247m."},
+    {"from":"weijinlu_building_5","to":"weijinlu_road_jingye_east","distance_m":279,"distance_by_mode":{"walk":279,"bike":279},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=279m, bicycling v4=279m."},
+    {"from":"weijinlu_building_10","to":"weijinlu_road_jingye_east","distance_m":349,"distance_by_mode":{"walk":349,"bike":349},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=349m, bicycling v4=349m."},
+    {"from":"weijinlu_road_jingye_east","to":"weijinlu_junction_east_core_roadside","distance_m":63,"distance_by_mode":{"walk":63,"bike":64},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development shared final approach: walking v3=63m, bicycling v4=64m; endpoint is the east-core roadside junction."},
+    {"from":"weijinlu_building_17","to":"weijinlu_road_taile_south","distance_m":112,"distance_by_mode":{"walk":112,"bike":113},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=112m, bicycling v4=113m."},
+    {"from":"weijinlu_building_24","to":"weijinlu_road_taile_south","distance_m":118,"distance_by_mode":{"walk":118,"bike":117},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=118m, bicycling v4=117m."}
+    ,{"from":"weijinlu_building_1","to":"weijinlu_road_taile_south","distance_m":123,"distance_by_mode":{"walk":123,"bike":123},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3=123m and direction/bicycling v4=123m: corrected building 1 approximate anchor to Taile Road south shared node."}
+    ,{"from":"weijinlu_building_13","to":"weijinlu_road_huadi_north","distance_m":113,"distance_by_mode":{"walk":113,"bike":113},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3=113m and direction/bicycling v4=113m: corrected building 13 approximate anchor via Yizhi Road/Huadi Road to shared node."}
+    ,{"from":"weijinlu_road_taile_south","to":"weijinlu_road_taile_bike_final","distance_m":96,"modes":["bike"],"bidirectional":true,"source":"AMap development direction/bicycling v4=96m: Taile Road south shared bike segment."}
+    ,{"from":"weijinlu_road_taile_bike_final","to":"weijinlu_junction_east_core_roadside","distance_m":31,"modes":["bike"],"bidirectional":true,"source":"AMap development direction/bicycling v4=31m: final verified approach to the east-core roadside junction."}
+    ,{"from":"weijinlu_building_9","to":"weijinlu_junction_east_core_roadside","distance_m":4,"distance_by_mode":{"walk":4,"bike":4},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3 and direction/bicycling v4: verified 4m local entrance connection from 第九教学楼 representative anchor to the adjacent east-core roadside junction."}
+    ,{"from":"weijinlu_building_3","to":"weijinlu_junction_jingye_huadi","distance_m":143,"distance_by_mode":{"walk":143,"bike":143},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=143m, bicycling v4=143m."}
+    ,{"from":"weijinlu_building_4","to":"weijinlu_junction_huadi_yizhi","distance_m":143,"distance_by_mode":{"walk":143,"bike":143},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=143m, bicycling v4=143m."}
+    ,{"from":"weijinlu_building_7","to":"weijinlu_road_huadi_core","distance_m":243,"distance_by_mode":{"walk":243,"bike":243},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=243m, bicycling v4=243m."}
+    ,{"from":"weijinlu_building_20","to":"weijinlu_road_huadi_north","distance_m":79,"distance_by_mode":{"walk":79,"bike":79},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=79m, bicycling v4=79m."}
+    ,{"from":"weijinlu_building_21","to":"weijinlu_junction_qiushi_mingde","distance_m":89,"distance_by_mode":{"walk":89,"bike":89},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=89m, bicycling v4=89m from official-map approximate anchor."}
+    ,{"from":"weijinlu_building_23","to":"weijinlu_junction_qiushi_mingde","distance_m":24,"distance_by_mode":{"walk":24,"bike":24},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=24m, bicycling v4=24m from official-map approximate anchor."}
+    ,{"from":"weijinlu_building_8","to":"weijinlu_junction_huadi_yizhi","distance_m":148,"distance_by_mode":{"walk":148,"bike":148},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=148m, bicycling v4=148m from official-map approximate anchor."}
+    ,{"from":"weijinlu_building_14","to":"weijinlu_road_taile_south","distance_m":71,"distance_by_mode":{"walk":71,"bike":71},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=71m, bicycling v4=71m from official-map approximate anchor."}
+    ,{"from":"weijinlu_building_35","to":"weijinlu_junction_taile_jingye","distance_m":168,"distance_by_mode":{"walk":168,"bike":168},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=168m, bicycling v4=168m from official-map approximate anchor."}
+    ,{"from":"weijinlu_junction_taile_jingye","to":"weijinlu_road_taile_bike_final","distance_m":92,"modes":["bike"],"bidirectional":true,"source":"AMap development direction/bicycling v4=92m: southeast shared junction to verified Taile bike-final node."}
+    ,{"from":"weijinlu_building_26","to":"weijinlu_junction_jingye_huadi","distance_m":290,"distance_by_mode":{"walk":290,"bike":290},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=290m, bicycling v4=290m from official building-complex representative anchor to the south/core shared junction."}
+    ,{"from":"weijinlu_canteen_1","to":"weijinlu_junction_qiushi_mingde","distance_m":412,"distance_by_mode":{"walk":412,"bike":412},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=412m, bicycling v4=412m."}
+    ,{"from":"weijinlu_canteen_3","to":"weijinlu_junction_taile_jingye","distance_m":176,"distance_by_mode":{"walk":176,"bike":176},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=176m, bicycling v4=176m."}
+    ,{"from":"weijinlu_canteen_4","to":"weijinlu_road_taile_southeast","distance_m":87,"distance_by_mode":{"walk":87,"bike":87},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=87m, bicycling v4=87m."}
+    ,{"from":"weijinlu_canteen_5","to":"weijinlu_road_mingde_west","distance_m":176,"distance_by_mode":{"walk":176,"bike":176},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=176m, bicycling v4=176m."}
+    ,{"from":"weijinlu_library_main","to":"weijinlu_junction_jingye_huadi","distance_m":146,"distance_by_mode":{"walk":146,"bike":146},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=146m, bicycling v4=146m from official-map approximate anchor."}
+    ,{"from":"weijinlu_science_library","to":"weijinlu_junction_jingye_huadi","distance_m":327,"distance_by_mode":{"walk":327,"bike":327},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=327m, bicycling v4=327m from official-map approximate anchor."}
+    ,{"from":"weijinlu_lecture_hall","to":"weijinlu_road_huadi_north","distance_m":135,"distance_by_mode":{"walk":135,"bike":135},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=135m, bicycling v4=135m from official-map approximate anchor."}
+    ,{"from":"weijinlu_east_lecture_hall","to":"weijinlu_junction_huadi_yizhi","distance_m":62,"distance_by_mode":{"walk":62,"bike":62},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=62m, bicycling v4=62m from official-map approximate anchor."}
+    ,{"from":"weijinlu_west_lecture_hall","to":"weijinlu_junction_jingye_huadi","distance_m":151,"distance_by_mode":{"walk":151,"bike":151},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=151m, bicycling v4=151m from official-map approximate anchor."}
+    ,{"from":"weijinlu_road_mingde_west","to":"weijinlu_junction_mingde_huadi","distance_m":492,"modes":["bike"],"bidirectional":true,"source":"AMap development direction/bicycling v4=492m: shared Mingde Road bike segment."}
+    ,{"from":"weijinlu_road_taile_southeast","to":"weijinlu_road_taile_bike_final","distance_m":359,"modes":["bike"],"bidirectional":true,"source":"AMap development direction/bicycling v4=359m: shared southeast bike segment."}
+    ,{"from":"weijinlu_dorm_1","to":"weijinlu_road_mingde_west","distance_m":365,"distance_by_mode":{"walk":365,"bike":367},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access audit: walking v3=365m; bicycling v4=367m from 一号斋 anchor to the shared 铭德道 west road node."}
+    ,{"from":"weijinlu_dorm_3","to":"weijinlu_road_mingde_west","distance_m":526,"distance_by_mode":{"walk":526,"bike":526},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access audit: walking v3=526m; bicycling v4=526m from 三斋 anchor to the shared 铭德道 west road node."}
+    ,{"from":"weijinlu_remote_education_college","to":"weijinlu_road_mingde_west","distance_m":558,"distance_by_mode":{"walk":558,"bike":558},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=558m; bicycling v4=558m from Remote Education College to the shared west Mingde Road node."}
+    ,{"from":"weijinlu_international_education_college","to":"weijinlu_road_huadi_north","distance_m":70,"distance_by_mode":{"walk":70,"bike":70},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=70m; bicycling v4=70m to the shared Huadi Road north node."}
+    ,{"from":"weijinlu_road_north_math_access","to":"weijinlu_junction_anshanxidao_taile","distance_m":582,"distance_by_mode":{"walk":582,"bike":587},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development shared north-campus route: walking v3=582m; bicycling v4=587m via verified road steps, connecting the Youth-Lake north side to the Anshanxi Road/Taile junction without a lake-crossing edge."}
+    ,{"from":"weijinlu_information_network_center","to":"weijinlu_road_huadi_north","distance_m":32,"distance_by_mode":{"walk":32,"bike":32},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=32m; bicycling v4=32m to the shared Huadi Road north node."}
+    ,{"from":"weijinlu_feng_jicai_literature_art_institute","to":"weijinlu_road_huadi_north","distance_m":113,"distance_by_mode":{"walk":113,"bike":113},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=113m; bicycling v4=113m to the shared Huadi Road north node."}
+    ,{"from":"weijinlu_wang_xuezhong_art_institute","to":"weijinlu_junction_qiushi_mingde","distance_m":69,"distance_by_mode":{"walk":69,"bike":69},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=69m; bicycling v4=69m to the shared Qiushi/Mingde junction."}
+    ,{"from":"weijinlu_strategy_institute","to":"weijinlu_junction_jingye_huadi","distance_m":143,"distance_by_mode":{"walk":143,"bike":143},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=143m; bicycling v4=143m from the official-map approximate Strategy Institute representative anchor to the shared Jingye/Huadi junction."}
+    ,{"from":"weijinlu_remote_education_college","to":"weijinlu_road_north_math_access","distance_m":246,"distance_by_mode":{"walk":246,"bike":246},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development north-area local access audit: walking v3=246m; bicycling v4=246m from Remote Education College to the shared north-campus road point."}
+    ,{"from":"weijinlu_dorm_25","to":"weijinlu_road_north_math_access","distance_m":108,"distance_by_mode":{"walk":108,"bike":108},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development north-area local access audit: walking v3=108m; bicycling v4=108m from dormitory 25 to the shared north-campus road point."}
+    ,{"from":"weijinlu_beiyang_science_building","to":"weijinlu_road_south_research_access","distance_m":78,"distance_by_mode":{"walk":78,"bike":78},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=78m; bicycling v4=78m from the official-map approximate Beiyang Science Building anchor."}
+    ,{"from":"weijinlu_road_south_research_access","to":"weijinlu_junction_jingye_huadi","distance_m":219,"distance_by_mode":{"walk":219,"bike":219},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development south research-area shared segment: walking v3=219m; bicycling v4=219m to the Jingye/Huadi junction."}
+    ,{"from":"weijinlu_medical_teaching_building","to":"weijinlu_road_taile_south","distance_m":286,"distance_by_mode":{"walk":286,"bike":286},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=286m; bicycling v4=286m via verified east-campus road steps to Taile Road south."}
+    ,{"from":"weijinlu_comprehensive_experiment_building","to":"weijinlu_road_east_lab_access","distance_m":47,"distance_by_mode":{"walk":47,"bike":47},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=47m; bicycling v4=47m from the official-map approximate Comprehensive Experiment Building anchor."}
+    ,{"from":"weijinlu_road_east_lab_access","to":"weijinlu_road_taile_south","distance_m":181,"distance_by_mode":{"walk":181,"bike":181},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development east teaching-area shared segment: walking v3=181m; bicycling v4=181m to Taile Road south."}
+    ,{"from":"weijinlu_internal_combustion_engine_building","to":"weijinlu_road_taile_south","distance_m":304,"distance_by_mode":{"walk":304,"bike":309},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=304m; bicycling v4=309m via verified east-campus road steps to Taile Road south."}
+    ,{"from":"weijinlu_electrical_engineering_team","to":"weijinlu_junction_huadi_yizhi","distance_m":135,"distance_by_mode":{"walk":135,"bike":135},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=135m; bicycling v4=135m to the Huadi/Yizhi shared junction."}
+    ,{"from":"weijinlu_power_station_3_5kv","to":"weijinlu_junction_huadi_yizhi","distance_m":97,"distance_by_mode":{"walk":97,"bike":97},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=97m; bicycling v4=97m from the official-map approximate 3.5KV Power Station representative anchor to the Huadi/Yizhi shared junction."}
+    ,{"from":"weijinlu_union","to":"weijinlu_road_huadi_north","distance_m":114,"distance_by_mode":{"walk":114,"bike":114},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=114m; bicycling v4=114m to the shared Huadi Road north node."}
+    ,{"from":"weijinlu_staff_home","to":"weijinlu_road_huadi_north","distance_m":353,"distance_by_mode":{"walk":353,"bike":384},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=353m; bicycling v4=384m from the official-map approximate Staff Home representative anchor to Huadi Road north."}
+    ,{"from":"weijinlu_alumni_home","to":"weijinlu_road_west_service_access","distance_m":39,"distance_by_mode":{"walk":39,"bike":39},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=39m; bicycling v4=39m from the official-map approximate Alumni Home anchor."}
+    ,{"from":"weijinlu_road_west_service_access","to":"weijinlu_junction_qiushi_mingde","distance_m":63,"distance_by_mode":{"walk":63,"bike":63},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development west service-area shared segment: walking v3=63m; bicycling v4=63m to the Qiushi/Mingde junction."}
+    ,{"from":"weijinlu_liuyuan","to":"weijinlu_junction_qiushi_mingde","distance_m":50,"distance_by_mode":{"walk":50,"bike":50},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=50m; bicycling v4=50m from the official-map approximate Liuyuan anchor to the Qiushi/Mingde junction."}
+    ,{"from":"weijinlu_tianan_building","to":"weijinlu_junction_taile_jingye","distance_m":143,"distance_by_mode":{"walk":143,"bike":143},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development local access: walking v3=143m; bicycling v4=143m from the official-map approximate Tianan Building anchor to the Taile/Jingye shared junction."}
+    ,{"from":"weijinlu_school_hospital","to":"weijinlu_road_north_math_access","distance_m":301,"distance_by_mode":{"walk":301,"bike":312},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development north-area local access audit: walking v3=301m; bicycling v4=312m from Campus Hospital to the shared north-campus road point."}
+    ,{"from":"weijinlu_student_activity_center","to":"weijinlu_road_youth_lake_west","distance_m":62,"distance_by_mode":{"walk":62,"bike":62},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development Youth-Lake west corridor local access: walking v3=62m; bicycling v4=62m."}
+    ,{"from":"weijinlu_road_youth_lake_west","to":"weijinlu_junction_youth_lake_southwest","distance_m":67,"distance_by_mode":{"walk":67,"bike":67},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development Youth-Lake west corridor shared segment: walking v3=67m; bicycling v4=67m."}
+    ,{"from":"weijinlu_junction_youth_lake_southwest","to":"weijinlu_road_huadi_north","distance_m":309,"distance_by_mode":{"walk":309,"bike":309},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development Youth-Lake southwest to core-teaching shared segment: walking v3=309m; bicycling v4=309m; route steps follow campus roads rather than a lake-crossing edge."}
+    ,{"from":"weijinlu_dorm_31","to":"weijinlu_road_youth_lake_west","distance_m":202,"distance_by_mode":{"walk":202,"bike":202},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development Youth-Lake west local access audit: walking v3=202m; bicycling v4=202m from dormitory 31 to the shared corridor."}
+    ,{"from":"weijinlu_applied_math_center","to":"weijinlu_road_youth_lake_west","distance_m":114,"distance_by_mode":{"walk":114,"bike":114},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development Youth-Lake north local access audit: walking v3=114m; bicycling v4=114m from Applied Mathematics Center to the shared corridor."}
+    ,{"from":"weijinlu_school_history_museum","to":"weijinlu_road_taile_south","distance_m":123,"distance_by_mode":{"walk":123,"bike":123},"modes":["walk","bike"],"bidirectional":true,"source":"Representative visitor access: official Tianjin University reporting places the museum in front of Building 1; it reuses Building 1's already verified AMap walking/bicycling road-side access fact, without inventing a museum-centroid route."}
+    ,{"from":"weijinlu_press","to":"weijinlu_junction_jingye_huadi","distance_m":247,"distance_by_mode":{"walk":247,"bike":247},"modes":["walk","bike"],"bidirectional":true,"source":"Co-located east-annex access: the Press is at Building 19 east annex, whose verified AMap walking/bicycling access to the Jingye/Huadi shared junction is 247m."}
+    ,{"from":"weijinlu_periodicals_center","to":"weijinlu_junction_jingye_huadi","distance_m":247,"distance_by_mode":{"walk":247,"bike":247},"modes":["walk","bike"],"bidirectional":true,"source":"Co-located east-annex access: the Periodicals Center official address is Building 19 east annex and therefore uses the same verified physical entrance/access fact as the Press."}
+    ,{"from":"weijinlu_meeting_building","to":"weijinlu_road_mingde_west","distance_m":342,"distance_by_mode":{"walk":342,"bike":342},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3 and direction/bicycling v4: meeting-building candidate to Mingde Road west, with 100m Hubin Road + 163m campus lane + 79m Mingde Road steps."}
+    ,{"from":"weijinlu_stadium","to":"weijinlu_road_sports_taile_north","distance_m":191,"distance_by_mode":{"walk":191,"bike":191},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3 and direction/bicycling v4 first shared sports-area campus-lane step: 191m."}
+    ,{"from":"weijinlu_sports_department","to":"weijinlu_road_sports_taile_north","distance_m":191,"distance_by_mode":{"walk":191,"bike":191},"modes":["walk","bike"],"bidirectional":true,"source":"体育部与体育场位于同一体育场建筑区域；AMap development walking/bicycling route snapped both representatives to the same 191m sports-area campus-lane step. This is compatible shared access evidence, not a POI-to-POI road edge."}
+    ,{"from":"weijinlu_road_sports_taile_north","to":"weijinlu_road_taile_south","distance_m":349,"distance_by_mode":{"walk":349,"bike":349},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3 and direction/bicycling v4 shared 太雷路 step: 349m from the sports-area north entry to the existing south Taile waypoint."}
+    ,{"from":"weijinlu_meeting_building","to":"weijinlu_road_hubin_jingye_west","distance_m":119,"distance_by_mode":{"walk":119,"bike":95},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3=119m and direction/bicycling v4=95m on the Hubin Road step from the meeting-building candidate to the west Jingye corridor point."}
+    ,{"from":"weijinlu_road_hubin_jingye_west","to":"weijinlu_junction_jingye_huadi","distance_m":449,"distance_by_mode":{"walk":449,"bike":449},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3 and direction/bicycling v4 shared Jingye Road step: 449m to the existing Jingye/Huadi junction."}
+    ,{"from":"weijinlu_gate_sancun","to":"weijinlu_junction_yuquan_huying","distance_m":56,"distance_by_mode":{"walk":56,"bike":56},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3 and direction/bicycling v4: 玉泉路 first campus-side step from the audited 三村门 representative anchor, 56m."}
+    ,{"from":"weijinlu_junction_yuquan_huying","to":"weijinlu_road_huying_west","distance_m":161,"distance_by_mode":{"walk":161,"bike":161},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3 and direction/bicycling v4 shared 湖影道 step, 161m."}
+    ,{"from":"weijinlu_road_huying_west","to":"weijinlu_road_sancun_internal_south","distance_m":218,"distance_by_mode":{"walk":218,"bike":218},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3 and direction/bicycling v4 unnamed campus-internal southbound step, 218m."}
+    ,{"from":"weijinlu_road_sancun_internal_south","to":"weijinlu_road_mingde_west","distance_m":79,"distance_by_mode":{"walk":79,"bike":79},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3 and direction/bicycling v4 铭德道 step, 79m."}
+    ,{"from":"weijinlu_gate_mingde","to":"weijinlu_road_mingde_west","distance_m":69,"distance_by_mode":{"walk":69,"bike":69},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3 and direction/bicycling v4 铭德道 gate access, 69m."}
+    ,{"from":"weijinlu_gate_west","to":"weijinlu_road_hubin_jingye_west","distance_m":92,"distance_by_mode":{"walk":92,"bike":92},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3 and direction/bicycling v4 湖滨道 west-gate campus-side access, 92m."}
+    ,{"from":"weijinlu_gate_north","to":"weijinlu_junction_anshanxidao_taile","distance_m":110,"distance_by_mode":{"walk":65,"bike":110},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development gate-to-campus-side route: walking v3 follows 鞍山西道 65m; bicycling v4 follows the permitted 太雷路 approach 110m."}
+    ,{"from":"weijinlu_gate_east","to":"weijinlu_junction_beiyang_taile_east","distance_m":341,"distance_by_mode":{"walk":341,"bike":324},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development East Gate campus-side steps: walking v3 uses 17m 敬业道 + 324m 北洋道; bicycling v4 uses the 324m 北洋道 shared segment."}
+    ,{"from":"weijinlu_junction_beiyang_taile_east","to":"weijinlu_road_taile_southeast","distance_m":165,"distance_by_mode":{"walk":165,"bike":165},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3 and direction/bicycling v4 shared 太雷路 step, 165m to the existing southeast campus road node."}
+    ,{"from":"weijinlu_lake_youth","to":"weijinlu_road_youth_lake_west","distance_m":89,"distance_by_mode":{"walk":89,"bike":89},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development walking/bicycling shoreline access from the verified 天津大学青年湖 candidate to the existing Youth-Lake west shared road node, 89m."}
+    ,{"from":"weijinlu_lake_aiwan","to":"weijinlu_road_west_service_access","distance_m":119,"distance_by_mode":{"walk":119,"bike":119},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development walking/bicycling reachable 爱晚湖 shoreline access to the west-service shared road node, 119m."}
+    ,{"from":"weijinlu_lake_youyi","to":"weijinlu_road_west_service_access","distance_m":359,"distance_by_mode":{"walk":359,"bike":359},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development walking/bicycling 友谊湖 shoreline access: 89m internal shore path + 234m 湖滨道 + 36m 求是路 to the shared west-service road node."}
+    ,{"from":"weijinlu_lake_jingye","to":"weijinlu_junction_jingye_huadi","distance_m":151,"distance_by_mode":{"walk":151,"bike":151},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development walking/bicycling reachable 敬业湖 shoreline access: 17m shore-side path + 134m 敬业道 to the existing Jingye/Huadi shared junction."}
+    ,{"from":"weijinlu_landmark_beiyang_garden","to":"weijinlu_road_taile_south","distance_m":177,"distance_by_mode":{"walk":177,"bike":177},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development walking/bicycling campus-side access from the verified 北洋园 memorial-landmark control anchor: 50m internal path + 太雷路/敬业道 route steps, 177m."}
+    ,{"from":"weijinlu_landmark_beiyang_square","to":"weijinlu_junction_beiyang_taile_east","distance_m":152,"distance_by_mode":{"walk":152,"bike":152},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development walking/bicycling campus-side access from 北洋广场: 94m internal path + 58m 太雷路 to the existing east shared junction."}
+    ,{"from":"weijinlu_landmark_qiushi_pavilion","to":"weijinlu_junction_jingye_huadi","distance_m":151,"distance_by_mode":{"walk":151,"bike":151},"modes":["walk","bike"],"bidirectional":true,"source":"求是亭 uses the same verified reachable 敬业湖 northeast shoreline viewing/access fact as the lake landmark; this is a terminal access, not a water-crossing edge."}
+    ,{"from":"weijinlu_road_jinhui_hubin","to":"weijinlu_junction_jinhui_mingde","distance_m":138,"distance_by_mode":{"walk":138,"bike":138},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3 and direction/bicycling v4: 金晖路 named shared segment, 138m."}
+    ,{"from":"weijinlu_junction_jinhui_mingde","to":"weijinlu_road_mingde_west","distance_m":71,"distance_by_mode":{"walk":71,"bike":71},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3 and direction/bicycling v4: 铭德道 named continuation from the 金晖路 transition to the existing west 铭德道 road node, 71m."}
+    ,{"from":"weijinlu_road_xudong_east","to":"weijinlu_junction_xudong_taile","distance_m":238,"distance_by_mode":{"walk":238,"bike":238},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3 and direction/bicycling v4: 旭东路 named shared segment, 238m."}
+    ,{"from":"weijinlu_junction_xudong_taile","to":"weijinlu_road_taile_south","distance_m":46,"distance_by_mode":{"walk":46,"bike":46},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3 and direction/bicycling v4: 太雷路 named continuation from the 旭东路 transition, 46m."}
+    ,{"from":"weijinlu_road_taile_southeast","to":"weijinlu_junction_east_core_roadside","distance_m":362,"distance_by_mode":{"walk":362,"bike":362},"modes":["walk","bike"],"bidirectional":true,"source":"AMap development direction/walking v3 and direction/bicycling v4: shared 太雷路—敬业道 east-core corridor from the southeast Taile node to the east-core roadside junction (268m 太雷路 + 28m 敬业道 + 32m turn + 34m local road). Replaces the former 友园→9教 legacy edge without using a POI access as transit."}
+  ]
+}

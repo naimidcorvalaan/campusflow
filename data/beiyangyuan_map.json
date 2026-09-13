@@ -1,0 +1,6147 @@
+{
+ "metadata": {
+  "schema_version": "p3.campus-map.v1",
+  "campus_id": "beiyangyuan",
+  "campus": "天津大学北洋园校区",
+  "data_status": "routable",
+  "provenance": "real_map",
+  "source_note": "高德 Web API 开发阶段采集；运行时静态加载，不依赖高德",
+  "note": "P3d 博学园/三问园纠错（用户确认此前“三问园=博学园”判断错误）：博学园=25/26斋（南侧，旧官方图“博学园”标注≈38.994305,117.310381，与高德“平原26斋”POI 几乎重合；25斋对应高德“北洋园校区25A”）；三问园=27/28/29/30斋（北侧平园以西）。两园区相距约590m，为独立园区，互不为 alias。官方新版图索引列将三问园28/29误标为“博学园28/29斋”，用户确认不采用该名称归属。；修正：删除三问园节点上全部“博学园*”别名；新增博学园园区级/25斋/26斋独立节点（provenance=tju_official_map_approximate，名称归属为推断，不冒充高德直接核验）；博学园路网按高德 direction 实测接入南侧治园/南门/太雷广场。；仍无法可靠定位（不编造）：56教/57教、篮球场/排球场、敬业湖/校训石。"
+ },
+ "nodes": [
+  {
+   "id": "administrative_service_center",
+   "name": "天津大学北洋园校区行政服务中心",
+   "aliases": [
+    "行政服务中心"
+   ],
+   "category": "service",
+   "latitude": 39.000136,
+   "longitude": 117.320237,
+   "source": "高德 POI 检索（id=B0FFGAPYEL，关键词=天津大学北洋园校区行政服务中心，POI名=天津大学北洋园校区行政服务中心）"
+  },
+  {
+   "id": "beiyang_clinic",
+   "name": "北洋门诊部",
+   "aliases": [
+    "北洋门诊部",
+    "门诊部"
+   ],
+   "category": "medical",
+   "latitude": 39.003623,
+   "longitude": 117.320872,
+   "source": "高德 POI 检索（id=B0FFGJ1TON，关键词=天津大学北洋园校区北洋门诊部，POI名=北洋门诊部）"
+  },
+  {
+   "id": "beiyang_memorial_forest",
+   "name": "天津大学北洋园校区北洋纪念林",
+   "aliases": [
+    "北洋纪念林"
+   ],
+   "category": "landmark",
+   "latitude": 38.99931,
+   "longitude": 117.314689,
+   "source": "高德 POI 检索（id=B0FFH6U2KJ，关键词=天津大学北洋园校区北洋纪念林，POI名=天津大学北洋园校区北洋纪念林）"
+  },
+  {
+   "id": "beiyang_plaza",
+   "name": "天津大学北洋园校区北洋广场",
+   "aliases": [
+    "北洋广场"
+   ],
+   "category": "landmark",
+   "latitude": 38.996895,
+   "longitude": 117.323622,
+   "source": "高德 POI 检索（id=B0FFH2G2TT，关键词=北洋广场）"
+  },
+  {
+   "id": "beiyang_stadium",
+   "name": "天津大学北洋园校区体育场",
+   "aliases": [
+    "体育场",
+    "操场",
+    "田径场"
+   ],
+   "category": "sports",
+   "latitude": 39.002182,
+   "longitude": 117.321762,
+   "source": "高德 POI 检索（id=B0H2PUR9JT，关键词=北洋园校区体育场）"
+  },
+  {
+   "id": "beiyang_supermarket_pingyuan",
+   "name": "北洋超市(平园店)",
+   "aliases": [
+    "北洋超市",
+    "超市"
+   ],
+   "category": "service",
+   "latitude": 39.000146,
+   "longitude": 117.312243,
+   "source": "高德 POI 检索（id=B0FFGIP8WA，关键词=北洋超市）"
+  },
+  {
+   "id": "beiyangyuan_east_gate",
+   "name": "天津大学北洋园校区东门",
+   "aliases": [
+    "东门"
+   ],
+   "category": "gate",
+   "latitude": 38.99669,
+   "longitude": 117.326266,
+   "source": "TJU 官方地图近似（多控制点仿射校准，非高德精确坐标）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "beiyangyuan_metro_station",
+   "name": "天津大学北洋园校区(地铁站)",
+   "aliases": [
+    "地铁站",
+    "北洋园地铁站"
+   ],
+   "category": "transit",
+   "latitude": 38.992667,
+   "longitude": 117.308574,
+   "source": "高德 POI 检索（id=BV11140344，关键词=北洋园校区地铁站）"
+  },
+  {
+   "id": "beiyangyuan_north_cainiao",
+   "name": "菜鸟驿站(北洋园北区)",
+   "aliases": [
+    "北区菜鸟驿站",
+    "菜鸟驿站",
+    "北区菜鸟",
+    "北菜"
+   ],
+   "category": "logistics",
+   "latitude": 39.000696,
+   "longitude": 117.31343,
+   "source": "高德 POI 检索（id=B0J19MRFJB，关键词=北洋园 菜鸟驿站 天津大学）"
+  },
+  {
+   "id": "beiyangyuan_north_gate",
+   "name": "天津大学北洋园校区北门",
+   "aliases": [
+    "北门"
+   ],
+   "category": "gate",
+   "latitude": 39.003659,
+   "longitude": 117.311976,
+   "source": "TJU 官方地图近似（多控制点仿射校准，非高德精确坐标）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "beiyangyuan_north_parking_entrance",
+   "name": "天津大学北洋园校区停车场(出入口)",
+   "aliases": [
+    "北区停车场入口",
+    "停车场出入口"
+   ],
+   "category": "gate",
+   "latitude": 39.003327,
+   "longitude": 117.312237,
+   "source": "高德 POI 检索（id=B0FFK7JZHS，关键词=北洋园校区 停车场出入口）"
+  },
+  {
+   "id": "beiyangyuan_northeast_gate",
+   "name": "天津大学北洋园校区东北门",
+   "aliases": [
+    "东北门"
+   ],
+   "category": "gate",
+   "latitude": 39.004317,
+   "longitude": 117.323059,
+   "source": "TJU 官方地图近似（多控制点仿射校准，非高德精确坐标）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "beiyangyuan_northwest_gate",
+   "name": "天津大学北洋园校区西北门",
+   "aliases": [
+    "西北门",
+    "西北门（二期）"
+   ],
+   "category": "gate",
+   "latitude": 39.001298,
+   "longitude": 117.304607,
+   "source": "TJU 官方地图近似（多控制点仿射校准，非高德精确坐标）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "beiyangyuan_south_cainiao",
+   "name": "菜鸟驿站(北洋园南区)",
+   "aliases": [
+    "南区菜鸟驿站",
+    "南菜"
+   ],
+   "category": "logistics",
+   "latitude": 38.992544,
+   "longitude": 117.312269,
+   "source": "高德 POI 检索（id=B0LGV1XQJ9，关键词=北洋园 菜鸟驿站 天津大学）"
+  },
+  {
+   "id": "beiyangyuan_south_express_station",
+   "name": "天津大学北洋园校区南区快递站",
+   "aliases": [
+    "南区快递站"
+   ],
+   "category": "logistics",
+   "latitude": 38.995375,
+   "longitude": 117.320975,
+   "source": "高德 POI 检索（id=B0MABCSZDN，关键词=天津大学北洋园校区南区快递站，POI名=天津大学北洋园校区南区快递站）"
+  },
+  {
+   "id": "beiyangyuan_south_gate",
+   "name": "天津大学北洋园校区南门停车场",
+   "aliases": [
+    "南门",
+    "北洋园南门"
+   ],
+   "category": "gate",
+   "latitude": 38.993514,
+   "longitude": 117.31146,
+   "source": "高德 POI 检索（id=B0FFH6OC8D，关键词=北洋园校区南门）"
+  },
+  {
+   "id": "beiyangyuan_southeast_gate",
+   "name": "天津大学北洋园校区东南门",
+   "aliases": [
+    "东南门"
+   ],
+   "category": "gate",
+   "latitude": 38.990427,
+   "longitude": 117.319243,
+   "source": "TJU 官方地图近似（多控制点仿射校准，非高德精确坐标）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "beiyangyuan_southwest_gate",
+   "name": "天津大学北洋园校区西南门",
+   "aliases": [
+    "西南门"
+   ],
+   "category": "gate",
+   "latitude": 38.994417,
+   "longitude": 117.303735,
+   "source": "TJU 官方地图近似（多控制点仿射校准，非高德精确坐标）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "building_31",
+   "name": "31教",
+   "aliases": [
+    "31楼",
+    "31教学楼",
+    "31教"
+   ],
+   "category": "teaching",
+   "latitude": 38.994225,
+   "longitude": 117.316225,
+   "source": "高德 POI 检索（id=B0MG4OZDMD）——POI原始命名含园区前缀，经P3e地点验收确认该前缀与31教无从属关系，正式名称取“31教”"
+  },
+  {
+   "id": "building_33",
+   "name": "天津大学北洋园校区33教学楼",
+   "aliases": [
+    "33楼",
+    "33教学楼",
+    "33教"
+   ],
+   "category": "teaching",
+   "latitude": 38.99557,
+   "longitude": 117.320989,
+   "source": "高德 POI 检索（id=None，关键词=天津大学北洋园校区33教学楼，POI名=天津市津南区天津大学北洋园校区33教）"
+  },
+  {
+   "id": "building_34",
+   "name": "天津大学北洋园校区34教学楼",
+   "aliases": [
+    "34楼",
+    "34教学楼",
+    "34教"
+   ],
+   "category": "teaching",
+   "latitude": 38.991174,
+   "longitude": 117.320175,
+   "source": "高德 POI 检索（id=B0MAM17FGQ，关键词=34教学楼）"
+  },
+  {
+   "id": "building_35",
+   "name": "天津大学北洋园校区35教学楼",
+   "aliases": [
+    "35楼",
+    "35教学楼",
+    "35教",
+    "机械工程实践教学中心"
+   ],
+   "category": "teaching",
+   "latitude": 38.991855,
+   "longitude": 117.318316,
+   "source": "高德 POI 检索（id=B0FFGIQA9Q，关键词=天津大学北洋园校区机械工程实践教学中心，POI名=天津大学北洋园校区机械工程实践教学中心）"
+  },
+  {
+   "id": "building_36",
+   "name": "天津大学北洋园校区36教学楼",
+   "aliases": [
+    "36楼",
+    "36教学楼",
+    "36教"
+   ],
+   "category": "teaching",
+   "latitude": 38.992875,
+   "longitude": 117.318175,
+   "source": "高德 POI 检索（id=B0MU31Q1QK，关键词=36教学楼）"
+  },
+  {
+   "id": "building_37",
+   "name": "天津大学北洋园校区37教学楼",
+   "aliases": [
+    "37教",
+    "37教学楼",
+    "37楼",
+    "37号教学楼"
+   ],
+   "category": "teaching",
+   "latitude": 38.994432,
+   "longitude": 117.318535,
+   "source": "TJU 官方地图近似（多控制点仿射校准，非高德精确坐标）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "building_38",
+   "name": "天津大学北洋园校区38教学楼(土木馆)",
+   "aliases": [
+    "38教",
+    "38教学楼",
+    "38号教学楼",
+    "38楼",
+    "土木馆"
+   ],
+   "category": "teaching",
+   "latitude": 38.992632,
+   "longitude": 117.316332,
+   "source": "TJU 官方地图标注：分块高清图“土木馆”+完整图“38教”双源交叉（多控制点仿射校准，两源相差约45m，取高清图标注）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "building_39",
+   "name": "天津大学北洋园校区39教学楼",
+   "aliases": [
+    "39楼",
+    "39教学楼",
+    "39教",
+    "港口与海岸工程实验室"
+   ],
+   "category": "teaching",
+   "latitude": 38.992883,
+   "longitude": 117.316143,
+   "source": "高德 POI 检索（id=None，关键词=天津大学北洋园校区39教学楼，POI名=天津市津南区天津大学北洋园校区39教）"
+  },
+  {
+   "id": "building_40",
+   "name": "天津大学北洋园校区40教学楼",
+   "aliases": [
+    "40楼",
+    "40教学楼",
+    "40教",
+    "深水结构实验室"
+   ],
+   "category": "teaching",
+   "latitude": 38.992345,
+   "longitude": 117.314797,
+   "source": "高德 POI 检索（id=B0FFGIPWM0，关键词=天津大学北洋园校区深水结构实验室，POI名=天津大学北洋园校区深水结构实验室）"
+  },
+  {
+   "id": "building_41",
+   "name": "天津大学北洋园校区41教学楼",
+   "aliases": [
+    "41楼",
+    "41教学楼",
+    "41教",
+    "船舶与海洋工程馆",
+    "岩土工程研究所"
+   ],
+   "category": "teaching",
+   "latitude": 38.992916,
+   "longitude": 117.314932,
+   "source": "高德 POI 检索（id=None，关键词=天津大学北洋园校区41教学楼，POI名=天津市津南区天津大学北洋园校区41教）"
+  },
+  {
+   "id": "building_42",
+   "name": "天津大学北洋园校区42教学楼",
+   "aliases": [
+    "42楼",
+    "42教学楼",
+    "42教",
+    "水利馆",
+    "水利实验室"
+   ],
+   "category": "teaching",
+   "latitude": 38.993284,
+   "longitude": 117.313628,
+   "source": "高德 POI 检索（id=None，关键词=天津大学北洋园校区42教学楼，POI名=天津市津南区天津大学北洋园校区第42）"
+  },
+  {
+   "id": "building_43",
+   "name": "天津大学北洋园校区43教学楼",
+   "aliases": [
+    "43楼",
+    "43教学楼",
+    "43教",
+    "求是学部",
+    "环境科学与工程学院"
+   ],
+   "category": "teaching",
+   "latitude": 38.997775,
+   "longitude": 117.313975,
+   "source": "高德 POI 检索（id=B0MA19ERQ3，关键词=43教学楼）"
+  },
+  {
+   "id": "building_44",
+   "name": "天津大学北洋园校区44教学楼",
+   "aliases": [
+    "44教",
+    "44教学楼",
+    "44号教学楼",
+    "44楼",
+    "公共教学楼(44教)"
+   ],
+   "category": "teaching",
+   "latitude": 38.996201,
+   "longitude": 117.31402,
+   "source": "TJU 官方地图标注：分块高清图“公共教学楼（44教）”（多控制点仿射校准）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "building_45",
+   "name": "天津大学北洋园校区45教学楼",
+   "aliases": [
+    "45教",
+    "45教学楼",
+    "45号教学楼",
+    "45楼",
+    "公共教学楼(45教)"
+   ],
+   "category": "teaching",
+   "latitude": 38.99721,
+   "longitude": 117.315866,
+   "source": "TJU 官方地图标注：分块高清图“公共教学楼（45教）”（多控制点仿射校准）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "building_46",
+   "name": "天津大学北洋园校区46教学楼",
+   "aliases": [
+    "46教",
+    "46教学楼",
+    "46号教学楼",
+    "46楼",
+    "公共教学楼(46教)"
+   ],
+   "category": "teaching",
+   "latitude": 38.997951,
+   "longitude": 117.315843,
+   "source": "TJU 官方地图标注：分块高清图“公共教学楼（46教）”（多控制点仿射校准）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "building_47",
+   "name": "天津大学北洋园校区47教学楼(计算机实验教学中心)",
+   "aliases": [
+    "47教",
+    "47教学楼",
+    "47号教学楼",
+    "47楼",
+    "计算机实验教学中心"
+   ],
+   "category": "teaching",
+   "latitude": 38.9968,
+   "longitude": 117.318364,
+   "source": "TJU 官方地图标注：分块高清图“计算机实验教学中心”（以相邻48教/求实会堂几何关系校正，非高德精确坐标）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "building_48",
+   "name": "天津大学北洋园校区48教学楼",
+   "aliases": [
+    "48楼",
+    "48教学楼",
+    "48教",
+    "电气电子实验教学中心"
+   ],
+   "category": "teaching",
+   "latitude": 38.997172,
+   "longitude": 117.318359,
+   "source": "高德 POI 检索（id=None，关键词=天津大学北洋园校区48教学楼，POI名=天津市津南区天津大学北洋园校区48号）"
+  },
+  {
+   "id": "building_49",
+   "name": "天津大学北洋园校区49教学楼",
+   "aliases": [
+    "49楼",
+    "49教学楼",
+    "49教",
+    "物理实验中心"
+   ],
+   "category": "teaching",
+   "latitude": 38.997591,
+   "longitude": 117.318433,
+   "source": "高德 POI 检索（id=None，关键词=天津大学北洋园校区49教学楼，POI名=天津市津南区天津大学北洋园校区49号）"
+  },
+  {
+   "id": "building_50",
+   "name": "天津大学北洋园校区50号教学楼",
+   "aliases": [
+    "50楼",
+    "50号教学楼",
+    "化工楼",
+    "50教"
+   ],
+   "category": "teaching",
+   "latitude": 39.000168,
+   "longitude": 117.318241,
+   "source": "高德 POI 检索（id=B0MDKABQ80，关键词=50号教学楼）"
+  },
+  {
+   "id": "building_51",
+   "name": "天津大学北洋园校区51教学楼",
+   "aliases": [
+    "51楼",
+    "51教学楼",
+    "51教",
+    "理学院化学系"
+   ],
+   "category": "teaching",
+   "latitude": 39.001872,
+   "longitude": 117.31832,
+   "source": "高德 POI 检索（id=None，关键词=天津大学北洋园校区51教学楼，POI名=天津市津南区天津大学北洋园校区51教）"
+  },
+  {
+   "id": "building_52",
+   "name": "天津大学北洋园校区52教学楼",
+   "aliases": [
+    "52楼",
+    "52教学楼",
+    "52教"
+   ],
+   "category": "teaching",
+   "latitude": 39.002769,
+   "longitude": 117.318412,
+   "source": "高德 POI 检索（id=None，关键词=天津大学北洋园校区52教学楼，POI名=天津市津南区天津大学北洋园校区52号）"
+  },
+  {
+   "id": "building_53",
+   "name": "天津大学北洋园校区53教学楼",
+   "aliases": [
+    "53楼",
+    "53教学楼",
+    "53教",
+    "先进高分子材料研究所"
+   ],
+   "category": "teaching",
+   "latitude": 39.001307,
+   "longitude": 117.318025,
+   "source": "高德 POI 检索（id=None，关键词=天津大学北洋园校区53教学楼，POI名=天津市津南区天津大学北洋园校区53号）"
+  },
+  {
+   "id": "building_54",
+   "name": "天津大学北洋园校区54教学楼",
+   "aliases": [
+    "54楼",
+    "54教学楼",
+    "54教"
+   ],
+   "category": "teaching",
+   "latitude": 39.000675,
+   "longitude": 117.313175,
+   "source": "高德 POI 检索（id=B0MDNOFP31，关键词=54教学楼）"
+  },
+  {
+   "id": "building_55",
+   "name": "天津大学北洋园校区55教学楼",
+   "aliases": [
+    "55楼",
+    "55教学楼",
+    "55教",
+    "国际示范性软件学院"
+   ],
+   "category": "teaching",
+   "latitude": 38.999675,
+   "longitude": 117.313325,
+   "source": "高德 POI 检索（id=B0MRGLMPNZ，关键词=55教学楼）"
+  },
+  {
+   "id": "building_58",
+   "name": "天津大学北洋园校区58教学楼",
+   "aliases": [
+    "58楼",
+    "58教学楼",
+    "58教",
+    "化工材料创新平台"
+   ],
+   "category": "teaching",
+   "latitude": 38.998475,
+   "longitude": 117.312075,
+   "source": "高德 POI 检索（id=B0MRPKH74G，关键词=58教学楼）"
+  },
+  {
+   "id": "building_59",
+   "name": "天津大学北洋园校区第五十九教学楼",
+   "aliases": [
+    "59楼",
+    "59教学楼",
+    "第五十九教学楼",
+    "59教",
+    "环境与资源科技创新平台"
+   ],
+   "category": "teaching",
+   "latitude": 39.002084,
+   "longitude": 117.313796,
+   "source": "高德 POI 检索（id=B0KU7576KZ，关键词=第五十九教学楼）"
+  },
+  {
+   "id": "campus_hospital",
+   "name": "天津大学北洋园校区校医院",
+   "aliases": [
+    "校医院",
+    "医院"
+   ],
+   "category": "medical",
+   "latitude": 39.004125,
+   "longitude": 117.321975,
+   "source": "高德 POI 检索（id=B0JGK7SLIJ，关键词=北洋园校医院）"
+  },
+  {
+   "id": "chengyuan_6zhai",
+   "name": "天津大学北洋园校区诚园6斋",
+   "aliases": [
+    "诚园6斋",
+    "诚园六斋"
+   ],
+   "category": "dormitory",
+   "latitude": 39.000525,
+   "longitude": 117.316631,
+   "source": "高德 POI 检索（id=None，关键词=天津大学北洋园校区诚园6斋，POI名=天津市津南区天津大学北洋园校区诚园6斋）"
+  },
+  {
+   "id": "chengyuan_7zhai",
+   "name": "天津大学北洋园校区诚园7斋",
+   "aliases": [
+    "诚园7斋",
+    "诚园七斋",
+    "7斋",
+    "七斋"
+   ],
+   "category": "dormitory",
+   "latitude": 39.000007,
+   "longitude": 117.31673,
+   "source": "高德 POI 检索（id=B0KGT79JAG，关键词=化工学院学生党建中心，POI名=天津大学化工学院学生党建中心，地址=天津大学北洋园校区诚园7斋B）——POI 地址直接标注所在斋号"
+  },
+  {
+   "id": "chengyuan_8zhai",
+   "name": "天津大学北洋园校区诚园8斋",
+   "aliases": [
+    "诚园8斋",
+    "诚园八斋",
+    "8斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.9995,
+   "longitude": 117.3168,
+   "source": "TJU 官方地图园区标注 + 同园区已知斋号几何推断（园区内近似，非楼栋级精确坐标）（诚园6斋/7斋高德POI，8斋取园区南侧近似位置）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "chengyuan_dorm",
+   "name": "天津大学北洋园校区诚园",
+   "aliases": [
+    "诚园",
+    "诚园宿舍"
+   ],
+   "category": "dormitory",
+   "latitude": 39.000291,
+   "longitude": 117.316228,
+   "source": "高德 POI 检索（id=B0FFL92TDR，关键词=北洋园校区诚园）"
+  },
+  {
+   "id": "college_of_chemical_engineering",
+   "name": "天津大学北洋园校区化工学院",
+   "aliases": [
+    "化工学院",
+    "化工学院楼"
+   ],
+   "category": "teaching",
+   "latitude": 39.000205,
+   "longitude": 117.318187,
+   "source": "高德 POI 检索（id=B0FFGIOVAN，关键词=化工学院）"
+  },
+  {
+   "id": "college_of_civil_engineering",
+   "name": "天津大学北洋园校区建筑工程学院",
+   "aliases": [
+    "建工学院",
+    "建筑工程学院"
+   ],
+   "category": "teaching",
+   "latitude": 38.994525,
+   "longitude": 117.314025,
+   "source": "高德 POI 检索（id=B0FFGIQ08J，关键词=天津大学北洋园校区建筑工程学院，POI名=天津大学北洋园校区建筑工程学院）"
+  },
+  {
+   "id": "college_of_education",
+   "name": "天津大学北洋园校区教育学院",
+   "aliases": [
+    "教育学院"
+   ],
+   "category": "teaching",
+   "latitude": 38.995088,
+   "longitude": 117.321369,
+   "source": "高德 POI 检索（id=B0FFGJ1T1D，关键词=天津大学北洋园校区教育学院，POI名=天津大学北洋园校区教育学院）"
+  },
+  {
+   "id": "college_of_foreign_languages",
+   "name": "天津大学北洋园校区外国语学院",
+   "aliases": [
+    "外国语学院",
+    "外语学院",
+    "外国语言与文学学院"
+   ],
+   "category": "teaching",
+   "latitude": 38.995617,
+   "longitude": 117.321762,
+   "source": "高德 POI 检索（id=B0FFGJ1TR2，关键词=天津大学北洋园校区外国语学院，POI名=天津大学北洋园校区外国语学院）"
+  },
+  {
+   "id": "college_of_international_engineers",
+   "name": "天津大学北洋园校区国际工程师学院",
+   "aliases": [
+    "国际工程师学院"
+   ],
+   "category": "teaching",
+   "latitude": 38.994455,
+   "longitude": 117.314097,
+   "source": "高德 POI 检索（id=B0FFH738J3，关键词=天津大学北洋园校区国际工程师学院，POI名=天津大学北洋园校区国际工程师学院）"
+  },
+  {
+   "id": "college_of_marxism",
+   "name": "天津大学北洋园校区马克思主义学院",
+   "aliases": [
+    "马克思主义学院",
+    "马院"
+   ],
+   "category": "teaching",
+   "latitude": 38.995594,
+   "longitude": 117.320812,
+   "source": "高德 POI 检索（id=B0FFLJ311S，关键词=天津大学北洋园校区马克思主义学院，POI名=天津大学北洋园校区马克思主义学院）"
+  },
+  {
+   "id": "college_of_materials",
+   "name": "天津大学北洋园校区材料科学与工程学院",
+   "aliases": [
+    "材料学院",
+    "材料科学与工程学院"
+   ],
+   "category": "teaching",
+   "latitude": 38.998584,
+   "longitude": 117.322269,
+   "source": "高德 POI 检索（id=B0FFGIOXCB，关键词=天津大学北洋园校区材料科学与工程学院，POI名=天津大学北洋园校区材料科学与工程学院）"
+  },
+  {
+   "id": "college_of_mechanical_engineering",
+   "name": "天津大学北洋园校区机械工程学院",
+   "aliases": [
+    "机械学院",
+    "机械工程学院"
+   ],
+   "category": "teaching",
+   "latitude": 38.992531,
+   "longitude": 117.31894,
+   "source": "高德 POI 检索（id=B0FFHFOQU4，关键词=机械工程学院）"
+  },
+  {
+   "id": "college_of_science",
+   "name": "天津大学北洋园校区理学院",
+   "aliases": [
+    "理学院",
+    "32教",
+    "32教学楼",
+    "32号教学楼",
+    "32楼"
+   ],
+   "category": "teaching",
+   "latitude": 38.997907,
+   "longitude": 117.321914,
+   "source": "高德 POI 检索（id=B0FFHGLIJE，关键词=理学院）"
+  },
+  {
+   "id": "datong_student_center",
+   "name": "天津大学北洋园校区大通学生中心",
+   "aliases": [
+    "学生中心",
+    "大通中心",
+    "大通学生中心"
+   ],
+   "category": "student_service",
+   "latitude": 38.997576,
+   "longitude": 117.310599,
+   "source": "高德 POI 检索（id=B0FFGJ1TQV，关键词=大通学生中心）"
+  },
+  {
+   "id": "dorm_service_center",
+   "name": "学生生活园区管理服务中心",
+   "aliases": [
+    "学生生活园区管理服务中心",
+    "学服中心"
+   ],
+   "category": "service",
+   "latitude": 38.998047,
+   "longitude": 117.317719,
+   "source": "高德 POI 检索（id=B0KGVDHT44，关键词=天津大学北洋园校区学生生活园区管理服务中心，POI名=学生生活园区管理服务中心）"
+  },
+  {
+   "id": "football_field",
+   "name": "天津大学北洋园校区足球场",
+   "aliases": [
+    "足球场"
+   ],
+   "category": "sports",
+   "latitude": 39.002475,
+   "longitude": 117.320975,
+   "source": "高德 POI 检索（id=B0FFHGJOL0，关键词=北洋园 足球场 天津大学）"
+  },
+  {
+   "id": "geyuan_1zhai",
+   "name": "天津大学北洋园校区格园1斋",
+   "aliases": [
+    "格园1斋",
+    "格园一斋",
+    "1斋"
+   ],
+   "category": "dormitory",
+   "latitude": 39.003289,
+   "longitude": 117.314267,
+   "source": "TJU 官方完整图标注“格园1斋”（多控制点仿射校准；与格园3斋高德POI相对位置吻合）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "geyuan_2zhai",
+   "name": "天津大学北洋园校区格园2斋",
+   "aliases": [
+    "格园2斋",
+    "格园二斋",
+    "2斋"
+   ],
+   "category": "dormitory",
+   "latitude": 39.0031,
+   "longitude": 117.31485,
+   "source": "TJU 官方地图园区标注 + 同园区已知斋号几何推断（园区内近似，非楼栋级精确坐标）（格园1斋官方图标注 + 格园3斋高德POI，2斋取两点之间近似位置）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "geyuan_3zhai",
+   "name": "天津大学北洋园校区格园3斋",
+   "aliases": [
+    "格园3斋",
+    "格园三斋",
+    "格3斋",
+    "3斋"
+   ],
+   "category": "dormitory",
+   "latitude": 39.002888,
+   "longitude": 117.315388,
+   "source": "高德 POI 检索（id=B0I2SZNR2Q，关键词=雅仕眼镜，POI名=雅仕眼镜(天大北洋园店)，地址=天津大学北洋园校区格3斋）——商铺地址直接标注所在斋号"
+  },
+  {
+   "id": "geyuan_dorm",
+   "name": "天津大学北洋园校区格园",
+   "aliases": [
+    "格园",
+    "格园宿舍"
+   ],
+   "category": "dormitory",
+   "latitude": 39.003182,
+   "longitude": 117.315873,
+   "source": "高德 POI 检索（id=B0K31AT6VF，关键词=北洋园校区格园）"
+  },
+  {
+   "id": "juyuan_canteen",
+   "name": "天津大学北洋园校区菊园餐厅(清真食堂)",
+   "aliases": [
+    "菊园餐厅",
+    "清真食堂"
+   ],
+   "category": "dining",
+   "latitude": 39.001939,
+   "longitude": 117.315698,
+   "source": "高德 POI 检索（id=B0IA3K97BX，关键词=菊园餐厅）"
+  },
+  {
+   "id": "kindergarten",
+   "name": "天津大学幼儿园",
+   "aliases": [
+    "幼儿园",
+    "天大幼儿园"
+   ],
+   "category": "service",
+   "latitude": 38.994249,
+   "longitude": 117.32117,
+   "source": "高德 POI 检索（id=B0FFH9VTYQ，关键词=天津大学北洋园校区幼儿园，POI名=天津大学幼儿园）"
+  },
+  {
+   "id": "lan_yuan_canteen",
+   "name": "天津大学北洋园校区第二学生食堂(兰园餐厅)",
+   "aliases": [
+    "学二",
+    "学二食堂",
+    "兰园食堂",
+    "兰园餐厅",
+    "兰园"
+   ],
+   "category": "dining",
+   "latitude": 38.99847,
+   "longitude": 117.31761,
+   "source": "高德 POI 检索（id=B0FFG9D1PS，关键词=兰园餐厅）"
+  },
+  {
+   "id": "liuyuan_canteen",
+   "name": "天津大学北洋园校区留园餐厅",
+   "aliases": [
+    "留园餐厅",
+    "留学生食堂"
+   ],
+   "category": "dining",
+   "latitude": 39.002429,
+   "longitude": 117.315737,
+   "source": "高德 POI 检索（id=B0FFH8N01S，关键词=天津大学北洋园校区留园餐厅，POI名=天津大学北洋园校区留园餐厅）"
+  },
+  {
+   "id": "liuyuan_dorm",
+   "name": "天津大学北洋园校区留园",
+   "aliases": [
+    "留园",
+    "留园宿舍"
+   ],
+   "category": "dormitory",
+   "latitude": 39.003856,
+   "longitude": 117.315336,
+   "source": "高德 POI 检索（id=B0FFH4A6YI，关键词=天津大学北洋园校区留园，POI名=天津大学北洋园校区留园）"
+  },
+  {
+   "id": "main_building",
+   "name": "天津大学北洋园校区1895行政大楼",
+   "aliases": [
+    "主楼",
+    "校区主楼",
+    "行政楼"
+   ],
+   "category": "teaching",
+   "latitude": 39.000334,
+   "longitude": 117.320204,
+   "source": "高德 POI 检索（id=B0FFJ3USV1，关键词=1895行政大楼）"
+  },
+  {
+   "id": "mei_yuan_canteen",
+   "name": "第一学生食堂(梅园餐厅)",
+   "aliases": [
+    "学一",
+    "学一食堂",
+    "梅园食堂",
+    "梅园餐厅",
+    "梅园"
+   ],
+   "category": "dining",
+   "latitude": 39.001594,
+   "longitude": 117.315722,
+   "source": "高德 POI 检索（id=B0J0AX7LKX，关键词=梅园餐厅）"
+  },
+  {
+   "id": "network_center",
+   "name": "天津大学北洋园校区信息与网络中心",
+   "aliases": [
+    "信息与网络中心",
+    "网络中心"
+   ],
+   "category": "service",
+   "latitude": 38.998504,
+   "longitude": 117.3136,
+   "source": "高德 POI 检索（id=B0FFLOZMZS，关键词=天津大学北洋园校区信息与网络中心，POI名=天津大学北洋园校区信息与网络中心）"
+  },
+  {
+   "id": "pingyuan_21zhai_a",
+   "name": "天津大学北洋园校区平园21斋A座",
+   "aliases": [
+    "平园21斋A座",
+    "平园21斋",
+    "21斋A座"
+   ],
+   "category": "dormitory",
+   "latitude": 39.000525,
+   "longitude": 117.312825,
+   "source": "高德 POI 检索（id=B0M6YYQOZL，关键词=天津大学(北洋园校区)平园21斋A座，POI名=天津大学(北洋园校区)平园21斋A座）"
+  },
+  {
+   "id": "pingyuan_22zhai",
+   "name": "天津大学北洋园校区平园22斋",
+   "aliases": [
+    "平园22斋",
+    "平园二十二斋",
+    "22斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.999743,
+   "longitude": 117.312383,
+   "source": "TJU 官方完整图标注“平园22斋”（与平园21A/23斋高德POI相对位置吻合）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "pingyuan_23zhai",
+   "name": "天津大学北洋园校区平园23斋",
+   "aliases": [
+    "平园23斋",
+    "平园二十三斋",
+    "23斋",
+    "二十三斋"
+   ],
+   "category": "dormitory",
+   "latitude": 39.000218,
+   "longitude": 117.311713,
+   "source": "高德 POI 检索（id=B0JRTX7N5J，关键词=东北锦州烧烤 天津大学，POI名=东北锦州烧烤(天津大学北洋园校区店)，地址=天津大学北洋园校区平园23斋）——商铺地址直接标注所在斋号"
+  },
+  {
+   "id": "pingyuan_24zhai",
+   "name": "天津大学北洋园校区平园24斋",
+   "aliases": [
+    "平园24斋",
+    "平园二十四斋",
+    "24斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.99973,
+   "longitude": 117.311176,
+   "source": "TJU 官方完整图标注“平园24斋”（与平园23斋高德POI相对位置吻合）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "pingyuan_dorm",
+   "name": "天津大学北洋园校区平园",
+   "aliases": [
+    "平园",
+    "平园宿舍"
+   ],
+   "category": "dormitory",
+   "latitude": 38.999912,
+   "longitude": 117.312272,
+   "source": "高德 POI 检索（id=B0K3R5WYR6，关键词=北洋园校区平园）"
+  },
+  {
+   "id": "qingnian_lake",
+   "name": "天津大学北洋园校区青年湖",
+   "aliases": [
+    "青年湖"
+   ],
+   "category": "landmark",
+   "latitude": 38.997823,
+   "longitude": 117.308172,
+   "source": "TJU 官方地图近似（多控制点仿射校准，非高德精确坐标）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "qingyuan_canteen",
+   "name": "天津大学北洋园校区青园餐厅",
+   "aliases": [
+    "青园餐厅",
+    "学者公寓食堂",
+    "海棠餐厅",
+    "海棠食堂"
+   ],
+   "category": "dining",
+   "latitude": 39.003747,
+   "longitude": 117.319449,
+   "source": "高德 POI 检索（id=B0I1JHFOS6，关键词=海棠餐厅，POI名=天津大学北洋园校区海棠餐厅，地址=海河教育园区天津大学德榜路与博文北路交口青园餐厅一楼）——海棠餐厅位于青园餐厅一楼，同址合并；原 TJU 官方图近似坐标已由高德核验"
+  },
+  {
+   "id": "qiushui_hall",
+   "name": "天津大学北洋园校区求实会堂",
+   "aliases": [
+    "会堂",
+    "求实会堂"
+   ],
+   "category": "teaching",
+   "latitude": 38.996886,
+   "longitude": 117.321788,
+   "source": "高德 POI 检索（id=B0FFGJ1UJM，关键词=求实会堂）"
+  },
+  {
+   "id": "qiyuan_13zhai",
+   "name": "天津大学北洋园校区齐园13斋",
+   "aliases": [
+    "齐园13斋",
+    "齐园十三斋",
+    "13斋",
+    "十三斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.994791,
+   "longitude": 117.316666,
+   "source": "TJU 官方地图近似（多控制点仿射校准，非高德精确坐标）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "qiyuan_14zhai",
+   "name": "天津大学北洋园校区齐园14斋",
+   "aliases": [
+    "齐园14斋",
+    "齐园十四斋",
+    "14斋",
+    "十四斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.994142,
+   "longitude": 117.316825,
+   "source": "TJU 官方地图近似（多控制点仿射校准，非高德精确坐标）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "qiyuan_15zhai",
+   "name": "天津大学北洋园校区齐园15斋",
+   "aliases": [
+    "齐园15斋",
+    "齐园十五斋",
+    "15斋",
+    "十五斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.994804,
+   "longitude": 117.316159,
+   "source": "高德 POI 检索（id=B0JU49EN45，关键词=咖啡厅 天津大学北洋园校区齐园，POI名=咖啡厅(天津大学北洋园校区齐园店)，地址=天津大学新校区齐园15斋1895）——商铺地址直接标注所在斋号"
+  },
+  {
+   "id": "qiyuan_16zhai",
+   "name": "天津大学北洋园校区齐园16斋",
+   "aliases": [
+    "齐园16斋",
+    "齐园十六斋",
+    "16斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.9943,
+   "longitude": 117.3162,
+   "source": "TJU 官方地图园区标注 + 同园区已知斋号几何推断（园区内近似，非楼栋级精确坐标）（齐园13/14/15斋已知，16斋取园区内近似位置）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "qiyuan_dorm",
+   "name": "天津大学北洋园校区齐园",
+   "aliases": [
+    "齐园",
+    "齐园宿舍"
+   ],
+   "category": "dormitory",
+   "latitude": 38.994539,
+   "longitude": 117.316127,
+   "source": "高德 POI 检索（id=B0FFH43Q2O，关键词=天津大学北洋园校区齐园，POI名=齐园）"
+  },
+  {
+   "id": "qiyuan_express_station",
+   "name": "天津大学北洋园校区快递站(齐园)",
+   "aliases": [
+    "齐园快递站",
+    "快递站"
+   ],
+   "category": "logistics",
+   "latitude": 38.994525,
+   "longitude": 117.316125,
+   "source": "高德 POI 检索（id=B0MGD1RMBH，关键词=天津大学北洋园校区快递站，POI名=天津大学北洋园校区快递站）"
+  },
+  {
+   "id": "rishin_park",
+   "name": "天津大学北洋园校区日新园",
+   "aliases": [
+    "日新园"
+   ],
+   "category": "landmark",
+   "latitude": 38.998718,
+   "longitude": 117.299422,
+   "source": "高德 POI 检索（id=B0FFG9BVBW，关键词=天津大学北洋园校区日新园，POI名=天津大学北洋园校区日新园）"
+  },
+  {
+   "id": "sanwen_bridge",
+   "name": "天津大学北洋园校区三问桥",
+   "aliases": [
+    "三问桥",
+    "桥"
+   ],
+   "category": "landmark",
+   "latitude": 38.997395,
+   "longitude": 117.319631,
+   "source": "高德 POI 检索（id=B0L2XSXX54，关键词=三问桥）"
+  },
+  {
+   "id": "sanwenyuan_30zhai",
+   "name": "天津大学北洋园校区三问园30斋",
+   "aliases": [
+    "三问园30斋",
+    "三问园三十斋",
+    "30斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.999585,
+   "longitude": 117.309502,
+   "source": "高德 POI 检索（id=B0L2T72SAE，关键词=天津大学北洋园校区三问园30斋，POI名=天津大学北洋园校区三问园30斋）"
+  },
+  {
+   "id": "sanwenyuan_dorm",
+   "name": "天津大学北洋园校区三问园",
+   "aliases": [
+    "三问园",
+    "三问园宿舍"
+   ],
+   "category": "dormitory",
+   "latitude": 38.999583,
+   "longitude": 117.309668,
+   "source": "高德 POI 检索（id=B0L1C76WX6，关键词=北洋园校区三问园）"
+  },
+  {
+   "id": "school_of_computing",
+   "name": "天津大学北洋园校区智能与计算学部",
+   "aliases": [
+    "智能与计算学部",
+    "智算学部",
+    "计算机学院",
+    "计算机科学与技术学院"
+   ],
+   "category": "teaching",
+   "latitude": 38.999967,
+   "longitude": 117.314015,
+   "source": "高德 POI 检索（id=B0FFLGMAC7，关键词=智能与计算学部）"
+  },
+  {
+   "id": "school_of_math",
+   "name": "天津大学北洋园校区数学学院",
+   "aliases": [
+    "数学学院"
+   ],
+   "category": "teaching",
+   "latitude": 39.003402,
+   "longitude": 117.318019,
+   "source": "高德 POI 检索（id=B0J0U5439X，关键词=数学学院）"
+  },
+  {
+   "id": "security_center",
+   "name": "天津大学北洋园校区安保中心",
+   "aliases": [
+    "安保中心",
+    "保卫处"
+   ],
+   "category": "service",
+   "latitude": 39.000835,
+   "longitude": 117.315393,
+   "source": "高德 POI 检索（id=B0FFIA5XV0，关键词=天津大学北洋园校区安保中心，POI名=天津大学北洋园校区安保中心）"
+  },
+  {
+   "id": "service_hall",
+   "name": "天津大学北洋园校区综合服务大厅",
+   "aliases": [
+    "综合服务大厅"
+   ],
+   "category": "service",
+   "latitude": 38.999965,
+   "longitude": 117.319694,
+   "source": "高德 POI 检索（id=B0FFGJ1SHI，关键词=天津大学 综合服务大厅）"
+  },
+  {
+   "id": "shutian_square",
+   "name": "天津大学北洋园校区书田广场",
+   "aliases": [
+    "书田广场"
+   ],
+   "category": "landmark",
+   "latitude": 38.997389,
+   "longitude": 117.315469,
+   "source": "高德 POI 检索（id=B0J2ZH8ORV，关键词=书田广场）"
+  },
+  {
+   "id": "sports_hall",
+   "name": "天津大学北洋园校区综合体育馆",
+   "aliases": [
+    "体育馆",
+    "综合体育馆"
+   ],
+   "category": "sports",
+   "latitude": 39.002356,
+   "longitude": 117.320069,
+   "source": "高德 POI 检索（id=B0FFGJ1TK7，关键词=北洋园综合体育馆）"
+  },
+  {
+   "id": "sports_park",
+   "name": "天津大学北洋园校区体育公园",
+   "aliases": [
+    "体育公园"
+   ],
+   "category": "sports",
+   "latitude": 38.99258,
+   "longitude": 117.320784,
+   "source": "高德 POI 检索（id=B0H11AO2OJ，关键词=天津大学 体育公园）"
+  },
+  {
+   "id": "swimming_pool",
+   "name": "天津大学北洋园校区游泳馆",
+   "aliases": [
+    "游泳馆"
+   ],
+   "category": "sports",
+   "latitude": 39.001394,
+   "longitude": 117.319934,
+   "source": "高德 POI 检索（id=B0FFGJ1R5A，关键词=北洋园校区 游泳馆）"
+  },
+  {
+   "id": "tailei_square",
+   "name": "天津大学北洋园校区太雷广场",
+   "aliases": [
+    "太雷广场"
+   ],
+   "category": "landmark",
+   "latitude": 38.996291,
+   "longitude": 117.31098,
+   "source": "高德 POI 检索（id=B0FFG9C83J，关键词=太雷广场）"
+  },
+  {
+   "id": "teacher_apartment",
+   "name": "天津大学北洋园校区教师公寓",
+   "aliases": [
+    "教师公寓",
+    "青年教师公寓"
+   ],
+   "category": "service",
+   "latitude": 39.003914,
+   "longitude": 117.320624,
+   "source": "TJU 官方地图近似（多控制点仿射校准）+ 高德地址交叉核验（顺丰 POI 地址=青年教师公寓1号楼）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "tongde_yazheng_intersection",
+   "name": "同德路与雅正路交叉口",
+   "aliases": [
+    "同德路与雅正路交叉口",
+    "同德路雅正路口"
+   ],
+   "category": "landmark",
+   "latitude": 39.006976,
+   "longitude": 117.321289,
+   "source": "高德 POI 检索（id=B0FFLL514W，关键词=同德路与雅正路交叉口）"
+  },
+  {
+   "id": "xiuyuan_11zhai",
+   "name": "天津大学北洋园校区修园11斋",
+   "aliases": [
+    "修园11斋",
+    "修园十一斋",
+    "11斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.9969,
+   "longitude": 117.3158,
+   "source": "TJU 官方地图园区标注 + 同园区已知斋号几何推断（园区内近似，非楼栋级精确坐标）（修园12斋官方图标注，11斋取同园区北侧近似位置）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "xiuyuan_12zhai",
+   "name": "天津大学北洋园校区修园12斋",
+   "aliases": [
+    "修园12斋",
+    "修园十二斋",
+    "12斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.996507,
+   "longitude": 117.315748,
+   "source": "TJU 官方完整图标注“修园12斋”（多控制点仿射校准）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "xiuyuan_dorm",
+   "name": "天津大学北洋园校区修园",
+   "aliases": [
+    "修园",
+    "修园宿舍"
+   ],
+   "category": "dormitory",
+   "latitude": 38.99657,
+   "longitude": 117.316548,
+   "source": "高德 POI 检索（id=B0FFL7ZHGW，关键词=天津大学北洋园校区修园，POI名=天津大学北洋园校区修园）"
+  },
+  {
+   "id": "xuanhuai_square",
+   "name": "天津大学北洋园校区宣怀广场",
+   "aliases": [
+    "宣怀广场",
+    "宣怀"
+   ],
+   "category": "landmark",
+   "latitude": 38.997343,
+   "longitude": 117.321677,
+   "source": "高德 POI 检索（id=B0FFH24QMT，关键词=宣怀广场）"
+  },
+  {
+   "id": "xuesan_canteen",
+   "name": "第三学生食堂",
+   "aliases": [
+    "学三",
+    "学三食堂",
+    "棠园餐厅",
+    "棠园"
+   ],
+   "category": "dining",
+   "latitude": 38.998443,
+   "longitude": 117.312373,
+   "source": "高德 POI 检索（id=B0FFGJ1U8J，关键词=第三学生食堂）"
+  },
+  {
+   "id": "xuesi_cafeteria",
+   "name": "天津大学北洋园校区第四学生食堂(竹园餐厅)",
+   "aliases": [
+    "学四",
+    "学四食堂",
+    "竹园餐厅",
+    "第四食堂"
+   ],
+   "category": "dining",
+   "latitude": 38.993352,
+   "longitude": 117.315796,
+   "source": "高德 POI 检索（id=B0FFHXN0C4，关键词=北洋园学四食堂）"
+  },
+  {
+   "id": "xuewu_canteen",
+   "name": "天津大学北洋园校区第五学生食堂",
+   "aliases": [
+    "学五",
+    "学五食堂",
+    "桃园餐厅",
+    "桃园"
+   ],
+   "category": "dining",
+   "latitude": 38.996135,
+   "longitude": 117.312394,
+   "source": "高德 POI 检索（id=B0FFGVXPDF，关键词=第五学生食堂）"
+  },
+  {
+   "id": "yuyuan_garden",
+   "name": "天津大学北洋园校区御园",
+   "aliases": [
+    "御园"
+   ],
+   "category": "landmark",
+   "latitude": 38.993014,
+   "longitude": 117.310264,
+   "source": "高德 POI 检索（id=B0FFG9AC68，关键词=天津大学北洋园校区御园，POI名=天津大学北洋园校区御园）"
+  },
+  {
+   "id": "zhengdong_library",
+   "name": "天津大学北洋园校区郑东图书馆",
+   "aliases": [
+    "图书馆",
+    "郑东图书馆"
+   ],
+   "category": "library",
+   "latitude": 38.997751,
+   "longitude": 117.313812,
+   "source": "高德 POI 检索（id=B0H04DD3W7，关键词=郑东图书馆）"
+  },
+  {
+   "id": "zhengyuan_10zhai",
+   "name": "天津大学北洋园校区正园10斋",
+   "aliases": [
+    "正园10斋",
+    "正园十斋",
+    "10斋",
+    "十斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.998278,
+   "longitude": 117.315695,
+   "source": "TJU 官方地图近似（多控制点仿射校准，非高德精确坐标）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "zhengyuan_9zhai",
+   "name": "天津大学北洋园校区正园9斋",
+   "aliases": [
+    "正园9斋",
+    "正园九斋",
+    "9斋",
+    "九斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.998289,
+   "longitude": 117.316821,
+   "source": "TJU 官方地图近似（多控制点仿射校准，非高德精确坐标）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "zhengyuan_dorm",
+   "name": "天津大学北洋园校区正园",
+   "aliases": [
+    "正园",
+    "正园宿舍"
+   ],
+   "category": "dormitory",
+   "latitude": 38.998299,
+   "longitude": 117.316113,
+   "source": "高德 POI 检索（id=B0K0JA474E，关键词=天津大学北洋园校区正园，POI名=天津大学北洋园校区正园）"
+  },
+  {
+   "id": "zhiyuan_4zhai_b",
+   "name": "天津大学北洋园校区知园四斋B座",
+   "aliases": [
+    "知园四斋B座",
+    "知园四斋",
+    "知园4斋"
+   ],
+   "category": "dormitory",
+   "latitude": 39.002325,
+   "longitude": 117.316275,
+   "source": "高德 POI 检索（id=B0L2G7TTMH，关键词=天津大学北洋园校区知园四斋B座，POI名=知园四斋B座）"
+  },
+  {
+   "id": "zhiyuan_5zhai",
+   "name": "天津大学北洋园校区知园5斋",
+   "aliases": [
+    "知园5斋",
+    "知园五斋",
+    "5斋"
+   ],
+   "category": "dormitory",
+   "latitude": 39.001414,
+   "longitude": 117.314461,
+   "source": "TJU 官方完整图标注“知园5斋”（多控制点仿射校准；与知园4斋B座高德POI相对位置吻合）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "zhiyuan_dorm",
+   "name": "天津大学北洋园校区知园",
+   "aliases": [
+    "知园",
+    "知园宿舍"
+   ],
+   "category": "dormitory",
+   "latitude": 39.001972,
+   "longitude": 117.316525,
+   "source": "高德 POI 检索（id=B0FFH3W6Y0，关键词=北洋园校区知园）"
+  },
+  {
+   "id": "zhiyuan_garden",
+   "name": "天津大学北洋园校区治园",
+   "aliases": [
+    "治园",
+    "治园宿舍"
+   ],
+   "category": "dormitory",
+   "latitude": 38.994545,
+   "longitude": 117.312059,
+   "source": "高德 POI 地址级核验：治园17斋（创美理容 id=B0FFGIPXTY）、治园18斋（天大易修哥 id=B0FFLBRK18）、治园19斋增1（金色麦甜 id=B0LK6CKPHZ、星巴克 id=B0L2FR2IZ3）；坐标取三斋商铺地址均值，非单一 POI 精确坐标"
+  },
+  {
+   "id": "zhiyuan_garden_17zhai",
+   "name": "天津大学北洋园校区治园17斋",
+   "aliases": [
+    "治园17斋",
+    "治园十七斋",
+    "17斋",
+    "十七斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.99492,
+   "longitude": 117.312262,
+   "source": "高德 POI 检索（id=B0FFGIPXTY，关键词=创美理容，POI名=创美理容服务(天大店)，地址=天津大学北洋园校区治园17斋一层）——商铺地址直接标注所在斋号"
+  },
+  {
+   "id": "zhiyuan_garden_18zhai",
+   "name": "天津大学北洋园校区治园18斋",
+   "aliases": [
+    "治园18斋",
+    "治园十八斋",
+    "18斋",
+    "十八斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.994193,
+   "longitude": 117.312203,
+   "source": "高德 POI 检索（id=B0FFLBRK18，关键词=天大易修哥，POI名=天大易修哥电脑手机维修，地址=天津大学治园18斋中国联通）——商铺地址直接标注所在斋号"
+  },
+  {
+   "id": "zhiyuan_garden_19zhai",
+   "name": "天津大学北洋园校区治园19斋",
+   "aliases": [
+    "治园19斋",
+    "治园十九斋",
+    "19斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.994963,
+   "longitude": 117.311298,
+   "source": "TJU 官方完整图标注“治园19斋”（与治园19斋增1高德POI相邻吻合，高德另有“19斋”POI位于新元南路南端，判定为异址编号，不采用）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "zhiyuan_garden_19zhai_add1",
+   "name": "天津大学北洋园校区治园19斋增1",
+   "aliases": [
+    "治园19斋增1",
+    "治园十九斋增1",
+    "19斋增1",
+    "十九斋增1"
+   ],
+   "category": "dormitory",
+   "latitude": 38.994523,
+   "longitude": 117.311713,
+   "source": "高德 POI 检索（id=B0LK6CKPHZ 金色麦甜，地址=治园19斋增1号楼底商；id=B0L2FR2IZ3 星巴克，地址=治园19斋增1号楼一层底商2号；坐标取两商铺地址均值）——商铺地址直接标注所在斋号"
+  },
+  {
+   "id": "zhiyuan_garden_20zhai",
+   "name": "天津大学北洋园校区治园20斋",
+   "aliases": [
+    "治园20斋",
+    "治园二十斋",
+    "20斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.994205,
+   "longitude": 117.311174,
+   "source": "TJU 官方完整图标注“治园20斋”（多控制点仿射校准）",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "sanwenyuan_27zhai",
+   "name": "天津大学北洋园校区三问园27斋",
+   "aliases": [
+    "三问园27斋",
+    "三问园二十七斋",
+    "27斋",
+    "二十七斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.99986,
+   "longitude": 117.30952,
+   "source": "TJU 官方新版图索引列标注“三问园27斋”；园区位置由高德“三问园/三问园30斋”锚点确认（平园西侧、新元北路南侧）；公开资料确认三问园宿舍含27/28/29/30四栋；官方图未标注楼栋相对位置，按园区内近似（几十米级），非楼栋级精确坐标",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "sanwenyuan_28zhai",
+   "name": "天津大学北洋园校区三问园28斋",
+   "aliases": [
+    "三问园28斋",
+    "三问园二十八斋",
+    "28斋",
+    "二十八斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.99986,
+   "longitude": 117.30983,
+   "source": "TJU 官方新版图索引列将28斋误标为“博学园28斋”，用户确认该名称为地图标注错误、不采用；28斋属三问园（用户确认三问园=27/28/29/30斋）。园区位置由高德“三问园/三问园30斋”锚点确认（平园西侧）；公开资料确认三问园宿舍含27/28/29/30四栋；楼栋相对位置未标注，按园区内近似（几十米级），非楼栋级精确坐标",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "sanwenyuan_29zhai",
+   "name": "天津大学北洋园校区三问园29斋",
+   "aliases": [
+    "三问园29斋",
+    "三问园二十九斋",
+    "29斋",
+    "二十九斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.99959,
+   "longitude": 117.30983,
+   "source": "TJU 官方新版图索引列将29斋误标为“博学园29斋”，用户确认该名称为地图标注错误、不采用；29斋属三问园（用户确认三问园=27/28/29/30斋）。园区位置由高德“三问园/三问园30斋”锚点确认（平园西侧）；公开资料确认三问园宿舍含27/28/29/30四栋；楼栋相对位置未标注，按园区内近似（几十米级），非楼栋级精确坐标",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "boxueyuan_dorm",
+   "name": "天津大学北洋园校区博学园",
+   "aliases": [
+    "博学园",
+    "博学园宿舍"
+   ],
+   "category": "dormitory",
+   "latitude": 38.9946,
+   "longitude": 117.310225,
+   "source": "TJU 官方旧版完整图标注“博学园”（多控制点仿射校准≈38.994305,117.310381，残差<50m）+ 高德锚点“北洋园校区25A”(38.994875,117.310075)/“平原26斋”(38.994325,117.310375) 交叉验证，旧图标注与“平原26斋”几乎重合；用户确认博学园=25/26斋，与三问园（27~30斋）是两个相距较远的独立园区",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "boxueyuan_25zhai",
+   "name": "天津大学北洋园校区博学园25斋",
+   "aliases": [
+    "博学园25斋",
+    "博学园二十五斋",
+    "25斋",
+    "二十五斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.994875,
+   "longitude": 117.310075,
+   "source": "坐标=高德 POI“北洋园校区25A”（id=B0L3ASS6LG，地址=明德西道与新元南路交叉口西180米）；编号25A与博学园25斋一致且位于旧官方图“博学园”标注区域（用户确认博学园25斋存在）。坐标高德精确，“25A=博学园25斋”为名称归属推断，provenance=tju_official_map_approximate，不冒充“博学园25斋”名义直接核验",
+   "provenance": "tju_official_map_approximate"
+  },
+  {
+   "id": "boxueyuan_26zhai",
+   "name": "天津大学北洋园校区博学园26斋",
+   "aliases": [
+    "博学园26斋",
+    "博学园二十六斋",
+    "26斋",
+    "二十六斋"
+   ],
+   "category": "dormitory",
+   "latitude": 38.994325,
+   "longitude": 117.310375,
+   "source": "坐标=高德 POI“平原26斋”（id=B0MGB9UEGC，地址=亲民西道与新元南路交叉口西北160米），与 TJU 旧版官方图“博学园”标注（仿射≈38.994305,117.310381）几乎重合（<5m）；用户确认博学园26斋存在。高德名称“平原”疑为旧称/误写，名称归属为推断，provenance=tju_official_map_approximate",
+   "provenance": "tju_official_map_approximate"
+  }
+ ],
+ "edges": [
+  {
+   "from": "administrative_service_center",
+   "to": "building_50",
+   "distance_m": 274,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320237,39.000136 destination=117.318241,39.000168）distance_m=274；骑行 v4 可用=274"
+  },
+  {
+   "from": "administrative_service_center",
+   "to": "college_of_chemical_engineering",
+   "distance_m": 279,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320237,39.000136 destination=117.318187,39.000205）distance_m=279；骑行 v4 可用=279"
+  },
+  {
+   "from": "administrative_service_center",
+   "to": "service_hall",
+   "distance_m": 45,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320237,39.000136 destination=117.319694,38.999965）distance_m=45；骑行 v4 可用=45"
+  },
+  {
+   "from": "administrative_service_center",
+   "to": "swimming_pool",
+   "distance_m": 267,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320237,39.000136 destination=117.319934,39.001394）distance_m=267；骑行 v4 可用=267"
+  },
+  {
+   "from": "beiyang_clinic",
+   "to": "beiyang_stadium",
+   "distance_m": 186,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320872,39.003623 destination=117.321762,39.002182）distance_m=186；骑行 v4 可用=186"
+  },
+  {
+   "from": "beiyang_clinic",
+   "to": "campus_hospital",
+   "distance_m": 275,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320872,39.003623 destination=117.321975,39.004125）distance_m=275；骑行 v4 可用=2433"
+  },
+  {
+   "from": "beiyang_clinic",
+   "to": "football_field",
+   "distance_m": 154,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320872,39.003623 destination=117.320975,39.002475）distance_m=154；骑行 v4 可用=154"
+  },
+  {
+   "from": "beiyang_clinic",
+   "to": "qingyuan_canteen",
+   "distance_m": 241,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320872,39.003623 destination=117.319449,39.003747）distance_m=241；骑行 v4 可用=241（海棠餐厅并入青园餐厅，同址）"
+  },
+  {
+   "from": "beiyang_clinic",
+   "to": "sports_hall",
+   "distance_m": 250,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320872,39.003623 destination=117.320069,39.002356）distance_m=250；骑行 v4 可用=250"
+  },
+  {
+   "from": "beiyang_memorial_forest",
+   "to": "building_43",
+   "distance_m": 347,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314689,38.999310 destination=117.313975,38.997775）distance_m=347；骑行 v4 可用=347"
+  },
+  {
+   "from": "beiyang_memorial_forest",
+   "to": "building_55",
+   "distance_m": 170,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314689,38.999310 destination=117.313325,38.999675）distance_m=170；骑行 v4 可用=170"
+  },
+  {
+   "from": "beiyang_memorial_forest",
+   "to": "chengyuan_dorm",
+   "distance_m": 222,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314689,38.999310 destination=117.316228,39.000291）distance_m=222；骑行 v4 可用=222"
+  },
+  {
+   "from": "beiyang_memorial_forest",
+   "to": "network_center",
+   "distance_m": 234,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314689,38.999310 destination=117.313600,38.998504）distance_m=234；骑行 v4 可用=234"
+  },
+  {
+   "from": "beiyang_memorial_forest",
+   "to": "school_of_computing",
+   "distance_m": 105,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314689,38.999310 destination=117.314015,38.999967）distance_m=105；骑行 v4 可用=105"
+  },
+  {
+   "from": "beiyang_memorial_forest",
+   "to": "zhengyuan_dorm",
+   "distance_m": 240,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314689,38.999310 destination=117.316113,38.998299）distance_m=240；骑行 v4 可用=240"
+  },
+  {
+   "from": "beiyang_plaza",
+   "to": "college_of_materials",
+   "distance_m": 262,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.323622,38.996895 destination=117.322269,38.998584）distance_m=262；骑行 v4 可用=255"
+  },
+  {
+   "from": "beiyang_plaza",
+   "to": "college_of_science",
+   "distance_m": 205,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3236220,38.9968950 destination=117.3219140,38.9979070）distance_m=205；骑行 v4 可用=205"
+  },
+  {
+   "from": "beiyang_plaza",
+   "to": "qiushui_hall",
+   "distance_m": 180,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3236220,38.9968950 destination=117.3217880,38.9968860）distance_m=180；骑行 v4 可用=180"
+  },
+  {
+   "from": "beiyang_plaza",
+   "to": "sanwen_bridge",
+   "distance_m": 374,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3236220,38.9968950 destination=117.3196310,38.9973950）distance_m=374；骑行 v4 可用=374"
+  },
+  {
+   "from": "beiyang_plaza",
+   "to": "xuanhuai_square",
+   "distance_m": 175,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3236220,38.9968950 destination=117.3216770,38.9973430）distance_m=175；骑行 v4 可用=175"
+  },
+  {
+   "from": "beiyang_stadium",
+   "to": "campus_hospital",
+   "distance_m": 315,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3217620,39.0021820 destination=117.3219750,39.0041250）distance_m=315；骑行 v4 可用=315"
+  },
+  {
+   "from": "beiyang_stadium",
+   "to": "sports_hall",
+   "distance_m": 286,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3217620,39.0021820 destination=117.3200690,39.0023560）distance_m=286；骑行 v4 可用=171"
+  },
+  {
+   "from": "beiyang_stadium",
+   "to": "swimming_pool",
+   "distance_m": 283,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3217620,39.0021820 destination=117.3199340,39.0013940）distance_m=283；骑行 v4 可用=283"
+  },
+  {
+   "from": "beiyang_supermarket_pingyuan",
+   "to": "beiyangyuan_north_cainiao",
+   "distance_m": 346,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3122430,39.0001460 destination=117.3134300,39.0006960）distance_m=346；骑行 v4 可用=124"
+  },
+  {
+   "from": "beiyang_supermarket_pingyuan",
+   "to": "building_54",
+   "distance_m": 122,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3122430,39.0001460 destination=117.3131750,39.0006750）distance_m=122；骑行 v4 可用=122"
+  },
+  {
+   "from": "beiyang_supermarket_pingyuan",
+   "to": "building_55",
+   "distance_m": 135,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3122430,39.0001460 destination=117.3133250,38.9996750）distance_m=135；骑行 v4 可用=115"
+  },
+  {
+   "from": "beiyang_supermarket_pingyuan",
+   "to": "pingyuan_21zhai_a",
+   "distance_m": 73,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312243,39.000146 destination=117.312825,39.000525）distance_m=73；骑行 v4 可用=73"
+  },
+  {
+   "from": "beiyang_supermarket_pingyuan",
+   "to": "pingyuan_dorm",
+   "distance_m": 143,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3122430,39.0001460 destination=117.3122720,38.9999120）distance_m=143；骑行 v4 可用=120"
+  },
+  {
+   "from": "beiyang_supermarket_pingyuan",
+   "to": "sanwenyuan_30zhai",
+   "distance_m": 327,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312243,39.000146 destination=117.309502,38.999585）distance_m=327；骑行 v4 可用=327"
+  },
+  {
+   "from": "beiyang_supermarket_pingyuan",
+   "to": "sanwenyuan_dorm",
+   "distance_m": 322,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3122430,39.0001460 destination=117.3096680,38.9995830）distance_m=322；骑行 v4 可用=322"
+  },
+  {
+   "from": "beiyangyuan_east_gate",
+   "to": "beiyang_plaza",
+   "distance_m": 230,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "beiyangyuan_east_gate",
+   "to": "qiushui_hall",
+   "distance_m": 388,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "beiyangyuan_east_gate",
+   "to": "xuanhuai_square",
+   "distance_m": 403,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "beiyangyuan_metro_station",
+   "to": "beiyangyuan_south_cainiao",
+   "distance_m": 408,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3085740,38.9926670 destination=117.3122690,38.9925440）distance_m=408；骑行 v4 可用=2843"
+  },
+  {
+   "from": "beiyangyuan_metro_station",
+   "to": "beiyangyuan_south_gate",
+   "distance_m": 429,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3085740,38.9926670 destination=117.3114600,38.9935140）distance_m=429；骑行 v4 可用=2864"
+  },
+  {
+   "from": "beiyangyuan_metro_station",
+   "to": "rishin_park",
+   "distance_m": 1064,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.308574,38.992667 destination=117.299422,38.998718）distance_m=1064；骑行 v4 可用=1064"
+  },
+  {
+   "from": "beiyangyuan_metro_station",
+   "to": "tailei_square",
+   "distance_m": 792,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3085740,38.9926670 destination=117.3109800,38.9962910）distance_m=792；骑行 v4 可用=3227"
+  },
+  {
+   "from": "beiyangyuan_metro_station",
+   "to": "xuewu_canteen",
+   "distance_m": 773,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3085740,38.9926670 destination=117.3123940,38.9961350）distance_m=773；骑行 v4 可用=3208"
+  },
+  {
+   "from": "beiyangyuan_metro_station",
+   "to": "yuyuan_garden",
+   "distance_m": 451,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.308574,38.992667 destination=117.310264,38.993014）distance_m=451；骑行 v4 可用=2886"
+  },
+  {
+   "from": "beiyangyuan_north_cainiao",
+   "to": "beiyangyuan_north_parking_entrance",
+   "distance_m": 496,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3134300,39.0006960 destination=117.3122370,39.0033270）distance_m=496；骑行 v4 可用=386"
+  },
+  {
+   "from": "beiyangyuan_north_cainiao",
+   "to": "building_54",
+   "distance_m": 224,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3134300,39.0006960 destination=117.3131750,39.0006750）distance_m=224；骑行 v4 可用=2"
+  },
+  {
+   "from": "beiyangyuan_north_cainiao",
+   "to": "building_55",
+   "distance_m": 333,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3134300,39.0006960 destination=117.3133250,38.9996750）distance_m=333；骑行 v4 可用=111"
+  },
+  {
+   "from": "beiyangyuan_north_cainiao",
+   "to": "building_59",
+   "distance_m": 296,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3134300,39.0006960 destination=117.3137960,39.0020840）distance_m=296；骑行 v4 可用=161"
+  },
+  {
+   "from": "beiyangyuan_north_cainiao",
+   "to": "pingyuan_21zhai_a",
+   "distance_m": 337,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.313430,39.000696 destination=117.312825,39.000525）distance_m=337；骑行 v4 可用=107"
+  },
+  {
+   "from": "beiyangyuan_north_cainiao",
+   "to": "pingyuan_dorm",
+   "distance_m": 350,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3134300,39.0006960 destination=117.3122720,38.9999120）distance_m=350；骑行 v4 可用=128"
+  },
+  {
+   "from": "beiyangyuan_north_cainiao",
+   "to": "school_of_computing",
+   "distance_m": 492,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3134300,39.0006960 destination=117.3140150,38.9999670）distance_m=492；骑行 v4 可用=270"
+  },
+  {
+   "from": "beiyangyuan_north_gate",
+   "to": "beiyangyuan_north_parking_entrance",
+   "distance_m": 43,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "beiyangyuan_north_gate",
+   "to": "geyuan_dorm",
+   "distance_m": 341,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "beiyangyuan_north_gate",
+   "to": "liuyuan_dorm",
+   "distance_m": 291,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "beiyangyuan_north_parking_entrance",
+   "to": "building_54",
+   "distance_m": 364,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3122370,39.0033270 destination=117.3131750,39.0006750）distance_m=364；骑行 v4 可用=389"
+  },
+  {
+   "from": "beiyangyuan_north_parking_entrance",
+   "to": "building_59",
+   "distance_m": 368,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3122370,39.0033270 destination=117.3137960,39.0020840）distance_m=368；骑行 v4 可用=368"
+  },
+  {
+   "from": "beiyangyuan_north_parking_entrance",
+   "to": "geyuan_dorm",
+   "distance_m": 401,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3122370,39.0033270 destination=117.3158730,39.0031820）distance_m=401；骑行 v4 可用=401"
+  },
+  {
+   "from": "beiyangyuan_northeast_gate",
+   "to": "beiyang_clinic",
+   "distance_m": 204,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "beiyangyuan_northeast_gate",
+   "to": "beiyang_stadium",
+   "distance_m": 263,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "beiyangyuan_northeast_gate",
+   "to": "campus_hospital",
+   "distance_m": 96,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "beiyangyuan_northwest_gate",
+   "to": "rishin_park",
+   "distance_m": 532,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "beiyangyuan_northwest_gate",
+   "to": "sanwenyuan_30zhai",
+   "distance_m": 464,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "beiyangyuan_northwest_gate",
+   "to": "sanwenyuan_dorm",
+   "distance_m": 477,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "beiyangyuan_south_cainiao",
+   "to": "beiyangyuan_south_gate",
+   "distance_m": 159,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3122690,38.9925440 destination=117.3114600,38.9935140）distance_m=159；骑行 v4 可用=159"
+  },
+  {
+   "from": "beiyangyuan_south_cainiao",
+   "to": "building_31",
+   "distance_m": 531,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3122690,38.9925440 destination=117.3162250,38.9942250）distance_m=531；骑行 v4 可用=531"
+  },
+  {
+   "from": "beiyangyuan_south_cainiao",
+   "to": "building_40",
+   "distance_m": 232,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312269,38.992544 destination=117.314797,38.992345）distance_m=232；骑行 v4 可用=232"
+  },
+  {
+   "from": "beiyangyuan_south_cainiao",
+   "to": "building_42",
+   "distance_m": 196,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312269,38.992544 destination=117.313628,38.993284）distance_m=196；骑行 v4 可用=196"
+  },
+  {
+   "from": "beiyangyuan_south_cainiao",
+   "to": "xuesi_cafeteria",
+   "distance_m": 383,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3122690,38.9925440 destination=117.3157960,38.9933520）distance_m=383；骑行 v4 可用=383"
+  },
+  {
+   "from": "beiyangyuan_south_cainiao",
+   "to": "yuyuan_garden",
+   "distance_m": 181,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312269,38.992544 destination=117.310264,38.993014）distance_m=181；骑行 v4 可用=181"
+  },
+  {
+   "from": "beiyangyuan_south_express_station",
+   "to": "building_33",
+   "distance_m": 21,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320975,38.995375 destination=117.320989,38.995570）distance_m=21；骑行 v4 可用=21"
+  },
+  {
+   "from": "beiyangyuan_south_express_station",
+   "to": "college_of_education",
+   "distance_m": 102,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320975,38.995375 destination=117.321369,38.995088）distance_m=102；骑行 v4 可用=102"
+  },
+  {
+   "from": "beiyangyuan_south_express_station",
+   "to": "college_of_foreign_languages",
+   "distance_m": 243,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320975,38.995375 destination=117.321762,38.995617）distance_m=243；骑行 v4 可用=243"
+  },
+  {
+   "from": "beiyangyuan_south_express_station",
+   "to": "college_of_marxism",
+   "distance_m": 29,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320975,38.995375 destination=117.320812,38.995594）distance_m=29；骑行 v4 可用=29"
+  },
+  {
+   "from": "beiyangyuan_south_express_station",
+   "to": "kindergarten",
+   "distance_m": 396,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320975,38.995375 destination=117.321170,38.994249）distance_m=396；骑行 v4 可用=396"
+  },
+  {
+   "from": "beiyangyuan_south_express_station",
+   "to": "qiushui_hall",
+   "distance_m": 514,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320975,38.995375 destination=117.321788,38.996886）distance_m=514；骑行 v4 可用=528"
+  },
+  {
+   "from": "beiyangyuan_south_gate",
+   "to": "tailei_square",
+   "distance_m": 419,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3114600,38.9935140 destination=117.3109800,38.9962910）distance_m=419；骑行 v4 可用=419"
+  },
+  {
+   "from": "beiyangyuan_south_gate",
+   "to": "xuewu_canteen",
+   "distance_m": 400,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3114600,38.9935140 destination=117.3123940,38.9961350）distance_m=400；骑行 v4 可用=400"
+  },
+  {
+   "from": "beiyangyuan_south_gate",
+   "to": "yuyuan_garden",
+   "distance_m": 202,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.311460,38.993514 destination=117.310264,38.993014）distance_m=202；骑行 v4 可用=202"
+  },
+  {
+   "from": "beiyangyuan_southeast_gate",
+   "to": "building_34",
+   "distance_m": 116,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "beiyangyuan_southeast_gate",
+   "to": "building_35",
+   "distance_m": 178,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "beiyangyuan_southeast_gate",
+   "to": "sports_park",
+   "distance_m": 274,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "beiyangyuan_southwest_gate",
+   "to": "beiyangyuan_metro_station",
+   "distance_m": 461,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "beiyangyuan_southwest_gate",
+   "to": "tailei_square",
+   "distance_m": 660,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "beiyangyuan_southwest_gate",
+   "to": "yuyuan_garden",
+   "distance_m": 585,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "building_31",
+   "to": "building_36",
+   "distance_m": 318,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3162250,38.9942250 destination=117.3181750,38.9928750）distance_m=318；骑行 v4 可用=318"
+  },
+  {
+   "from": "building_31",
+   "to": "building_39",
+   "distance_m": 289,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316225,38.994225 destination=117.316143,38.992883）distance_m=289；骑行 v4 可用=289"
+  },
+  {
+   "from": "building_31",
+   "to": "building_41",
+   "distance_m": 220,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316225,38.994225 destination=117.314932,38.992916）distance_m=220；骑行 v4 可用=220"
+  },
+  {
+   "from": "building_31",
+   "to": "college_of_mechanical_engineering",
+   "distance_m": 448,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3162250,38.9942250 destination=117.3189400,38.9925310）distance_m=448；骑行 v4 可用=448"
+  },
+  {
+   "from": "building_31",
+   "to": "qiyuan_dorm",
+   "distance_m": 37,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316225,38.994225 destination=117.316127,38.994539）distance_m=37；骑行 v4 可用=37"
+  },
+  {
+   "from": "building_31",
+   "to": "qiyuan_express_station",
+   "distance_m": 35,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316225,38.994225 destination=117.316125,38.994525）distance_m=35；骑行 v4 可用=35"
+  },
+  {
+   "from": "building_31",
+   "to": "shutian_square",
+   "distance_m": 450,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3162250,38.9942250 destination=117.3154690,38.9973890）distance_m=450；骑行 v4 可用=450"
+  },
+  {
+   "from": "building_31",
+   "to": "sports_park",
+   "distance_m": 581,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3162250,38.9942250 destination=117.3207840,38.9925800）distance_m=581；骑行 v4 可用=791"
+  },
+  {
+   "from": "building_31",
+   "to": "xuesi_cafeteria",
+   "distance_m": 258,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3162250,38.9942250 destination=117.3157960,38.9933520）distance_m=258；骑行 v4 可用=258"
+  },
+  {
+   "from": "building_33",
+   "to": "college_of_education",
+   "distance_m": 102,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320989,38.995570 destination=117.321369,38.995088）distance_m=102；骑行 v4 可用=102"
+  },
+  {
+   "from": "building_33",
+   "to": "college_of_foreign_languages",
+   "distance_m": 243,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320989,38.995570 destination=117.321762,38.995617）distance_m=243；骑行 v4 可用=243"
+  },
+  {
+   "from": "building_33",
+   "to": "college_of_marxism",
+   "distance_m": 17,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320989,38.995570 destination=117.320812,38.995594）distance_m=17；骑行 v4 可用=17"
+  },
+  {
+   "from": "building_33",
+   "to": "kindergarten",
+   "distance_m": 396,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320989,38.995570 destination=117.321170,38.994249）distance_m=396；骑行 v4 可用=396"
+  },
+  {
+   "from": "building_33",
+   "to": "qiushui_hall",
+   "distance_m": 514,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320989,38.995570 destination=117.321788,38.996886）distance_m=514；骑行 v4 可用=528"
+  },
+  {
+   "from": "building_34",
+   "to": "building_35",
+   "distance_m": 166,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320175,38.991174 destination=117.318316,38.991855）distance_m=166；骑行 v4 可用=166"
+  },
+  {
+   "from": "building_34",
+   "to": "building_36",
+   "distance_m": 500,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3201750,38.9911740 destination=117.3181750,38.9928750）distance_m=500；骑行 v4 可用=500"
+  },
+  {
+   "from": "building_34",
+   "to": "college_of_mechanical_engineering",
+   "distance_m": 243,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3201750,38.9911740 destination=117.3189400,38.9925310）distance_m=243；骑行 v4 可用=243"
+  },
+  {
+   "from": "building_34",
+   "to": "sports_park",
+   "distance_m": 338,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3201750,38.9911740 destination=117.3207840,38.9925800）distance_m=338；骑行 v4 可用=338"
+  },
+  {
+   "from": "building_34",
+   "to": "xuesi_cafeteria",
+   "distance_m": 573,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3201750,38.9911740 destination=117.3157960,38.9933520）distance_m=573；骑行 v4 可用=573"
+  },
+  {
+   "from": "building_35",
+   "to": "building_36",
+   "distance_m": 458,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318316,38.991855 destination=117.318175,38.992875）distance_m=458；骑行 v4 可用=458"
+  },
+  {
+   "from": "building_35",
+   "to": "building_39",
+   "distance_m": 457,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318316,38.991855 destination=117.316143,38.992883）distance_m=457；骑行 v4 可用=457"
+  },
+  {
+   "from": "building_35",
+   "to": "college_of_mechanical_engineering",
+   "distance_m": 287,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318316,38.991855 destination=117.318940,38.992531）distance_m=287；骑行 v4 可用=287"
+  },
+  {
+   "from": "building_35",
+   "to": "sports_park",
+   "distance_m": 382,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318316,38.991855 destination=117.320784,38.992580）distance_m=382；骑行 v4 可用=382"
+  },
+  {
+   "from": "building_36",
+   "to": "building_39",
+   "distance_m": 175,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318175,38.992875 destination=117.316143,38.992883）distance_m=175；骑行 v4 可用=175"
+  },
+  {
+   "from": "building_36",
+   "to": "college_of_mechanical_engineering",
+   "distance_m": 256,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3181750,38.9928750 destination=117.3189400,38.9925310）distance_m=256；骑行 v4 可用=256"
+  },
+  {
+   "from": "building_36",
+   "to": "sports_park",
+   "distance_m": 418,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3181750,38.9928750 destination=117.3207840,38.9925800）distance_m=418；骑行 v4 可用=628"
+  },
+  {
+   "from": "building_36",
+   "to": "xuesi_cafeteria",
+   "distance_m": 207,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3181750,38.9928750 destination=117.3157960,38.9933520）distance_m=207；骑行 v4 可用=207"
+  },
+  {
+   "from": "building_37",
+   "to": "building_31",
+   "distance_m": 201,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "building_37",
+   "to": "building_36",
+   "distance_m": 176,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "building_37",
+   "to": "qiyuan_dorm",
+   "distance_m": 208,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "building_38",
+   "to": "building_39",
+   "distance_m": 218,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316332,38.992632 destination=117.316143,38.992883）distance_m=218；骑行 v4 可用=218"
+  },
+  {
+   "from": "building_38",
+   "to": "building_40",
+   "distance_m": 132,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316332,38.992632 destination=117.314797,38.992345）distance_m=132；骑行 v4 可用=132"
+  },
+  {
+   "from": "building_38",
+   "to": "building_41",
+   "distance_m": 158,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316332,38.992632 destination=117.314932,38.992916）distance_m=158；骑行 v4 可用=158"
+  },
+  {
+   "from": "building_38",
+   "to": "xuesi_cafeteria",
+   "distance_m": 234,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316332,38.992632 destination=117.315796,38.993352）distance_m=234；骑行 v4 可用=234"
+  },
+  {
+   "from": "building_39",
+   "to": "building_40",
+   "distance_m": 183,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316143,38.992883 destination=117.314797,38.992345）distance_m=183；骑行 v4 可用=183"
+  },
+  {
+   "from": "building_39",
+   "to": "building_41",
+   "distance_m": 107,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316143,38.992883 destination=117.314932,38.992916）distance_m=107；骑行 v4 可用=107"
+  },
+  {
+   "from": "building_39",
+   "to": "xuesi_cafeteria",
+   "distance_m": 35,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316143,38.992883 destination=117.315796,38.993352）distance_m=35；骑行 v4 可用=35"
+  },
+  {
+   "from": "building_40",
+   "to": "building_41",
+   "distance_m": 76,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314797,38.992345 destination=117.314932,38.992916）distance_m=76；骑行 v4 可用=76"
+  },
+  {
+   "from": "building_40",
+   "to": "building_42",
+   "distance_m": 224,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314797,38.992345 destination=117.313628,38.993284）distance_m=224；骑行 v4 可用=258"
+  },
+  {
+   "from": "building_40",
+   "to": "xuesi_cafeteria",
+   "distance_m": 152,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314797,38.992345 destination=117.315796,38.993352）distance_m=152；骑行 v4 可用=152"
+  },
+  {
+   "from": "building_41",
+   "to": "building_42",
+   "distance_m": 148,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314932,38.992916 destination=117.313628,38.993284）distance_m=148；骑行 v4 可用=148"
+  },
+  {
+   "from": "building_41",
+   "to": "college_of_international_engineers",
+   "distance_m": 237,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314932,38.992916 destination=117.314097,38.994455）distance_m=237；骑行 v4 可用=237"
+  },
+  {
+   "from": "building_41",
+   "to": "xuesi_cafeteria",
+   "distance_m": 76,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314932,38.992916 destination=117.315796,38.993352）distance_m=76；骑行 v4 可用=76"
+  },
+  {
+   "from": "building_42",
+   "to": "college_of_civil_engineering",
+   "distance_m": 429,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.313628,38.993284 destination=117.314025,38.994525）distance_m=429；骑行 v4 可用=422"
+  },
+  {
+   "from": "building_42",
+   "to": "college_of_international_engineers",
+   "distance_m": 347,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.313628,38.993284 destination=117.314097,38.994455）distance_m=347；骑行 v4 可用=347"
+  },
+  {
+   "from": "building_42",
+   "to": "yuyuan_garden",
+   "distance_m": 378,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.313628,38.993284 destination=117.310264,38.993014）distance_m=378；骑行 v4 可用=378"
+  },
+  {
+   "from": "building_43",
+   "to": "building_58",
+   "distance_m": 300,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3139750,38.9977750 destination=117.3120750,38.9984750）distance_m=300；骑行 v4 可用=300"
+  },
+  {
+   "from": "building_43",
+   "to": "network_center",
+   "distance_m": 270,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.313975,38.997775 destination=117.313600,38.998504）distance_m=270；骑行 v4 可用=270"
+  },
+  {
+   "from": "building_43",
+   "to": "shutian_square",
+   "distance_m": 136,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3139750,38.9977750 destination=117.3154690,38.9973890）distance_m=136；骑行 v4 可用=136"
+  },
+  {
+   "from": "building_43",
+   "to": "xuesan_canteen",
+   "distance_m": 245,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3139750,38.9977750 destination=117.3123730,38.9984430）distance_m=245；骑行 v4 可用=245"
+  },
+  {
+   "from": "building_43",
+   "to": "xuewu_canteen",
+   "distance_m": 230,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3139750,38.9977750 destination=117.3123940,38.9961350）distance_m=230；骑行 v4 可用=230"
+  },
+  {
+   "from": "building_43",
+   "to": "zhengdong_library",
+   "distance_m": 16,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3139750,38.9977750 destination=117.3138120,38.9977510）distance_m=16；骑行 v4 可用=16"
+  },
+  {
+   "from": "building_43",
+   "to": "zhengyuan_dorm",
+   "distance_m": 291,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.313975,38.997775 destination=117.316113,38.998299）distance_m=291；骑行 v4 可用=291"
+  },
+  {
+   "from": "building_44",
+   "to": "xiuyuan_11zhai",
+   "distance_m": 214,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314020,38.996201 destination=117.315800,38.996900）distance_m=214；骑行 v4 可用=214"
+  },
+  {
+   "from": "building_44",
+   "to": "xiuyuan_12zhai",
+   "distance_m": 314,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314020,38.996201 destination=117.315748,38.996507）distance_m=314；骑行 v4 可用=306"
+  },
+  {
+   "from": "building_44",
+   "to": "xuewu_canteen",
+   "distance_m": 167,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314020,38.996201 destination=117.312394,38.996135）distance_m=167；骑行 v4 可用=167"
+  },
+  {
+   "from": "building_44",
+   "to": "zhengdong_library",
+   "distance_m": 265,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314020,38.996201 destination=117.313812,38.997751）distance_m=265；骑行 v4 可用=265"
+  },
+  {
+   "from": "building_45",
+   "to": "building_46",
+   "distance_m": 114,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315866,38.997210 destination=117.315843,38.997951）distance_m=114；骑行 v4 可用=114"
+  },
+  {
+   "from": "building_45",
+   "to": "shutian_square",
+   "distance_m": 38,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315866,38.997210 destination=117.315469,38.997389）distance_m=38；骑行 v4 可用=38"
+  },
+  {
+   "from": "building_45",
+   "to": "xiuyuan_11zhai",
+   "distance_m": 108,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315866,38.997210 destination=117.315800,38.996900）distance_m=108；骑行 v4 可用=108"
+  },
+  {
+   "from": "building_45",
+   "to": "xiuyuan_12zhai",
+   "distance_m": 145,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315866,38.997210 destination=117.315748,38.996507）distance_m=145；骑行 v4 可用=145"
+  },
+  {
+   "from": "building_46",
+   "to": "shutian_square",
+   "distance_m": 148,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315843,38.997951 destination=117.315469,38.997389）distance_m=148；骑行 v4 可用=148"
+  },
+  {
+   "from": "building_46",
+   "to": "zhengyuan_10zhai",
+   "distance_m": 110,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315843,38.997951 destination=117.315695,38.998278）distance_m=110；骑行 v4 可用=110"
+  },
+  {
+   "from": "building_46",
+   "to": "zhengyuan_dorm",
+   "distance_m": 70,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315843,38.997951 destination=117.316113,38.998299）distance_m=70；骑行 v4 可用=70"
+  },
+  {
+   "from": "building_47",
+   "to": "building_48",
+   "distance_m": 234,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318364,38.996800 destination=117.318359,38.997172）distance_m=234；骑行 v4 可用=234"
+  },
+  {
+   "from": "building_47",
+   "to": "building_49",
+   "distance_m": 267,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318364,38.996800 destination=117.318433,38.997591）distance_m=267；骑行 v4 可用=260"
+  },
+  {
+   "from": "building_47",
+   "to": "dorm_service_center",
+   "distance_m": 259,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318364,38.996800 destination=117.317719,38.998047）distance_m=259；骑行 v4 可用=259"
+  },
+  {
+   "from": "building_47",
+   "to": "sanwen_bridge",
+   "distance_m": 371,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318364,38.996800 destination=117.319631,38.997395）distance_m=371；骑行 v4 可用=364"
+  },
+  {
+   "from": "building_48",
+   "to": "building_49",
+   "distance_m": 25,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318359,38.997172 destination=117.318433,38.997591）distance_m=25；骑行 v4 可用=25"
+  },
+  {
+   "from": "building_48",
+   "to": "dorm_service_center",
+   "distance_m": 201,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318359,38.997172 destination=117.317719,38.998047）distance_m=201；骑行 v4 可用=201"
+  },
+  {
+   "from": "building_48",
+   "to": "lan_yuan_canteen",
+   "distance_m": 283,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318359,38.997172 destination=117.317610,38.998470）distance_m=283；骑行 v4 可用=283"
+  },
+  {
+   "from": "building_48",
+   "to": "sanwen_bridge",
+   "distance_m": 129,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318359,38.997172 destination=117.319631,38.997395）distance_m=129；骑行 v4 可用=129"
+  },
+  {
+   "from": "building_48",
+   "to": "shutian_square",
+   "distance_m": 240,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318359,38.997172 destination=117.315469,38.997389）distance_m=240；骑行 v4 可用=240"
+  },
+  {
+   "from": "building_48",
+   "to": "xiuyuan_dorm",
+   "distance_m": 203,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318359,38.997172 destination=117.316548,38.996570）distance_m=203；骑行 v4 可用=203"
+  },
+  {
+   "from": "building_48",
+   "to": "zhengyuan_dorm",
+   "distance_m": 296,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318359,38.997172 destination=117.316113,38.998299）distance_m=296；骑行 v4 可用=296"
+  },
+  {
+   "from": "building_49",
+   "to": "dorm_service_center",
+   "distance_m": 196,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318433,38.997591 destination=117.317719,38.998047）distance_m=196；骑行 v4 可用=196"
+  },
+  {
+   "from": "building_49",
+   "to": "lan_yuan_canteen",
+   "distance_m": 278,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318433,38.997591 destination=117.317610,38.998470）distance_m=278；骑行 v4 可用=278"
+  },
+  {
+   "from": "building_49",
+   "to": "sanwen_bridge",
+   "distance_m": 103,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318433,38.997591 destination=117.319631,38.997395）distance_m=103；骑行 v4 可用=103"
+  },
+  {
+   "from": "building_49",
+   "to": "shutian_square",
+   "distance_m": 266,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318433,38.997591 destination=117.315469,38.997389）distance_m=266；骑行 v4 可用=266"
+  },
+  {
+   "from": "building_49",
+   "to": "xiuyuan_dorm",
+   "distance_m": 236,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318433,38.997591 destination=117.316548,38.996570）distance_m=236；骑行 v4 可用=236"
+  },
+  {
+   "from": "building_49",
+   "to": "zhengyuan_dorm",
+   "distance_m": 286,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318433,38.997591 destination=117.316113,38.998299）distance_m=286；骑行 v4 可用=286"
+  },
+  {
+   "from": "building_50",
+   "to": "building_53",
+   "distance_m": 448,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318241,39.000168 destination=117.318025,39.001307）distance_m=448；骑行 v4 可用=448"
+  },
+  {
+   "from": "building_50",
+   "to": "chengyuan_6zhai",
+   "distance_m": 348,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318241,39.000168 destination=117.316631,39.000525）distance_m=348；骑行 v4 可用=348"
+  },
+  {
+   "from": "building_50",
+   "to": "chengyuan_dorm",
+   "distance_m": 317,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3182410,39.0001680 destination=117.3162280,39.0002910）distance_m=317；骑行 v4 可用=344"
+  },
+  {
+   "from": "building_50",
+   "to": "college_of_chemical_engineering",
+   "distance_m": 5,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3182410,39.0001680 destination=117.3181870,39.0002050）distance_m=5；骑行 v4 可用=5"
+  },
+  {
+   "from": "building_50",
+   "to": "lan_yuan_canteen",
+   "distance_m": 249,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3182410,39.0001680 destination=117.3176100,38.9984700）distance_m=249；骑行 v4 可用=249"
+  },
+  {
+   "from": "building_50",
+   "to": "main_building",
+   "distance_m": 273,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3182410,39.0001680 destination=117.3202040,39.0003340）distance_m=273；骑行 v4 可用=273"
+  },
+  {
+   "from": "building_50",
+   "to": "service_hall",
+   "distance_m": 230,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3182410,39.0001680 destination=117.3196940,38.9999650）distance_m=230；骑行 v4 可用=230"
+  },
+  {
+   "from": "building_51",
+   "to": "building_52",
+   "distance_m": 97,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318320,39.001872 destination=117.318412,39.002769）distance_m=97；骑行 v4 可用=97"
+  },
+  {
+   "from": "building_51",
+   "to": "building_53",
+   "distance_m": 61,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318320,39.001872 destination=117.318025,39.001307）distance_m=61；骑行 v4 可用=61"
+  },
+  {
+   "from": "building_51",
+   "to": "sports_hall",
+   "distance_m": 230,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318320,39.001872 destination=117.320069,39.002356）distance_m=230；骑行 v4 可用=230"
+  },
+  {
+   "from": "building_51",
+   "to": "swimming_pool",
+   "distance_m": 232,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318320,39.001872 destination=117.319934,39.001394）distance_m=232；骑行 v4 可用=232"
+  },
+  {
+   "from": "building_51",
+   "to": "zhiyuan_4zhai_b",
+   "distance_m": 306,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318320,39.001872 destination=117.316275,39.002325）distance_m=306；骑行 v4 可用=306"
+  },
+  {
+   "from": "building_51",
+   "to": "zhiyuan_dorm",
+   "distance_m": 227,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318320,39.001872 destination=117.316525,39.001972）distance_m=227；骑行 v4 可用=227"
+  },
+  {
+   "from": "building_52",
+   "to": "building_53",
+   "distance_m": 158,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318412,39.002769 destination=117.318025,39.001307）distance_m=158；骑行 v4 可用=158"
+  },
+  {
+   "from": "building_52",
+   "to": "qingyuan_canteen",
+   "distance_m": 182,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318412,39.002769 destination=117.319449,39.003747）distance_m=182；骑行 v4 可用=182（海棠餐厅并入青园餐厅，同址）"
+  },
+  {
+   "from": "building_52",
+   "to": "school_of_math",
+   "distance_m": 70,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318412,39.002769 destination=117.318019,39.003402）distance_m=70；骑行 v4 可用=70"
+  },
+  {
+   "from": "building_52",
+   "to": "sports_hall",
+   "distance_m": 249,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318412,39.002769 destination=117.320069,39.002356）distance_m=249；骑行 v4 可用=249"
+  },
+  {
+   "from": "building_53",
+   "to": "chengyuan_6zhai",
+   "distance_m": 216,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318025,39.001307 destination=117.316631,39.000525）distance_m=216；骑行 v4 可用=216"
+  },
+  {
+   "from": "building_53",
+   "to": "college_of_chemical_engineering",
+   "distance_m": 444,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318025,39.001307 destination=117.318187,39.000205）distance_m=444；骑行 v4 可用=468"
+  },
+  {
+   "from": "building_53",
+   "to": "zhiyuan_dorm",
+   "distance_m": 212,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.318025,39.001307 destination=117.316525,39.001972）distance_m=212；骑行 v4 可用=212"
+  },
+  {
+   "from": "building_54",
+   "to": "building_55",
+   "distance_m": 109,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3131750,39.0006750 destination=117.3133250,38.9996750）distance_m=109；骑行 v4 可用=109"
+  },
+  {
+   "from": "building_54",
+   "to": "building_59",
+   "distance_m": 164,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3131750,39.0006750 destination=117.3137960,39.0020840）distance_m=164；骑行 v4 可用=164"
+  },
+  {
+   "from": "building_54",
+   "to": "pingyuan_21zhai_a",
+   "distance_m": 117,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.313175,39.000675 destination=117.312825,39.000525）distance_m=117；骑行 v4 可用=105"
+  },
+  {
+   "from": "building_54",
+   "to": "pingyuan_dorm",
+   "distance_m": 126,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3131750,39.0006750 destination=117.3122720,38.9999120）distance_m=126；骑行 v4 可用=126"
+  },
+  {
+   "from": "building_54",
+   "to": "school_of_computing",
+   "distance_m": 268,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3131750,39.0006750 destination=117.3140150,38.9999670）distance_m=268；骑行 v4 可用=268"
+  },
+  {
+   "from": "building_55",
+   "to": "pingyuan_21zhai_a",
+   "distance_m": 98,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.313325,38.999675 destination=117.312825,39.000525）distance_m=98；骑行 v4 可用=98"
+  },
+  {
+   "from": "building_55",
+   "to": "pingyuan_dorm",
+   "distance_m": 107,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3133250,38.9996750 destination=117.3122720,38.9999120）distance_m=107；骑行 v4 可用=107"
+  },
+  {
+   "from": "building_55",
+   "to": "school_of_computing",
+   "distance_m": 159,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3133250,38.9996750 destination=117.3140150,38.9999670）distance_m=159；骑行 v4 可用=159"
+  },
+  {
+   "from": "building_55",
+   "to": "xuesan_canteen",
+   "distance_m": 290,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3133250,38.9996750 destination=117.3123730,38.9984430）distance_m=290；骑行 v4 可用=290"
+  },
+  {
+   "from": "building_58",
+   "to": "datong_student_center",
+   "distance_m": 207,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3120750,38.9984750 destination=117.3105990,38.9975760）distance_m=207；骑行 v4 可用=207"
+  },
+  {
+   "from": "building_58",
+   "to": "network_center",
+   "distance_m": 155,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312075,38.998475 destination=117.313600,38.998504）distance_m=155；骑行 v4 可用=155"
+  },
+  {
+   "from": "building_58",
+   "to": "pingyuan_dorm",
+   "distance_m": 169,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3120750,38.9984750 destination=117.3122720,38.9999120）distance_m=169；骑行 v4 可用=342"
+  },
+  {
+   "from": "building_58",
+   "to": "sanwenyuan_30zhai",
+   "distance_m": 305,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312075,38.998475 destination=117.309502,38.999585）distance_m=305；骑行 v4 可用=305"
+  },
+  {
+   "from": "building_58",
+   "to": "sanwenyuan_dorm",
+   "distance_m": 300,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3120750,38.9984750 destination=117.3096680,38.9995830）distance_m=300；骑行 v4 可用=300"
+  },
+  {
+   "from": "building_58",
+   "to": "tailei_square",
+   "distance_m": 323,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3120750,38.9984750 destination=117.3109800,38.9962910）distance_m=323；骑行 v4 可用=323"
+  },
+  {
+   "from": "building_58",
+   "to": "xuesan_canteen",
+   "distance_m": 56,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3120750,38.9984750 destination=117.3123730,38.9984430）distance_m=56；骑行 v4 可用=56"
+  },
+  {
+   "from": "building_58",
+   "to": "zhengdong_library",
+   "distance_m": 286,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3120750,38.9984750 destination=117.3138120,38.9977510）distance_m=286；骑行 v4 可用=286"
+  },
+  {
+   "from": "building_59",
+   "to": "juyuan_canteen",
+   "distance_m": 174,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3137960,39.0020840 destination=117.3156980,39.0019390）distance_m=174；骑行 v4 可用=174"
+  },
+  {
+   "from": "building_59",
+   "to": "mei_yuan_canteen",
+   "distance_m": 175,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3137960,39.0020840 destination=117.3157220,39.0015940）distance_m=175；骑行 v4 可用=175"
+  },
+  {
+   "from": "campus_hospital",
+   "to": "football_field",
+   "distance_m": 283,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3219750,39.0041250 destination=117.3209750,39.0024750）distance_m=283；骑行 v4 可用=283"
+  },
+  {
+   "from": "campus_hospital",
+   "to": "qingyuan_canteen",
+   "distance_m": 256,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3219750,39.0041250 destination=117.3194490,39.0037470）distance_m=256；骑行 v4 可用=256（海棠餐厅并入青园餐厅，同址）"
+  },
+  {
+   "from": "campus_hospital",
+   "to": "sports_hall",
+   "distance_m": 380,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3219750,39.0041250 destination=117.3200690,39.0023560）distance_m=380；骑行 v4 可用=380"
+  },
+  {
+   "from": "campus_hospital",
+   "to": "tongde_yazheng_intersection",
+   "distance_m": 376,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3219750,39.0041250 destination=117.3212890,39.0069760）distance_m=376；骑行 v4 可用=392"
+  },
+  {
+   "from": "chengyuan_6zhai",
+   "to": "chengyuan_dorm",
+   "distance_m": 93,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316631,39.000525 destination=117.316228,39.000291）distance_m=93；骑行 v4 可用=93"
+  },
+  {
+   "from": "chengyuan_6zhai",
+   "to": "college_of_chemical_engineering",
+   "distance_m": 344,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316631,39.000525 destination=117.318187,39.000205）distance_m=344；骑行 v4 可用=344"
+  },
+  {
+   "from": "chengyuan_6zhai",
+   "to": "mei_yuan_canteen",
+   "distance_m": 330,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316631,39.000525 destination=117.315722,39.001594）distance_m=330；骑行 v4 可用=330"
+  },
+  {
+   "from": "chengyuan_6zhai",
+   "to": "security_center",
+   "distance_m": 164,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316631,39.000525 destination=117.315393,39.000835）distance_m=164；骑行 v4 可用=164"
+  },
+  {
+   "from": "chengyuan_7zhai",
+   "to": "building_50",
+   "distance_m": 275,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316730,39.000007 destination=117.318241,39.000168）distance_m=275；骑行 v4 可用=275"
+  },
+  {
+   "from": "chengyuan_7zhai",
+   "to": "chengyuan_6zhai",
+   "distance_m": 136,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316730,39.000007 destination=117.316631,39.000525）distance_m=136；骑行 v4 可用=136"
+  },
+  {
+   "from": "chengyuan_7zhai",
+   "to": "chengyuan_dorm",
+   "distance_m": 47,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316730,39.000007 destination=117.316228,39.000291）distance_m=47；骑行 v4 可用=47"
+  },
+  {
+   "from": "chengyuan_7zhai",
+   "to": "college_of_chemical_engineering",
+   "distance_m": 271,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316730,39.000007 destination=117.318187,39.000205）distance_m=271；骑行 v4 可用=271"
+  },
+  {
+   "from": "chengyuan_8zhai",
+   "to": "chengyuan_6zhai",
+   "distance_m": 231,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316800,38.999500 destination=117.316631,39.000525）distance_m=231；骑行 v4 可用=231"
+  },
+  {
+   "from": "chengyuan_8zhai",
+   "to": "chengyuan_7zhai",
+   "distance_m": 165,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316800,38.999500 destination=117.316730,39.000007）distance_m=165；骑行 v4 可用=165"
+  },
+  {
+   "from": "chengyuan_8zhai",
+   "to": "chengyuan_dorm",
+   "distance_m": 166,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316800,38.999500 destination=117.316228,39.000291）distance_m=166；骑行 v4 可用=166"
+  },
+  {
+   "from": "chengyuan_8zhai",
+   "to": "lan_yuan_canteen",
+   "distance_m": 139,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316800,38.999500 destination=117.317610,38.998470）distance_m=139；骑行 v4 可用=139"
+  },
+  {
+   "from": "chengyuan_dorm",
+   "to": "college_of_chemical_engineering",
+   "distance_m": 313,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3162280,39.0002910 destination=117.3181870,39.0002050）distance_m=313；骑行 v4 可用=313"
+  },
+  {
+   "from": "chengyuan_dorm",
+   "to": "mei_yuan_canteen",
+   "distance_m": 325,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3162280,39.0002910 destination=117.3157220,39.0015940）distance_m=325；骑行 v4 可用=325"
+  },
+  {
+   "from": "chengyuan_dorm",
+   "to": "security_center",
+   "distance_m": 159,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316228,39.000291 destination=117.315393,39.000835）distance_m=159；骑行 v4 可用=159"
+  },
+  {
+   "from": "chengyuan_dorm",
+   "to": "zhiyuan_dorm",
+   "distance_m": 247,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3162280,39.0002910 destination=117.3165250,39.0019720）distance_m=247；骑行 v4 可用=247"
+  },
+  {
+   "from": "college_of_chemical_engineering",
+   "to": "lan_yuan_canteen",
+   "distance_m": 245,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3181870,39.0002050 destination=117.3176100,38.9984700）distance_m=245；骑行 v4 可用=245"
+  },
+  {
+   "from": "college_of_chemical_engineering",
+   "to": "main_building",
+   "distance_m": 278,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3181870,39.0002050 destination=117.3202040,39.0003340）distance_m=278；骑行 v4 可用=278"
+  },
+  {
+   "from": "college_of_chemical_engineering",
+   "to": "service_hall",
+   "distance_m": 235,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3181870,39.0002050 destination=117.3196940,38.9999650）distance_m=235；骑行 v4 可用=235"
+  },
+  {
+   "from": "college_of_civil_engineering",
+   "to": "college_of_international_engineers",
+   "distance_m": 261,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314025,38.994525 destination=117.314097,38.994455）distance_m=261；骑行 v4 可用=261"
+  },
+  {
+   "from": "college_of_civil_engineering",
+   "to": "qiyuan_dorm",
+   "distance_m": 302,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314025,38.994525 destination=117.316127,38.994539）distance_m=302；骑行 v4 可用=302"
+  },
+  {
+   "from": "college_of_civil_engineering",
+   "to": "qiyuan_express_station",
+   "distance_m": 304,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314025,38.994525 destination=117.316125,38.994525）distance_m=304；骑行 v4 可用=304"
+  },
+  {
+   "from": "college_of_education",
+   "to": "college_of_foreign_languages",
+   "distance_m": 140,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.321369,38.995088 destination=117.321762,38.995617）distance_m=140；骑行 v4 可用=140"
+  },
+  {
+   "from": "college_of_education",
+   "to": "college_of_marxism",
+   "distance_m": 102,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.321369,38.995088 destination=117.320812,38.995594）distance_m=102；骑行 v4 可用=102"
+  },
+  {
+   "from": "college_of_education",
+   "to": "kindergarten",
+   "distance_m": 302,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.321369,38.995088 destination=117.321170,38.994249）distance_m=302；骑行 v4 可用=302"
+  },
+  {
+   "from": "college_of_education",
+   "to": "qiushui_hall",
+   "distance_m": 411,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.321369,38.995088 destination=117.321788,38.996886）distance_m=411；骑行 v4 可用=411"
+  },
+  {
+   "from": "college_of_foreign_languages",
+   "to": "college_of_marxism",
+   "distance_m": 243,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.321762,38.995617 destination=117.320812,38.995594）distance_m=243；骑行 v4 可用=243"
+  },
+  {
+   "from": "college_of_foreign_languages",
+   "to": "kindergarten",
+   "distance_m": 366,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.321762,38.995617 destination=117.321170,38.994249）distance_m=366；骑行 v4 可用=366"
+  },
+  {
+   "from": "college_of_foreign_languages",
+   "to": "qiushui_hall",
+   "distance_m": 270,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.321762,38.995617 destination=117.321788,38.996886）distance_m=270；骑行 v4 可用=270"
+  },
+  {
+   "from": "college_of_international_engineers",
+   "to": "qiyuan_dorm",
+   "distance_m": 150,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314097,38.994455 destination=117.316127,38.994539）distance_m=150；骑行 v4 可用=150"
+  },
+  {
+   "from": "college_of_international_engineers",
+   "to": "qiyuan_express_station",
+   "distance_m": 152,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314097,38.994455 destination=117.316125,38.994525）distance_m=152；骑行 v4 可用=152"
+  },
+  {
+   "from": "college_of_marxism",
+   "to": "kindergarten",
+   "distance_m": 396,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320812,38.995594 destination=117.321170,38.994249）distance_m=396；骑行 v4 可用=396"
+  },
+  {
+   "from": "college_of_marxism",
+   "to": "qiushui_hall",
+   "distance_m": 514,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.320812,38.995594 destination=117.321788,38.996886）distance_m=514；骑行 v4 可用=528"
+  },
+  {
+   "from": "college_of_materials",
+   "to": "college_of_science",
+   "distance_m": 291,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.322269,38.998584 destination=117.321914,38.997907）distance_m=291；骑行 v4 可用=284"
+  },
+  {
+   "from": "college_of_materials",
+   "to": "qiushui_hall",
+   "distance_m": 266,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.322269,38.998584 destination=117.321788,38.996886）distance_m=266；骑行 v4 可用=259"
+  },
+  {
+   "from": "college_of_materials",
+   "to": "sanwen_bridge",
+   "distance_m": 270,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.322269,38.998584 destination=117.319631,38.997395）distance_m=270；骑行 v4 可用=453"
+  },
+  {
+   "from": "college_of_materials",
+   "to": "xuanhuai_square",
+   "distance_m": 261,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.322269,38.998584 destination=117.321677,38.997343）distance_m=261；骑行 v4 可用=254"
+  },
+  {
+   "from": "college_of_mechanical_engineering",
+   "to": "sports_park",
+   "distance_m": 213,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3189400,38.9925310 destination=117.3207840,38.9925800）distance_m=213；骑行 v4 可用=347"
+  },
+  {
+   "from": "college_of_mechanical_engineering",
+   "to": "xuesi_cafeteria",
+   "distance_m": 329,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3189400,38.9925310 destination=117.3157960,38.9933520）distance_m=329；骑行 v4 可用=329"
+  },
+  {
+   "from": "college_of_science",
+   "to": "qiushui_hall",
+   "distance_m": 89,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3219140,38.9979070 destination=117.3217880,38.9968860）distance_m=89；骑行 v4 可用=89"
+  },
+  {
+   "from": "college_of_science",
+   "to": "sanwen_bridge",
+   "distance_m": 215,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3219140,38.9979070 destination=117.3196310,38.9973950）distance_m=215；骑行 v4 可用=215"
+  },
+  {
+   "from": "college_of_science",
+   "to": "xuanhuai_square",
+   "distance_m": 84,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3219140,38.9979070 destination=117.3216770,38.9973430）distance_m=84；骑行 v4 可用=84"
+  },
+  {
+   "from": "datong_student_center",
+   "to": "rishin_park",
+   "distance_m": 2034,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.310599,38.997576 destination=117.299422,38.998718）distance_m=2034；骑行 v4 可用=2034"
+  },
+  {
+   "from": "datong_student_center",
+   "to": "sanwenyuan_30zhai",
+   "distance_m": 513,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.310599,38.997576 destination=117.309502,38.999585）distance_m=513；骑行 v4 可用=513"
+  },
+  {
+   "from": "datong_student_center",
+   "to": "sanwenyuan_dorm",
+   "distance_m": 508,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3105990,38.9975760 destination=117.3096680,38.9995830）distance_m=508；骑行 v4 可用=508"
+  },
+  {
+   "from": "datong_student_center",
+   "to": "tailei_square",
+   "distance_m": 194,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3105990,38.9975760 destination=117.3109800,38.9962910）distance_m=194；骑行 v4 可用=194"
+  },
+  {
+   "from": "datong_student_center",
+   "to": "xuesan_canteen",
+   "distance_m": 221,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3105990,38.9975760 destination=117.3123730,38.9984430）distance_m=221；骑行 v4 可用=221"
+  },
+  {
+   "from": "datong_student_center",
+   "to": "xuewu_canteen",
+   "distance_m": 271,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3105990,38.9975760 destination=117.3123940,38.9961350）distance_m=271；骑行 v4 可用=271"
+  },
+  {
+   "from": "dorm_service_center",
+   "to": "lan_yuan_canteen",
+   "distance_m": 166,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.317719,38.998047 destination=117.317610,38.998470）distance_m=166；骑行 v4 可用=166"
+  },
+  {
+   "from": "dorm_service_center",
+   "to": "sanwen_bridge",
+   "distance_m": 300,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.317719,38.998047 destination=117.319631,38.997395）distance_m=300；骑行 v4 可用=300"
+  },
+  {
+   "from": "dorm_service_center",
+   "to": "xiuyuan_dorm",
+   "distance_m": 228,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.317719,38.998047 destination=117.316548,38.996570）distance_m=228；骑行 v4 可用=228"
+  },
+  {
+   "from": "dorm_service_center",
+   "to": "zhengyuan_dorm",
+   "distance_m": 181,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.317719,38.998047 destination=117.316113,38.998299）distance_m=181；骑行 v4 可用=181"
+  },
+  {
+   "from": "football_field",
+   "to": "qingyuan_canteen",
+   "distance_m": 291,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3209750,39.0024750 destination=117.3194490,39.0037470）distance_m=291；骑行 v4 可用=291（海棠餐厅并入青园餐厅，同址）"
+  },
+  {
+   "from": "football_field",
+   "to": "sports_hall",
+   "distance_m": 254,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3209750,39.0024750 destination=117.3200690,39.0023560）distance_m=254；骑行 v4 可用=203"
+  },
+  {
+   "from": "football_field",
+   "to": "swimming_pool",
+   "distance_m": 462,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3209750,39.0024750 destination=117.3199340,39.0013940）distance_m=462；骑行 v4 可用=315"
+  },
+  {
+   "from": "football_field",
+   "to": "tongde_yazheng_intersection",
+   "distance_m": 655,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3209750,39.0024750 destination=117.3212890,39.0069760）distance_m=655；骑行 v4 可用=677"
+  },
+  {
+   "from": "geyuan_1zhai",
+   "to": "geyuan_2zhai",
+   "distance_m": 228,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314267,39.003289 destination=117.314850,39.003100）distance_m=228；骑行 v4 可用=228"
+  },
+  {
+   "from": "geyuan_1zhai",
+   "to": "geyuan_3zhai",
+   "distance_m": 147,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314267,39.003289 destination=117.315388,39.002888）distance_m=147；骑行 v4 可用=147"
+  },
+  {
+   "from": "geyuan_1zhai",
+   "to": "geyuan_dorm",
+   "distance_m": 179,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314267,39.003289 destination=117.315873,39.003182）distance_m=179；骑行 v4 可用=221"
+  },
+  {
+   "from": "geyuan_1zhai",
+   "to": "liuyuan_dorm",
+   "distance_m": 136,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314267,39.003289 destination=117.315336,39.003856）distance_m=136；骑行 v4 可用=180"
+  },
+  {
+   "from": "geyuan_2zhai",
+   "to": "geyuan_3zhai",
+   "distance_m": 80,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314850,39.003100 destination=117.315388,39.002888）distance_m=80；骑行 v4 可用=80"
+  },
+  {
+   "from": "geyuan_2zhai",
+   "to": "geyuan_dorm",
+   "distance_m": 125,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314850,39.003100 destination=117.315873,39.003182）distance_m=125；骑行 v4 可用=125"
+  },
+  {
+   "from": "geyuan_2zhai",
+   "to": "liuyuan_dorm",
+   "distance_m": 200,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314850,39.003100 destination=117.315336,39.003856）distance_m=200；骑行 v4 可用=200"
+  },
+  {
+   "from": "geyuan_3zhai",
+   "to": "geyuan_dorm",
+   "distance_m": 73,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315388,39.002888 destination=117.315873,39.003182）distance_m=73；骑行 v4 可用=73"
+  },
+  {
+   "from": "geyuan_3zhai",
+   "to": "liuyuan_canteen",
+   "distance_m": 131,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315388,39.002888 destination=117.315737,39.002429）distance_m=131；骑行 v4 可用=131"
+  },
+  {
+   "from": "geyuan_3zhai",
+   "to": "liuyuan_dorm",
+   "distance_m": 148,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315388,39.002888 destination=117.315336,39.003856）distance_m=148；骑行 v4 可用=148"
+  },
+  {
+   "from": "geyuan_3zhai",
+   "to": "zhiyuan_4zhai_b",
+   "distance_m": 132,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315388,39.002888 destination=117.316275,39.002325）distance_m=132；骑行 v4 可用=132"
+  },
+  {
+   "from": "geyuan_dorm",
+   "to": "juyuan_canteen",
+   "distance_m": 282,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3158730,39.0031820 destination=117.3156980,39.0019390）distance_m=282；骑行 v4 可用=282"
+  },
+  {
+   "from": "geyuan_dorm",
+   "to": "liuyuan_canteen",
+   "distance_m": 140,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315873,39.003182 destination=117.315737,39.002429）distance_m=140；骑行 v4 可用=140"
+  },
+  {
+   "from": "geyuan_dorm",
+   "to": "liuyuan_dorm",
+   "distance_m": 101,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315873,39.003182 destination=117.315336,39.003856）distance_m=101；骑行 v4 可用=101"
+  },
+  {
+   "from": "geyuan_dorm",
+   "to": "mei_yuan_canteen",
+   "distance_m": 283,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3158730,39.0031820 destination=117.3157220,39.0015940）distance_m=283；骑行 v4 可用=283"
+  },
+  {
+   "from": "geyuan_dorm",
+   "to": "school_of_math",
+   "distance_m": 321,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3158730,39.0031820 destination=117.3180190,39.0034020）distance_m=321；骑行 v4 可用=321"
+  },
+  {
+   "from": "geyuan_dorm",
+   "to": "zhiyuan_4zhai_b",
+   "distance_m": 101,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315873,39.003182 destination=117.316275,39.002325）distance_m=101；骑行 v4 可用=101"
+  },
+  {
+   "from": "geyuan_dorm",
+   "to": "zhiyuan_dorm",
+   "distance_m": 204,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3158730,39.0031820 destination=117.3165250,39.0019720）distance_m=204；骑行 v4 可用=281"
+  },
+  {
+   "from": "juyuan_canteen",
+   "to": "liuyuan_canteen",
+   "distance_m": 141,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315698,39.001939 destination=117.315737,39.002429）distance_m=141；骑行 v4 可用=141"
+  },
+  {
+   "from": "juyuan_canteen",
+   "to": "liuyuan_dorm",
+   "distance_m": 343,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315698,39.001939 destination=117.315336,39.003856）distance_m=343；骑行 v4 可用=357"
+  },
+  {
+   "from": "juyuan_canteen",
+   "to": "security_center",
+   "distance_m": 168,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315698,39.001939 destination=117.315393,39.000835）distance_m=168；骑行 v4 可用=168"
+  },
+  {
+   "from": "juyuan_canteen",
+   "to": "zhiyuan_4zhai_b",
+   "distance_m": 180,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315698,39.001939 destination=117.316275,39.002325）distance_m=180；骑行 v4 可用=180"
+  },
+  {
+   "from": "juyuan_canteen",
+   "to": "zhiyuan_dorm",
+   "distance_m": 254,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3156980,39.0019390 destination=117.3165250,39.0019720）distance_m=254；骑行 v4 可用=254"
+  },
+  {
+   "from": "lan_yuan_canteen",
+   "to": "sanwen_bridge",
+   "distance_m": 293,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3176100,38.9984700 destination=117.3196310,38.9973950）distance_m=293；骑行 v4 可用=293"
+  },
+  {
+   "from": "lan_yuan_canteen",
+   "to": "shutian_square",
+   "distance_m": 342,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3176100,38.9984700 destination=117.3154690,38.9973890）distance_m=342；骑行 v4 可用=342"
+  },
+  {
+   "from": "lan_yuan_canteen",
+   "to": "zhengyuan_dorm",
+   "distance_m": 173,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.317610,38.998470 destination=117.316113,38.998299）distance_m=173；骑行 v4 可用=173"
+  },
+  {
+   "from": "liuyuan_canteen",
+   "to": "mei_yuan_canteen",
+   "distance_m": 142,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315737,39.002429 destination=117.315722,39.001594）distance_m=142；骑行 v4 可用=142"
+  },
+  {
+   "from": "liuyuan_canteen",
+   "to": "zhiyuan_4zhai_b",
+   "distance_m": 38,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315737,39.002429 destination=117.316275,39.002325）distance_m=38；骑行 v4 可用=38"
+  },
+  {
+   "from": "liuyuan_canteen",
+   "to": "zhiyuan_dorm",
+   "distance_m": 112,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315737,39.002429 destination=117.316525,39.001972）distance_m=112；骑行 v4 可用=112"
+  },
+  {
+   "from": "liuyuan_dorm",
+   "to": "school_of_math",
+   "distance_m": 438,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315336,39.003856 destination=117.318019,39.003402）distance_m=438；骑行 v4 可用=424"
+  },
+  {
+   "from": "liuyuan_dorm",
+   "to": "zhiyuan_4zhai_b",
+   "distance_m": 205,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315336,39.003856 destination=117.316275,39.002325）distance_m=205；骑行 v4 可用=204"
+  },
+  {
+   "from": "liuyuan_dorm",
+   "to": "zhiyuan_dorm",
+   "distance_m": 279,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315336,39.003856 destination=117.316525,39.001972）distance_m=279；骑行 v4 可用=279"
+  },
+  {
+   "from": "main_building",
+   "to": "service_hall",
+   "distance_m": 44,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3202040,39.0003340 destination=117.3196940,38.9999650）distance_m=44；骑行 v4 可用=44"
+  },
+  {
+   "from": "main_building",
+   "to": "swimming_pool",
+   "distance_m": 265,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3202040,39.0003340 destination=117.3199340,39.0013940）distance_m=265；骑行 v4 可用=265"
+  },
+  {
+   "from": "mei_yuan_canteen",
+   "to": "security_center",
+   "distance_m": 169,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315722,39.001594 destination=117.315393,39.000835）distance_m=169；骑行 v4 可用=169"
+  },
+  {
+   "from": "mei_yuan_canteen",
+   "to": "zhiyuan_4zhai_b",
+   "distance_m": 181,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315722,39.001594 destination=117.316275,39.002325）distance_m=181；骑行 v4 可用=181"
+  },
+  {
+   "from": "mei_yuan_canteen",
+   "to": "zhiyuan_dorm",
+   "distance_m": 255,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3157220,39.0015940 destination=117.3165250,39.0019720）distance_m=255；骑行 v4 可用=255"
+  },
+  {
+   "from": "network_center",
+   "to": "xuesan_canteen",
+   "distance_m": 151,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.313600,38.998504 destination=117.312373,38.998443）distance_m=151；骑行 v4 可用=151"
+  },
+  {
+   "from": "network_center",
+   "to": "zhengdong_library",
+   "distance_m": 256,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.313600,38.998504 destination=117.313812,38.997751）distance_m=256；骑行 v4 可用=256"
+  },
+  {
+   "from": "pingyuan_21zhai_a",
+   "to": "pingyuan_dorm",
+   "distance_m": 103,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312825,39.000525 destination=117.312272,38.999912）distance_m=103；骑行 v4 可用=103"
+  },
+  {
+   "from": "pingyuan_22zhai",
+   "to": "beiyang_supermarket_pingyuan",
+   "distance_m": 139,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312383,38.999743 destination=117.312243,39.000146）distance_m=139；骑行 v4 可用=124"
+  },
+  {
+   "from": "pingyuan_22zhai",
+   "to": "building_55",
+   "distance_m": 111,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312383,38.999743 destination=117.313325,38.999675）distance_m=111；骑行 v4 可用=111"
+  },
+  {
+   "from": "pingyuan_22zhai",
+   "to": "pingyuan_23zhai",
+   "distance_m": 125,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312383,38.999743 destination=117.311713,39.000218）distance_m=125；骑行 v4 可用=156"
+  },
+  {
+   "from": "pingyuan_23zhai",
+   "to": "beiyang_supermarket_pingyuan",
+   "distance_m": 32,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.311713,39.000218 destination=117.312243,39.000146）distance_m=32；骑行 v4 可用=32"
+  },
+  {
+   "from": "pingyuan_23zhai",
+   "to": "building_54",
+   "distance_m": 154,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.311713,39.000218 destination=117.313175,39.000675）distance_m=154；骑行 v4 可用=154"
+  },
+  {
+   "from": "pingyuan_23zhai",
+   "to": "pingyuan_21zhai_a",
+   "distance_m": 105,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.311713,39.000218 destination=117.312825,39.000525）distance_m=105；骑行 v4 可用=105"
+  },
+  {
+   "from": "pingyuan_23zhai",
+   "to": "pingyuan_dorm",
+   "distance_m": 129,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.311713,39.000218 destination=117.312272,38.999912）distance_m=129；骑行 v4 可用=152"
+  },
+  {
+   "from": "pingyuan_24zhai",
+   "to": "beiyang_supermarket_pingyuan",
+   "distance_m": 132,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.311176,38.999730 destination=117.312243,39.000146）distance_m=132；骑行 v4 可用=132"
+  },
+  {
+   "from": "pingyuan_24zhai",
+   "to": "pingyuan_22zhai",
+   "distance_m": 138,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.311176,38.999730 destination=117.312383,38.999743）distance_m=138；骑行 v4 可用=256"
+  },
+  {
+   "from": "pingyuan_24zhai",
+   "to": "pingyuan_23zhai",
+   "distance_m": 102,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.311176,38.999730 destination=117.311713,39.000218）distance_m=102；骑行 v4 可用=102"
+  },
+  {
+   "from": "pingyuan_24zhai",
+   "to": "pingyuan_dorm",
+   "distance_m": 142,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.311176,38.999730 destination=117.312272,38.999912）distance_m=142；骑行 v4 可用=252"
+  },
+  {
+   "from": "pingyuan_dorm",
+   "to": "sanwenyuan_30zhai",
+   "distance_m": 274,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312272,38.999912 destination=117.309502,38.999585）distance_m=274；骑行 v4 可用=445"
+  },
+  {
+   "from": "pingyuan_dorm",
+   "to": "sanwenyuan_dorm",
+   "distance_m": 269,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3122720,38.9999120 destination=117.3096680,38.9995830）distance_m=269；骑行 v4 可用=440"
+  },
+  {
+   "from": "pingyuan_dorm",
+   "to": "school_of_computing",
+   "distance_m": 281,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3122720,38.9999120 destination=117.3140150,38.9999670）distance_m=281；骑行 v4 可用=266"
+  },
+  {
+   "from": "qingnian_lake",
+   "to": "datong_student_center",
+   "distance_m": 212,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "qingnian_lake",
+   "to": "sanwenyuan_dorm",
+   "distance_m": 235,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "qingnian_lake",
+   "to": "tailei_square",
+   "distance_m": 296,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "qingyuan_canteen",
+   "to": "school_of_math",
+   "distance_m": 206,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3194490,39.0037470 destination=117.3180190,39.0034020）distance_m=206；骑行 v4 可用=206（海棠餐厅并入青园餐厅，同址）"
+  },
+  {
+   "from": "qingyuan_canteen",
+   "to": "sports_hall",
+   "distance_m": 195,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3194490,39.0037470 destination=117.3200690,39.0023560）distance_m=195；骑行 v4 可用=195（海棠餐厅并入青园餐厅，同址）"
+  },
+  {
+   "from": "qingyuan_canteen",
+   "to": "teacher_apartment",
+   "distance_m": 103,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "qingyuan_canteen",
+   "to": "tongde_yazheng_intersection",
+   "distance_m": 628,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3194490,39.0037470 destination=117.3212890,39.0069760）distance_m=628；骑行 v4 可用=650（海棠餐厅并入青园餐厅，同址）"
+  },
+  {
+   "from": "qiushui_hall",
+   "to": "sanwen_bridge",
+   "distance_m": 194,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3217880,38.9968860 destination=117.3196310,38.9973950）distance_m=194；骑行 v4 可用=194"
+  },
+  {
+   "from": "qiyuan_13zhai",
+   "to": "qiyuan_dorm",
+   "distance_m": 54,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "qiyuan_13zhai",
+   "to": "qiyuan_express_station",
+   "distance_m": 55,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "qiyuan_13zhai",
+   "to": "xuesi_cafeteria",
+   "distance_m": 177,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "qiyuan_14zhai",
+   "to": "building_31",
+   "distance_m": 53,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "qiyuan_14zhai",
+   "to": "qiyuan_dorm",
+   "distance_m": 75,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "qiyuan_14zhai",
+   "to": "xuesi_cafeteria",
+   "distance_m": 125,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "qiyuan_15zhai",
+   "to": "building_31",
+   "distance_m": 69,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316159,38.994804 destination=117.316225,38.994225）distance_m=69；骑行 v4 可用=69"
+  },
+  {
+   "from": "qiyuan_15zhai",
+   "to": "qiyuan_13zhai",
+   "distance_m": 39,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316159,38.994804 destination=117.316666,38.994791）distance_m=39；骑行 v4 可用=39"
+  },
+  {
+   "from": "qiyuan_15zhai",
+   "to": "qiyuan_dorm",
+   "distance_m": 31,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316159,38.994804 destination=117.316127,38.994539）distance_m=31；骑行 v4 可用=31"
+  },
+  {
+   "from": "qiyuan_15zhai",
+   "to": "qiyuan_express_station",
+   "distance_m": 33,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316159,38.994804 destination=117.316125,38.994525）distance_m=33；骑行 v4 可用=33"
+  },
+  {
+   "from": "qiyuan_16zhai",
+   "to": "building_31",
+   "distance_m": 8,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316200,38.994300 destination=117.316225,38.994225）distance_m=8；骑行 v4 可用=8"
+  },
+  {
+   "from": "qiyuan_16zhai",
+   "to": "qiyuan_15zhai",
+   "distance_m": 61,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316200,38.994300 destination=117.316159,38.994804）distance_m=61；骑行 v4 可用=61"
+  },
+  {
+   "from": "qiyuan_16zhai",
+   "to": "qiyuan_dorm",
+   "distance_m": 29,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316200,38.994300 destination=117.316127,38.994539）distance_m=29；骑行 v4 可用=29"
+  },
+  {
+   "from": "qiyuan_16zhai",
+   "to": "qiyuan_express_station",
+   "distance_m": 27,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316200,38.994300 destination=117.316125,38.994525）distance_m=27；骑行 v4 可用=27"
+  },
+  {
+   "from": "qiyuan_dorm",
+   "to": "qiyuan_express_station",
+   "distance_m": 1,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316127,38.994539 destination=117.316125,38.994525）distance_m=1；骑行 v4 可用=1"
+  },
+  {
+   "from": "qiyuan_dorm",
+   "to": "xuesi_cafeteria",
+   "distance_m": 295,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316127,38.994539 destination=117.315796,38.993352）distance_m=295；骑行 v4 可用=295"
+  },
+  {
+   "from": "qiyuan_express_station",
+   "to": "xuesi_cafeteria",
+   "distance_m": 293,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316125,38.994525 destination=117.315796,38.993352）distance_m=293；骑行 v4 可用=293"
+  },
+  {
+   "from": "rishin_park",
+   "to": "sanwenyuan_30zhai",
+   "distance_m": 2206,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.299422,38.998718 destination=117.309502,38.999585）distance_m=2206；骑行 v4 可用=2191"
+  },
+  {
+   "from": "rishin_park",
+   "to": "sanwenyuan_dorm",
+   "distance_m": 2201,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.299422,38.998718 destination=117.309668,38.999583）distance_m=2201；骑行 v4 可用=2186"
+  },
+  {
+   "from": "rishin_park",
+   "to": "tailei_square",
+   "distance_m": 1856,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.299422,38.998718 destination=117.310980,38.996291）distance_m=1856；骑行 v4 可用=2161"
+  },
+  {
+   "from": "sanwen_bridge",
+   "to": "xuanhuai_square",
+   "distance_m": 199,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3196310,38.9973950 destination=117.3216770,38.9973430）distance_m=199；骑行 v4 可用=199"
+  },
+  {
+   "from": "sanwenyuan_30zhai",
+   "to": "sanwenyuan_dorm",
+   "distance_m": 51,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.309502,38.999585 destination=117.309668,38.999583）distance_m=51；骑行 v4 可用=51"
+  },
+  {
+   "from": "school_of_computing",
+   "to": "security_center",
+   "distance_m": 340,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314015,38.999967 destination=117.315393,39.000835）distance_m=340；骑行 v4 可用=340"
+  },
+  {
+   "from": "school_of_math",
+   "to": "sports_hall",
+   "distance_m": 273,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3180190,39.0034020 destination=117.3200690,39.0023560）distance_m=273；骑行 v4 可用=273"
+  },
+  {
+   "from": "school_of_math",
+   "to": "tongde_yazheng_intersection",
+   "distance_m": 763,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3180190,39.0034020 destination=117.3212890,39.0069760）distance_m=763；骑行 v4 可用=785"
+  },
+  {
+   "from": "school_of_math",
+   "to": "zhiyuan_dorm",
+   "distance_m": 258,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3180190,39.0034020 destination=117.3165250,39.0019720）distance_m=258；骑行 v4 可用=258"
+  },
+  {
+   "from": "service_hall",
+   "to": "swimming_pool",
+   "distance_m": 222,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3196940,38.9999650 destination=117.3199340,39.0013940）distance_m=222；骑行 v4 可用=222"
+  },
+  {
+   "from": "shutian_square",
+   "to": "xiuyuan_dorm",
+   "distance_m": 152,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315469,38.997389 destination=117.316548,38.996570）distance_m=152；骑行 v4 可用=152"
+  },
+  {
+   "from": "shutian_square",
+   "to": "xuesan_canteen",
+   "distance_m": 369,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3154690,38.9973890 destination=117.3123730,38.9984430）distance_m=369；骑行 v4 可用=369"
+  },
+  {
+   "from": "shutian_square",
+   "to": "zhengdong_library",
+   "distance_m": 150,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3154690,38.9973890 destination=117.3138120,38.9977510）distance_m=150；骑行 v4 可用=150"
+  },
+  {
+   "from": "shutian_square",
+   "to": "zhengyuan_dorm",
+   "distance_m": 168,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315469,38.997389 destination=117.316113,38.998299）distance_m=168；骑行 v4 可用=168"
+  },
+  {
+   "from": "sports_hall",
+   "to": "swimming_pool",
+   "distance_m": 208,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3200690,39.0023560 destination=117.3199340,39.0013940）distance_m=208；骑行 v4 可用=208"
+  },
+  {
+   "from": "tailei_square",
+   "to": "xuesan_canteen",
+   "distance_m": 337,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3109800,38.9962910 destination=117.3123730,38.9984430）distance_m=337；骑行 v4 可用=337"
+  },
+  {
+   "from": "tailei_square",
+   "to": "xuewu_canteen",
+   "distance_m": 139,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3109800,38.9962910 destination=117.3123940,38.9961350）distance_m=139；骑行 v4 可用=139"
+  },
+  {
+   "from": "teacher_apartment",
+   "to": "beiyang_clinic",
+   "distance_m": 39,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "teacher_apartment",
+   "to": "campus_hospital",
+   "distance_m": 119,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "xiuyuan_11zhai",
+   "to": "shutian_square",
+   "distance_m": 142,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315800,38.996900 destination=117.315469,38.997389）distance_m=142；骑行 v4 可用=147"
+  },
+  {
+   "from": "xiuyuan_11zhai",
+   "to": "xiuyuan_12zhai",
+   "distance_m": 91,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315800,38.996900 destination=117.315748,38.996507）distance_m=91；骑行 v4 可用=91"
+  },
+  {
+   "from": "xiuyuan_11zhai",
+   "to": "xiuyuan_dorm",
+   "distance_m": 64,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315800,38.996900 destination=117.316548,38.996570）distance_m=64；骑行 v4 可用=64"
+  },
+  {
+   "from": "xiuyuan_12zhai",
+   "to": "shutian_square",
+   "distance_m": 179,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315748,38.996507 destination=117.315469,38.997389）distance_m=179；骑行 v4 可用=179"
+  },
+  {
+   "from": "xiuyuan_12zhai",
+   "to": "xiuyuan_dorm",
+   "distance_m": 101,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.315748,38.996507 destination=117.316548,38.996570）distance_m=101；骑行 v4 可用=101"
+  },
+  {
+   "from": "xiuyuan_dorm",
+   "to": "zhengyuan_dorm",
+   "distance_m": 208,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316548,38.996570 destination=117.316113,38.998299）distance_m=208；骑行 v4 可用=208"
+  },
+  {
+   "from": "xuesan_canteen",
+   "to": "zhengdong_library",
+   "distance_m": 231,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3123730,38.9984430 destination=117.3138120,38.9977510）distance_m=231；骑行 v4 可用=231"
+  },
+  {
+   "from": "xuewu_canteen",
+   "to": "zhengdong_library",
+   "distance_m": 216,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.3123940,38.9961350 destination=117.3138120,38.9977510）distance_m=216；骑行 v4 可用=296"
+  },
+  {
+   "from": "zhengdong_library",
+   "to": "zhengyuan_dorm",
+   "distance_m": 305,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.313812,38.997751 destination=117.316113,38.998299）distance_m=305；骑行 v4 可用=305"
+  },
+  {
+   "from": "zhengyuan_10zhai",
+   "to": "beiyang_memorial_forest",
+   "distance_m": 144,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "zhengyuan_10zhai",
+   "to": "shutian_square",
+   "distance_m": 101,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "zhengyuan_10zhai",
+   "to": "zhengyuan_dorm",
+   "distance_m": 36,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "zhengyuan_9zhai",
+   "to": "dorm_service_center",
+   "distance_m": 82,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "zhengyuan_9zhai",
+   "to": "lan_yuan_canteen",
+   "distance_m": 71,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "zhengyuan_9zhai",
+   "to": "zhengyuan_dorm",
+   "distance_m": 61,
+   "modes": [
+    "walk",
+    "bike"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "zhiyuan_4zhai_b",
+   "to": "zhiyuan_dorm",
+   "distance_m": 116,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.316275,39.002325 destination=117.316525,39.001972）distance_m=116；骑行 v4 可用=192"
+  },
+  {
+   "from": "zhiyuan_5zhai",
+   "to": "beiyangyuan_north_cainiao",
+   "distance_m": 281,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314461,39.001414 destination=117.313430,39.000696）distance_m=281；骑行 v4 可用=210"
+  },
+  {
+   "from": "zhiyuan_5zhai",
+   "to": "mei_yuan_canteen",
+   "distance_m": 152,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314461,39.001414 destination=117.315722,39.001594）distance_m=152；骑行 v4 可用=152"
+  },
+  {
+   "from": "zhiyuan_5zhai",
+   "to": "security_center",
+   "distance_m": 135,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.314461,39.001414 destination=117.315393,39.000835）distance_m=135；骑行 v4 可用=135"
+  },
+  {
+   "from": "zhiyuan_garden",
+   "to": "beiyangyuan_south_gate",
+   "distance_m": 159,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312059,38.994545 destination=117.311460,38.993514）distance_m=159；骑行 v4 可用=159"
+  },
+  {
+   "from": "zhiyuan_garden",
+   "to": "zhiyuan_garden_17zhai",
+   "distance_m": 63,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312059,38.994545 destination=117.312262,38.994920）distance_m=63；骑行 v4 可用=63"
+  },
+  {
+   "from": "zhiyuan_garden",
+   "to": "zhiyuan_garden_18zhai",
+   "distance_m": 58,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312059,38.994545 destination=117.312203,38.994193）distance_m=58；骑行 v4 可用=58"
+  },
+  {
+   "from": "zhiyuan_garden",
+   "to": "zhiyuan_garden_19zhai_add1",
+   "distance_m": 79,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312059,38.994545 destination=117.311713,38.994523）distance_m=79；骑行 v4 可用=79"
+  },
+  {
+   "from": "zhiyuan_garden_17zhai",
+   "to": "xuewu_canteen",
+   "distance_m": 323,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312262,38.994920 destination=117.312394,38.996135）distance_m=323；骑行 v4 可用=323"
+  },
+  {
+   "from": "zhiyuan_garden_17zhai",
+   "to": "zhiyuan_garden_18zhai",
+   "distance_m": 75,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312262,38.994920 destination=117.312203,38.994193）distance_m=75；骑行 v4 可用=75"
+  },
+  {
+   "from": "zhiyuan_garden_17zhai",
+   "to": "zhiyuan_garden_19zhai_add1",
+   "distance_m": 143,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312262,38.994920 destination=117.311713,38.994523）distance_m=143；骑行 v4 可用=143"
+  },
+  {
+   "from": "zhiyuan_garden_18zhai",
+   "to": "beiyangyuan_south_gate",
+   "distance_m": 218,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312203,38.994193 destination=117.311460,38.993514）distance_m=218；骑行 v4 可用=218"
+  },
+  {
+   "from": "zhiyuan_garden_18zhai",
+   "to": "zhiyuan_garden_19zhai_add1",
+   "distance_m": 138,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.312203,38.994193 destination=117.311713,38.994523）distance_m=138；骑行 v4 可用=138"
+  },
+  {
+   "from": "zhiyuan_garden_19zhai",
+   "to": "zhiyuan_garden",
+   "distance_m": 121,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.311298,38.994963 destination=117.312059,38.994545）distance_m=121；骑行 v4 可用=121"
+  },
+  {
+   "from": "zhiyuan_garden_19zhai",
+   "to": "zhiyuan_garden_17zhai",
+   "distance_m": 185,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.311298,38.994963 destination=117.312262,38.994920）distance_m=185；骑行 v4 可用=185"
+  },
+  {
+   "from": "zhiyuan_garden_19zhai",
+   "to": "zhiyuan_garden_19zhai_add1",
+   "distance_m": 77,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.311298,38.994963 destination=117.311713,38.994523）distance_m=77；骑行 v4 可用=77"
+  },
+  {
+   "from": "zhiyuan_garden_19zhai",
+   "to": "zhiyuan_garden_20zhai",
+   "distance_m": 143,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.311298,38.994963 destination=117.311174,38.994205）distance_m=143；骑行 v4 可用=143"
+  },
+  {
+   "from": "zhiyuan_garden_19zhai_add1",
+   "to": "beiyangyuan_south_gate",
+   "distance_m": 182,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.311713,38.994523 destination=117.311460,38.993514）distance_m=182；骑行 v4 可用=182"
+  },
+  {
+   "from": "zhiyuan_garden_20zhai",
+   "to": "beiyangyuan_south_gate",
+   "distance_m": 209,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.311174,38.994205 destination=117.311460,38.993514）distance_m=209；骑行 v4 可用=209"
+  },
+  {
+   "from": "zhiyuan_garden_20zhai",
+   "to": "zhiyuan_garden",
+   "distance_m": 106,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.311174,38.994205 destination=117.312059,38.994545）distance_m=106；骑行 v4 可用=106"
+  },
+  {
+   "from": "zhiyuan_garden_20zhai",
+   "to": "zhiyuan_garden_19zhai_add1",
+   "distance_m": 65,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.311174,38.994205 destination=117.311713,38.994523）distance_m=65；骑行 v4 可用=65"
+  },
+  {
+   "from": "sanwenyuan_27zhai",
+   "to": "sanwenyuan_dorm",
+   "distance_m": 33,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "sanwenyuan_28zhai",
+   "to": "sanwenyuan_dorm",
+   "distance_m": 34,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "sanwenyuan_29zhai",
+   "to": "sanwenyuan_30zhai",
+   "distance_m": 28,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "sanwenyuan_27zhai",
+   "to": "sanwenyuan_28zhai",
+   "distance_m": 27,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "sanwenyuan_28zhai",
+   "to": "sanwenyuan_29zhai",
+   "distance_m": 30,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "boxueyuan_25zhai",
+   "to": "zhiyuan_garden",
+   "distance_m": 344,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.310075,38.994875 destination=117.312059,38.994545）distance_m=344；骑行 v4 可用=344"
+  },
+  {
+   "from": "boxueyuan_25zhai",
+   "to": "tailei_square",
+   "distance_m": 428,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.310075,38.994875 destination=117.310980,38.996291）distance_m=428；骑行 v4 可用=428"
+  },
+  {
+   "from": "boxueyuan_26zhai",
+   "to": "beiyangyuan_south_gate",
+   "distance_m": 207,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.310375,38.994325 destination=117.311460,38.993514）distance_m=207；骑行 v4 可用=207"
+  },
+  {
+   "from": "boxueyuan_26zhai",
+   "to": "zhiyuan_garden",
+   "distance_m": 326,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "高德步行路线 API v3（origin=117.310375,38.994325 destination=117.312059,38.994545）distance_m=326；骑行 v4 可用=244（骑行路线更短）"
+  },
+  {
+   "from": "boxueyuan_dorm",
+   "to": "boxueyuan_25zhai",
+   "distance_m": 33,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  },
+  {
+   "from": "boxueyuan_dorm",
+   "to": "boxueyuan_26zhai",
+   "distance_m": 33,
+   "modes": [
+    "bike",
+    "walk"
+   ],
+   "bidirectional": true,
+   "source": "TJU 官方地图近似节点接入既有路网（haversine 近似距离，非高德 direction 结果）"
+  }
+ ]
+}

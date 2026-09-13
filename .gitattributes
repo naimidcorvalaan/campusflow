@@ -1,0 +1,2 @@
+# Windows double-click scripts require CRLF for reliable cmd.exe parsing.
+*.bat text eol=crlf
