@@ -9,7 +9,7 @@ from src.material_workload import source_workload, model_workloads, estimate_wor
 def run_material_intake(draft, request, caller, system, user, refs, file_source=None,
                         original_note='', workload_caller=None):
     from src.material_inbox import MaterialError, parse_extraction, extract_json_object, AgenticParseError, fingerprint
-    from src.material_estimate_recovery import recover_result, finish_result, apply_coverage
+    from src.material_estimate_recovery import recover_result, finish_result, apply_coverage, workload_confirmation_fields
     source_text=file_source.text if file_source else draft.original_text
     visual=draft.source_type in ('image','pdf_vision')
     local=source_workload(source_text,draft.supplemental_context+' '+original_note)
@@ -107,16 +107,20 @@ def run_material_intake(draft, request, caller, system, user, refs, file_source=
             original_note if draft.source_type!='text' else '')
         request_error=error or request_error
         entries=[]
+        confirmation_fields=workload_confirmation_fields(responses)
         for work,value,origin in estimates:
-            # This bridge only creates a display result. No inferred deadlines,
-            # identities, refs or completion progress are assigned here.
+            # Retain an estimate and the facts still needing confirmation.
+            # Only explicit scope consent can prepare a minimum task later;
+            # no formal task, refs or completion progress are assigned here.
             safe=dict(task_name=work.task_name,short_scope=work.scope,
                 focused_minutes_min=value['min_focus_minutes'],focused_minutes_max=value['max_focus_minutes'],
                 recommended_minutes=value['recommended_minutes'],rationale=value['basis'],
                 assumptions=tuple(value['assumptions']))
             entries.append(dict(item_id=fingerprint(draft.source_fingerprint,work.work_id)[:24],
                 estimate=safe,simple_confirmation_allowed=False,scope_unresolved=True,
-                origin=origin,waiting_note=work.waiting_note))
+                origin=origin,waiting_note=work.waiting_note,
+                scope_confirmation_allowed=not result.items and not confirmation_fields,
+                confirmation_fields=confirmation_fields))
             origins.append(origin)
         result=replace(result,status='ready',message='',estimate_fallbacks=tuple(entries))
 

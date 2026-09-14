@@ -51,14 +51,23 @@ SETTINGS_ACCESSIBILITY_HTML = """
     target.removeAttribute('aria-label'); target.removeAttribute('data-campusflow-dialog');
   };
   const activate = () => {
-    // Change only the native status text node; preserve Stop and its handlers.
+    // Mark only the native global label; CSS animates dots, never reruns.
+    // Preserve Stop and its handlers, and leave local spinners untouched.
+    const thinkingLabels = new Set();
     for (const status of d.querySelectorAll('[data-testid="stStatusWidget"]')) {
       const walker = d.createTreeWalker(status, w.NodeFilter.SHOW_TEXT);
       let node;
       while ((node = walker.nextNode())) {
-        if (/^(running|thinking|thikning)[.\u2026]*$/i.test(node.nodeValue.trim())
-            && node.nodeValue.trim() !== 'THINKING') node.nodeValue = 'THINKING';
+        if (/^(running|thinking|thikning)[.\u2026]*$/i.test(node.nodeValue.trim())) {
+          if (node.nodeValue.trim() !== 'THINKING') node.nodeValue = 'THINKING';
+          const label = node.parentElement;
+          label.setAttribute('data-cf-thinking', 'true');
+          thinkingLabels.add(label);
+        }
       }
+    }
+    for (const label of d.querySelectorAll('[data-cf-thinking]')) {
+      if (!thinkingLabels.has(label)) label.removeAttribute('data-cf-thinking');
     }
     const marker = d.querySelector('.cf-settings-marker');
     const found = marker && marker.closest(selector);
@@ -146,6 +155,7 @@ SETTINGS_ACCESSIBILITY_HTML = """
   activate();
   w.__campusflowDrawerCleanup = () => {
     observer.disconnect(); d.removeEventListener('keydown',keydown);
+    for (const label of d.querySelectorAll('[data-cf-thinking]')) label.removeAttribute('data-cf-thinking');
     d.removeEventListener('click',rememberTab,true);
     const main = d.querySelector('section.main');
     if (active && main) main.style.overflowY = previousOverflow;

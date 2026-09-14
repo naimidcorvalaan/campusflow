@@ -139,8 +139,8 @@ def render_profile_status(st, identity, status):
     if sidebar is None:
         return
     if not getattr(identity, 'persistent', False):
-        label = '临时使用 · 不保存到档案'
-    elif status == '本次内容未保存到个人档案':
+        return
+    if status == '本次内容未保存到个人档案':
         label = '个人档案 · 本次未保存'
     else:
         label = '个人档案已启用'

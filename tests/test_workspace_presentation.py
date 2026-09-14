@@ -209,8 +209,8 @@ def test_profile_footer_reads_identity_without_initializing_or_persisting_it():
     from src.workspace_ui import render_profile_status
     anonymous = ProfileIdentity('anonymous-review', False, 'anonymous')
     personal = ProfileIdentity('personal-review', True, 'student')
-    cases = ((None, None, '临时使用 · 不保存到档案'),
-        (anonymous, '本次内容未保存到个人档案', '临时使用 · 不保存到档案'),
+    cases = ((None, None, None),
+        (anonymous, '本次内容未保存到个人档案', None),
         (personal, '已在本机保存。', '个人档案已启用'),
         (personal, '本次内容未保存到个人档案', '个人档案 · 本次未保存'))
     for identity, status, expected in cases:
@@ -228,7 +228,10 @@ def test_profile_footer_reads_identity_without_initializing_or_persisting_it():
         st.markdown = markdown
         before = (dict(st.session_state), repr(identity))
         render_profile_status(st, identity, status)
-        assert expected in ''.join(st.markdown_calls)
+        if expected is None:
+            assert st.markdown_calls == []
+        else:
+            assert expected in ''.join(st.markdown_calls)
         assert before == (dict(st.session_state), repr(identity))
 
 

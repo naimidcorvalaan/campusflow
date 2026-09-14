@@ -8,13 +8,14 @@ from dataclasses import replace
 from src.material_inbox import (MATERIAL_INBOX_KEY, MaterialInbox, MaterialError,
     update_source, update_image_source, update_file_source, extract_material, estimate_item, item_values, edited, estimate_basis,
     material_issues, issue_needs_decision, issue_user_override, unresolved_relative_fields,
-    apply_notice_date)
+    apply_notice_date, checked_item)
 from src.material_planning import plan_fingerprint, matching_context, build_material_candidate
 from src.personal_settings import load_personal_settings
 from src.file_material import (read_file_material, FileMaterialError, FILE_SOURCE_TYPES,
     MAX_DOCX_BYTES, MAX_PDF_BYTES)
 from src.task_estimation import MAX_IMAGE_BYTES
-from src.material_estimate_recovery import confirm_minimal_task, reestimate_only
+from src.material_estimate_recovery import (confirm_minimal_task, reestimate_only,
+    minimal_confirmation_mode, adoption_next_step)
 
 
 
@@ -82,7 +83,7 @@ def save_material_edit(st, inbox, reference):
 def handle_material_action(st, session, adapter, action, reference, item_id=None,
                            image_mime=None, image_bytes=None, file_source=None,
                            confirmed_title=None, confirmed_minutes=None, simple_confirmed=False,
-                           estimate_supplement='', source_draft=None):
+                           estimate_supplement='', source_draft=None, confirmed_scope=None):
     """Real submit handler, callable offline. Model responses are the only mocks."""
     from src import p2_live_main as live
     inbox = st.session_state.get(MATERIAL_INBOX_KEY, MaterialInbox())
@@ -114,7 +115,8 @@ def handle_material_action(st, session, adapter, action, reference, item_id=None
         if action == 'reference_date':
             return save_material_edit(st,apply_notice_date(inbox,item_id),reference)
         if action == 'prepare_estimate':
-            updated = confirm_minimal_task(draft,item_id,confirmed_title,confirmed_minutes,simple_confirmed)
+            updated = confirm_minimal_task(draft,item_id,confirmed_title,confirmed_minutes,simple_confirmed,
+                confirmed_scope=confirmed_scope)
             return save_material_edit(st,replace(inbox,draft=updated),reference)
         if action == 'estimate_only':
             updated=reestimate_only(draft,item_id,adapter.agent_caller,estimate_supplement,
@@ -174,6 +176,17 @@ def handle_material_action(st, session, adapter, action, reference, item_id=None
                 'confirm':'事项未加入 · 原方案和草稿已保留。'}
             st.warning(messages.get(action,'处理未完成 · 材料已保留，请重试。'))
     return False
+
+
+def _result_minutes(st, item, draft):
+    """Edit the existing adopted value without estimating or publishing anything."""
+    value = item_values(item,draft)['minutes']
+    key = 'cf_material_' + item.item_id + '_' + str(draft.extraction_revision) + '_adopted_' + str(item.estimate_revision)
+    if value.isdigit() and 1 <= int(value) <= 10080:
+        minutes = st.number_input('采用分钟',min_value=1,max_value=10080,value=int(value),step=1,key=key)
+        return edited(item,minutes=str(minutes))
+    minutes = st.text_input('采用分钟（可留空）',value=value,key=key+'_unknown')
+    return edited(item,minutes=minutes)
 
 
 def render_material_inbox(st, session, adapter, missing, reference):
@@ -351,21 +364,47 @@ def _render_material_surface(st, session, adapter, missing, reference):
                     key = 'cf_material_estimate_only_' + entry['item_id']
                     _render_estimate_card(st,draft,value,entry.get('waiting_note',''),show_coverage=index==0,
                         rough=entry.get('origin')=='local_workload')
-                    if entry['simple_confirmation_allowed']:
-                        if st.button('加入计划',key=key+'_edit'):
+                    minutes = st.number_input('采用分钟',min_value=1,max_value=1440,
+                        value=min(1440,entry.get('adopted_minutes',value['recommended_minutes'])),
+                        step=1,key=key+'_minutes')
+                    revised = dict(entry,adopted_minutes=minutes)
+                    mode = minimal_confirmation_mode(entry)
+                    if mode == 'blocked':
+                        if st.button(adoption_next_step(entry),key=key+'_scope'):
+                            flow.update(extra_open=True,message=adoption_next_step(entry))
+                            live._rerun(st)
+                            return True
+                    else:
+                        title = entry.get('adopted_title',value['task_name'])
+                        scope = entry.get('adopted_scope',value['short_scope'])
+                        if st.button('修改任务范围',key=key+'_edit'):
                             st.session_state[key+'_editing']=not st.session_state.get(key+'_editing',False)
                         if st.session_state.get(key+'_editing',False):
-                            title = st.text_input('要做什么',value=value['task_name'],key=key+'_title')
-                            minutes = st.number_input('采用分钟',min_value=1,max_value=1440,
-                                value=value['recommended_minutes'],step=1,key=key+'_minutes')
-                            consent = st.checkbox('这是新任务，不是固定安排，没有截止时间或指定执行地点',key=key+'_consent')
-                            if st.button('按{}分钟准备加入'.format(minutes),key=key+'_prepare',disabled=not consent):
-                                if handle_material_action(st,session,adapter,'prepare_estimate',reference,
-                                        item_id=entry['item_id'],confirmed_title=title,confirmed_minutes=minutes,
-                                        simple_confirmed=consent):
-                                    live._rerun(st)
-                                    return True
-                            st.caption('下一步：核对任务后加入计划。')
+                            title = st.text_input('要做什么',value=title,key=key+'_title')
+                            scope = st.text_area('本次采用范围',value=scope,key=key+'_scope_text',height=86)
+                        revised.update(adopted_title=title,adopted_scope=scope)
+                    updated = replace(inbox,draft=replace(draft,estimate_fallbacks=tuple(
+                        revised if v['item_id']==entry['item_id'] else v for v in draft.estimate_fallbacks)))
+                    if not save_material_edit(st,updated,reference):
+                        return False
+                    inbox, draft = updated, updated.draft
+                    if mode != 'blocked':
+                        single = len(draft.estimate_fallbacks)==1 and not draft.items
+                        label = '按 {} 分钟加入计划'.format(minutes) if single else '按 {} 分钟核对任务'.format(minutes)
+                        if st.button(label,key=key+'_prepare',type='primary'):
+                            if missing:
+                                st.warning('请连接模型服务 · 草稿已保留。')
+                            elif handle_material_action(st,session,adapter,'prepare_estimate',reference,
+                                    item_id=entry['item_id'],confirmed_title=title,confirmed_minutes=minutes,
+                                    simple_confirmed=True,confirmed_scope=scope):
+                                if single:
+                                    with st.spinner('THINKING.......'):
+                                        ok = handle_material_action(st,session,adapter,'confirm',reference)
+                                    if not ok:
+                                        flow['message']='事项未加入 · 草稿和采用分钟已保留，请核对后重试。'
+                                # Failed publication retains the prepared, editable draft for retry.
+                                live._rerun(st)
+                                return True
             if draft.status != 'ready' or not draft.items:
                 return False
             review_key = 'cf_material_review_' + draft.source_fingerprint
@@ -382,7 +421,31 @@ def _render_material_surface(st, session, adapter, missing, reference):
                         st.write(item.scope)
                         if item.minutes:
                             st.caption('预计专注用时：{}分钟'.format(item.minutes))
-                if st.button('核对并加入计划',key=review_key+'_open'):
+                rows = tuple(_result_minutes(st,item,draft) if item.kind=='task' else item for item in draft.items)
+                updated = replace(inbox,draft=replace(draft,items=rows))
+                if not save_material_edit(st,updated,reference):
+                    return False
+                inbox, draft = updated, updated.draft
+                direct = None
+                if len(rows)==1 and rows[0].kind=='task':
+                    try:
+                        direct = checked_item(rows[0],draft)
+                    except MaterialError:
+                        pass
+                if direct and direct['minutes']:
+                    for label,field in (('截止','deadline'),('地点','location_text')):
+                        if direct.get(field):
+                            st.caption(label+'：'+_display_fact(direct[field]))
+                    if st.button('按 {} 分钟加入计划'.format(direct['minutes']),key='cf_material_confirm',type='primary'):
+                        if missing:
+                            st.warning('请连接模型服务 · 草稿已保留。')
+                        else:
+                            with st.spinner('THINKING.......'):
+                                ok = handle_material_action(st,session,adapter,'confirm',reference)
+                            if ok:
+                                live._rerun(st)
+                                return True
+                if st.button('核对任务详情' if direct and direct['minutes'] else '核对并加入计划',key=review_key+'_open'):
                     st.session_state[review_key]=True
                     live._rerun(st)
                     return True
@@ -518,10 +581,9 @@ def _render_material_surface(st, session, adapter, missing, reference):
                         index=0 if v['campus_id']=='beiyangyuan' else 1,key=prefix+'campus',
                         format_func=lambda x:'北洋园' if x=='beiyangyuan' else '卫津路')
                 if item.kind == 'task':
+                    minute_row = _result_minutes(st,item,draft)
+                    values['minutes'] = item_values(minute_row,draft)['minutes']
                     if editing:
-                        values['minutes'] = st.text_input('采用分钟（可留空）',value=v['minutes'],
-                            key=prefix+'minutes_'+str(item.estimate_revision))
-                        st.caption('填写任务总用时')
                         values['supplement'] = st.text_input('有什么影响完成速度？（可选）',value=v['supplement'],key=prefix+'supplement')
                     if item.estimate:
                         r = item.estimate.result
@@ -601,7 +663,10 @@ def _render_material_surface(st, session, adapter, missing, reference):
                     if ok:
                         live._rerun(st)
                         return True
-            confirm = st.button('确认并加入计划',key='cf_material_confirm',type='primary',disabled=not any(i.user_edits.get('selected',True) for i in rows))
+            chosen = [i for i in rows if item_values(i,draft)['selected']]
+            chosen_minutes = item_values(chosen[0],draft)['minutes'] if len(chosen)==1 and chosen[0].kind=='task' else ''
+            confirm_label = '按 {} 分钟加入计划'.format(chosen_minutes) if chosen_minutes else '确认并加入计划'
+            confirm = st.button(confirm_label,key='cf_material_confirm',type='primary',disabled=not any(i.user_edits.get('selected',True) for i in rows))
             discard = st.button('丢弃这份草稿',key='cf_material_discard')
             if confirm or discard:
                 if confirm and missing:

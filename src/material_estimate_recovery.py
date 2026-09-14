@@ -99,6 +99,113 @@ def _scope_question(estimate):
     return bool(question and question.strip())
 
 
+def _blocking_confirmation_fields(obj):
+    """Retain constraint categories for adoption; never copy unvalidated facts."""
+    fields = set()
+    known_fields = {'deadline','location','fixed_arrangement','existing_task','identity','multiple_actions'}
+    action = obj.get('actionability')
+    if isinstance(action, dict):
+        required = action.get('confirmation_required', [])
+        if not isinstance(required, list) or any(not isinstance(v, str) for v in required):
+            fields.add('details')
+        else:
+            fields.update('scope' if v == 'identity' else v if v in known_fields else 'details'
+                for v in required if v != 'multiple_actions')
+    rows = obj.get('items', [])
+    for row in rows if isinstance(rows, list) else ():
+        if not isinstance(row, dict):
+            fields.add('details')
+            continue
+        known = {'kind','title','scope','completion','evidence','deadline','start','end','location_text',
+            'campus_id','commitment_kind','minutes','duration_evidence','uncertainties','possible_task_ref','estimate'}
+        if set(row)-known:
+            fields.add('details')
+        for key, field in (('deadline', 'deadline'), ('start', 'fixed_arrangement'),
+                           ('end', 'fixed_arrangement')):
+            if key in row and not _empty_time(row[key]):
+                fields.add(field)
+        for key, field in (('location_text', 'location'), ('campus_id', 'location'),
+                           ('commitment_kind', 'fixed_arrangement'), ('possible_task_ref', 'existing_task')):
+            if row.get(key):
+                fields.add(field)
+        if row.get('kind') == 'fixed_commitment':
+            fields.add('fixed_arrangement')
+        for issue in row.get('uncertainties', []) if isinstance(row.get('uncertainties', []), list) else [{}]:
+            field = issue.get('field') if isinstance(issue, dict) else None
+            if not isinstance(field, str):
+                field = 'details'
+            fields.add({'identity': 'scope', 'scope': 'scope', 'completion': 'scope',
+                'start': 'fixed_arrangement', 'end': 'fixed_arrangement',
+                'deadline': 'deadline', 'location': 'location'}.get(field, 'details'))
+    return tuple(sorted(fields))
+
+
+def workload_confirmation_fields(responses):
+    fields = set()
+    for raw in responses:
+        try:
+            obj = extract_json_object(raw)
+            if isinstance(obj, dict):
+                fields.update(_blocking_confirmation_fields(obj))
+        except (ValueError, TypeError, AgenticParseError):
+            pass
+    return tuple(sorted(fields))
+
+
+def scope_clarification(entry):
+    """A coverage/identity flag is not a missing task definition.
+
+    Use the retained scope, not the document's unread remainder. Explicit
+    unresolved scope text keeps its original question; a fully stated action
+    does not become ambiguous merely because a model asks about other work.
+    """
+    value = entry.get('estimate')
+    if not isinstance(value, dict):
+        return '请先取得包含任务步骤的估时结果。'
+    scope = value.get('short_scope')
+    scope = scope.strip() if isinstance(scope, str) else ''
+    unspecified = (not scope or scope in ('处理材料', '处理这份材料', '完成任务', '按要求完成')
+        or re.search(r'^(?:尚未|尚不|未|待|不)(?:明确|确定|确认|清楚|补充)', scope)
+        or re.search(r'(?:范围|动作|步骤|方式|栏目)(?:尚未|未|待)(?:明确|确定|确认)', scope))
+    if not unspecified:
+        return ''
+    question = entry.get('scope_clarification')
+    if isinstance(question, str) and question.strip():
+        return question.strip()
+    return '请明确本次要完成的具体步骤：{}'.format(scope or value.get('task_name', ''))
+
+
+def minimal_confirmation_mode(entry):
+    try:
+        validate_estimate(entry.get('estimate'))
+    except MaterialError:
+        return 'blocked'
+    if scope_clarification(entry):
+        return 'blocked'
+    fields = set(entry.get('confirmation_fields') or ())
+    if fields - {'scope'}:
+        return 'blocked'
+    if entry.get('simple_confirmation_allowed'):
+        return 'simple'
+    # Confirm the retained candidate, including saved drafts disabled by a
+    # coarse identity flag or display-only policy. Batch review and every
+    # known constraint/envelope blocker still run through the existing gates.
+    if (entry.get('scope_confirmation_allowed')
+            or 'confirmation_fields' in entry):
+        return 'scope'
+    return 'blocked'
+
+
+def adoption_next_step(entry):
+    fields = set(entry.get('confirmation_fields') or ()) - {'scope'}
+    labels = [('deadline', '截止时间'), ('location', '执行地点'),
+              ('fixed_arrangement', '固定安排时间'), ('existing_task', '新任务或已有任务')]
+    parts = [label for key, label in labels if key in fields]
+    if parts:
+        return '补充{}后加入计划'.format('、'.join(parts))
+    return scope_clarification(entry) or '核对任务时间、地点及新增方式后加入计划'
+
+
 def _estimate(row, draft, index, singleton):
     # Unknown event/identity and evidence-free model guesses cannot yield even
     # an estimate. Deadline/location data never enters the estimate schema.
@@ -120,7 +227,7 @@ def _estimate(row, draft, index, singleton):
     # single clearly identified task can be converted by explicit user consent.
     known={'kind','title','scope','completion','evidence','deadline','start','end','location_text',
         'campus_id','commitment_kind','minutes','duration_evidence','uncertainties','possible_task_ref','estimate'}
-    simple = (not unresolved and singleton and not set(row)-known and all(k in row and _empty_time(row[k]) for k in ('deadline','start','end'))
+    facts_clear = (not set(row)-known and all(k in row and _empty_time(row[k]) for k in ('deadline','start','end'))
         and row.get('location_text','missing') in ('',None)
         and row.get('commitment_kind','missing') is None
         and row.get('possible_task_ref','missing') is None
@@ -128,7 +235,12 @@ def _estimate(row, draft, index, singleton):
         and row.get('minutes','missing') is None
         and row.get('campus_id','missing') is None)
     return dict(estimate=safe, item_id=fingerprint(draft.source_fingerprint,index)[:24],
-        simple_confirmation_allowed=simple, scope_unresolved=unresolved)
+        simple_confirmation_allowed=not unresolved and singleton and facts_clear, scope_unresolved=unresolved,
+        scope_confirmation_allowed=facts_clear,
+        confirmation_fields=_blocking_confirmation_fields({'items': [row]}),
+        scope_clarification=estimate.get('clarification_question') or next((
+            issue.get('message', '') for issue in row.get('uncertainties', [])
+            if isinstance(issue, dict) and issue.get('field') in ('identity','scope','completion')), ''))
 
 
 def _action_estimate(obj, draft):
@@ -151,7 +263,10 @@ def _action_estimate(obj, draft):
     allowed={'is_estimatable','task_name','short_scope','reason','evidence','confirmation_required','waiting_note'}
     simple=(not unresolved and obj.get('items')==[] and action.get('confirmation_required')==[] and not set(action)-allowed)
     return dict(estimate=safe,item_id=fingerprint(draft.source_fingerprint,'action')[:24],
-        simple_confirmation_allowed=simple,waiting_note=waiting,scope_unresolved=unresolved)
+        simple_confirmation_allowed=simple,waiting_note=waiting,scope_unresolved=unresolved,
+        scope_confirmation_allowed=not _blocking_confirmation_fields(obj) and not set(action)-allowed,
+        confirmation_fields=_blocking_confirmation_fields(obj),
+        scope_clarification=estimate.get('clarification_question') or '')
 
 
 def finish_result(result, responses, draft, refs, repair_used):
@@ -206,7 +321,7 @@ def finish_result(result, responses, draft, refs, repair_used):
     result=replace(result,items=tuple(enriched))
     # Preserve a separate identifiable action even when other formal rows are
     # already usable. Never duplicate the task just enriched above.
-    remaining=tuple(dict(entry, simple_confirmation_allowed=False) if result.items else entry
+    remaining=tuple(dict(entry, simple_confirmation_allowed=False, scope_confirmation_allowed=False) if result.items else entry
         for entry in recovered.estimate_fallbacks if not any(
         item.minutes and item.title==entry['estimate']['task_name'] and item.scope==entry['estimate']['short_scope']
         for item in result.items))
@@ -233,7 +348,8 @@ def recover_result(responses, draft, refs, repair_used, error_category='structur
             if not isinstance(rows,list) or len(rows)>12:
                 if not action_estimate:
                     continue
-                action_estimate['simple_confirmation_allowed']=False
+                action_estimate.update(simple_confirmation_allowed=False, scope_confirmation_allowed=False,
+                    confirmation_fields=('details',))
                 choices.append(([],[action_estimate],1,draft.reference_date))
                 continue
             for index,row in enumerate(rows):
@@ -254,9 +370,11 @@ def recover_result(responses, draft, refs, repair_used, error_category='structur
                 # workload evidence, but can never permit promotion.
                 full=[]
                 for entry in estimates:
-                    entry['simple_confirmation_allowed']=False
+                    entry.update(simple_confirmation_allowed=False, scope_confirmation_allowed=False,
+                        confirmation_fields=('details',))
                 if action_estimate:
-                    action_estimate['simple_confirmation_allowed']=False
+                    action_estimate.update(simple_confirmation_allowed=False, scope_confirmation_allowed=False,
+                        confirmation_fields=('details',))
                 envelope=draft
             if action_estimate:
                 for entry in estimates:
@@ -265,6 +383,9 @@ def recover_result(responses, draft, refs, repair_used, error_category='structur
                         entry['waiting_note']=action_estimate['waiting_note']
                         # A top-level uncertainty cannot disappear through an item.
                         entry['simple_confirmation_allowed'] &= obj['actionability'].get('confirmation_required')==[]
+                        if _blocking_confirmation_fields(obj):
+                            entry.update(scope_confirmation_allowed=False,
+                                confirmation_fields=_blocking_confirmation_fields(obj))
                 for index,item in enumerate(full):
                     if (item.title==action_estimate['estimate']['task_name']
                             and item.scope==action_estimate['estimate']['short_scope']):
@@ -292,22 +413,28 @@ def recover_result(responses, draft, refs, repair_used, error_category='structur
         'estimate_fallback' if estimates else 'full_structured',error_category,missing))
 
 
-def confirm_minimal_task(draft, item_id, title, minutes, user_confirmed=False):
+def confirm_minimal_task(draft, item_id, title, minutes, user_confirmed=False, confirmed_scope=None):
     """Consent creates only a draft, then the unchanged atomic confirmation gate runs."""
     if draft.status!='ready' or not user_confirmed:
         raise MaterialError('请先确认这是一项没有截止或指定地点的新任务。')
     entry=next((v for v in draft.estimate_fallbacks if v['item_id']==item_id),None)
-    if not entry or not entry['simple_confirmation_allowed']:
-        raise MaterialError('加入计划前还需要核对这件事，请补充说明后重新估算。')
+    if not entry or minimal_confirmation_mode(entry) == 'blocked':
+        raise MaterialError(adoption_next_step(entry or {}))
+    if (minimal_confirmation_mode(entry) == 'scope'
+            and (not isinstance(confirmed_scope, str) or not confirmed_scope.strip())):
+        raise MaterialError('请先确认本次采用的任务范围。')
     value=validate_estimate(entry['estimate'])
     if not isinstance(title,str) or not title.strip() or len(title)>100 or type(minutes) is not int or not 1<=minutes<=1440:
         raise MaterialError('请确认任务名称和合理的采用分钟。')
-    row=MaterialItem(item_id,'task',title.strip(),value['short_scope'],'',
-        '用户确认的简单任务；工作量来自未完整整理结果的估时',minutes=minutes,
+    scope = value['short_scope'] if confirmed_scope is None else confirmed_scope
+    if not isinstance(scope, str) or not scope.strip() or len(scope) > 500:
+        raise MaterialError('请填写本次采用的任务范围（500字以内）。')
+    row=MaterialItem(item_id,'task',title.strip(),scope.strip(),'',
+        '用户确认的简单任务；工作量来自未完整整理结果的估时',minutes=value['recommended_minutes'],
         duration_source='user_confirmed',estimate_min_minutes=value['focused_minutes_min'],
         estimate_max_minutes=value['focused_minutes_max'],estimate_basis=value['rationale'],
         estimate_assumptions=value['assumptions'],estimate_waiting_note=entry.get('waiting_note',''),
-        user_edits={'reviewed':True})
+        user_edits={'reviewed':True,'minutes':str(minutes)})
     row=replace(row,estimate_basis_fingerprint=estimate_basis(item_values(row,draft)))
     return replace(draft,items=draft.items+(row,),
         estimate_fallbacks=tuple(v for v in draft.estimate_fallbacks if v['item_id']!=item_id))
@@ -332,5 +459,9 @@ def reestimate_only(draft, item_id, caller, supplement='', default_context=''):
         focused_minutes_max=result.max_focus_minutes,recommended_minutes=result.recommended_minutes,
         rationale=result.basis,assumptions=result.assumptions))
     return replace(draft,estimate_fallbacks=tuple(dict(v,estimate=revised,
-        simple_confirmation_allowed=v['simple_confirmation_allowed'] and not (result.location_text or result.deadline_time)) if v['item_id']==item_id
+        simple_confirmation_allowed=v['simple_confirmation_allowed'] and not (result.location_text or result.deadline_time),
+        scope_confirmation_allowed=v.get('scope_confirmation_allowed', False) and not (result.location_text or result.deadline_time),
+        confirmation_fields=tuple(sorted(set(v.get('confirmation_fields', ()))
+            | ({'location'} if result.location_text else set())
+            | ({'deadline'} if result.deadline_time else set())))) if v['item_id']==item_id
         else v for v in draft.estimate_fallbacks))

@@ -44,6 +44,27 @@
   --cf-type-display: 72px;
 }
 
+/* Native global processing status: one dot per 400ms, fixed text width. */
+[data-testid=stStatusWidget] [data-cf-thinking]::after {
+  content: "...";
+  display: inline-block;
+  clip-path: inset(0 0 0 0);
+  animation: cf-thinking-dots 1.2s step-end infinite;
+}
+@keyframes cf-thinking-dots {
+  0% { clip-path: inset(0 66.6667% 0 0); }
+  33.3333% { clip-path: inset(0 33.3333% 0 0); }
+  66.6667% { clip-path: inset(0 0 0 0); }
+}
+/* The native exit transition must not leave a completed run's status visible. */
+[data-testid=stStatusWidget].StatusWidget-exit [data-cf-thinking] {
+  visibility: hidden;
+}
+[data-testid=stStatusWidget].StatusWidget-exit [data-cf-thinking]::after {
+  animation: none;
+  content: none;
+}
+
 [data-testid=stFileUploadDropzone] [data-testid=stFileDropzoneInstructions],
 [data-testid=stFileUploadDropzone]>button {
   display: none;

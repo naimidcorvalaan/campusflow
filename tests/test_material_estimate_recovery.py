@@ -504,9 +504,10 @@ def test_recovered_result_renders_native_edit_button_and_clears_on_profile_switc
     app.run(timeout=20)
     assert not app.exception
     assert not app.error
-    assert any(b.label=='加入计划' for b in app.button)
+    assert any('分钟加入计划' in b.label for b in app.button)
+    assert any(v.label=='采用分钟' for v in app.number_input)
     assert not any(v.key=='cf_material_supplement' for v in app.text_area)
-    button=next(b for b in app.button if b.label=='加入计划')
+    button=next(b for b in app.button if b.label=='修改任务范围')
     button.click().run(timeout=20)
     assert any(v.label=='要做什么' for v in app.text_input)
     assert any(v.label=='采用分钟' for v in app.number_input)
