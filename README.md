@@ -12,7 +12,7 @@
 
 [![今日工作台：当前写作业到15:30，下一固定安排与真实校园移动](docs/assets/readme/today.png)](docs/assets/readme/today.png)
 
-点击截图可查看原尺寸。[前端冻结记录](docs/FRONTEND_FREEZE.md)。
+点击截图可查看原尺寸。时空视觉与正式前端已冻结，后续仅修复明确 bug，见[前端冻结记录](docs/FRONTEND_FREEZE.md)。
 
 ## CampusFlow 有什么不同
 
@@ -57,8 +57,9 @@ CampusFlow 根据**最新进度、当前时间与地点、剩余任务和固定�
 
 [![任务估时：测评表得到专注用时区间与建议分钟，并明确只覆盖目前识别到的部分](docs/assets/readme/task-estimate.png)](docs/assets/readme/task-estimate.png)
 
-完整任务还没整理好，也可以先得到已识别工作量的估时。部分识别会明确标注范围，说明整项任务可能更久。
-估时可以修改；**确认任务及必要信息后才加入计划**，不会因为上传了一份材料就自动写入正式安排。
+完整任务还没整理好，也可以先得到已识别工作量的估时，并保留“仅估算已识别内容”的状态。
+用户可修改“采用分钟”，再点击 **“按 X 分钟加入计划”**；任务动作和范围已明确时，点击即确认当前识别范围，无需再输入一遍。
+只有缺少影响任务定义的关键信息时才要求具体补充。没有今日计划也可加入，并进入现有规划流程；已有计划则按原有更新流程处理。
 
 ### 04 能表达合法并行，也保留独占时间
 
@@ -150,6 +151,9 @@ CampusFlow 根据**最新进度、当前时间与地点、剩余任务和固定�
 
 ### Windows 推荐方式
 
+已发布 [v1.0.0-rc1（Pre-release）](https://github.com/naimidcorvalaan/campusflow/releases/tag/v1.0.0-rc1)，基于 `ba4f4e0`。
+**RC1 下载包不包含后续 `5e4454b` 的任务估时采用修复**；本文的手动分钟与明确范围直接加入行为对应修复后的源码。
+
 1. 安装 **64 位 Python 3.12**，勾选 **Add python.exe to PATH**。已有 Python 3.8–3.12 可用，3.9.7 除外。
 2. 在 GitHub Releases 下载 `CampusFlow-v1.0.0-rc1-windows.zip`，完整解压到可写文件夹。
 3. 双击 **[启动 CampusFlow.bat](启动%20CampusFlow.bat)**；中文入口无法打开时使用 `start_campusflow.bat`。
@@ -210,8 +214,9 @@ Python 3.8–3.12 · Streamlit 1.31.1 · SQLite · Requests · pypdfium2 · defu
 
 ## 测试与质量
 
-最近一次全量记录为 **2026-09-12：2441 passed，0 failed**（包含 Cloud 最小兼容测试）。
-2026-09-13 发布准备另跑入口、配置与 TZ 相关离线回归，**99 passed**；业务代码未变化，未重复运行全量。
+最近一次完整验证为 **2026-09-14：2679 passed，0 failed**，对应 `5e4454b` 的估时采用与等待状态修复；focused **225 passed**，1440 / 390 浏览器检查通过。
+此前前端冻结基线为 full **2615 passed**、focused **301 passed**、浏览器 **133 项通过**。
+RC1 构建阶段另跑 builder/startup **38 passed，0 failed**，并完成独立解压启动验收；这些发布记录对应 RC1，不包含后续估时修复。
 测试覆盖规划与反馈、并行授权、稳定引用、What-if、原子采用、工作量估计、材料确认、课表、设置与档案隔离等；
 另执行 Python 编译检查和 `git diff --check`。
 
@@ -225,8 +230,8 @@ $testRoot = Join-Path $env:TEMP ("campusflow-tests-" + [guid]::NewGuid().ToStrin
 git diff --check
 ```
 
-本文四张界面图重新截自当前正式页面组件，以隔离演示数据走现有交互流程；使用 1440 CSS 像素宽、100% 缩放、双倍像素 PNG 原图。
-它们展示产品状态和交互，不作为真实模型识别准确率的证据。本次未调用真实 TJU API；真实服务与真实材料质量需要另行验收。
+本文四张界面图截自前端冻结时的正式页面组件，以隔离演示数据走现有交互流程；使用 1440 CSS 像素宽、100% 缩放、双倍像素 PNG 原图。
+截图用于展示界面；后续估时采用修复另经用户真实验收：部分识别且范围明确时，将建议 9 分钟改为 15 分钟后加入，今天页得到正确的 15 分钟任务，无重复任务。
 
 ## 当前边界
 

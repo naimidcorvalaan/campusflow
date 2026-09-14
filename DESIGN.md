@@ -4,12 +4,15 @@ CampusFlow 是电脑端本地Web校园时空规划产品。正式入口为 `src/
 Python 3.8–3.12、Streamlit 1.31.1；Windows启动器创建项目独立环境，默认仅监听127.0.0.1。
 生产依赖没有为认证原型升级。
 
+本文对应包含 `5e4454b` 估时采用修复的公开源码。已发布 [v1.0.0-rc1](https://github.com/naimidcorvalaan/campusflow/releases/tag/v1.0.0-rc1) 基于 `ba4f4e0`，不包含这次后续修复。
+正式前端的时空视觉和信息架构保持冻结，修复不重新设计页面。
+
 ## 从输入到可靠方案
 
 ```text
 一句话 / 原始文字材料 / 实际执行反馈
                 ↓
-Qwen理解任务、关系、范围与不确定性
+模型理解任务、关系、范围与不确定性
                 ↓
 正式任务与执行事实（稳定引用、来源、实际进度）
                 ↓
@@ -38,6 +41,17 @@ Qwen理解任务、关系、范围与不确定性
 课程默认提前10分钟到楼、提前5分钟到教室，用户明确提前量沿现有语义覆盖。
 默认饭点是软偏好，明确时间/事件关系优先；未获指定任务×课程授权时课程时间独占。
 
+## 估时结果与正式任务采用
+
+结果保留模型估时区间和建议分钟，用户修改的“采用分钟”优先，修改本身不调用模型。
+部分覆盖是识别状态，不是强制补写范围的门禁：任务名、可执行范围及估时合法时，点击“按 X 分钟加入计划”即确认当前识别范围。
+只有范围或其他关键事实仍有实际歧义时才请求具体补充，保留原估时和用户采用值。
+
+estimate-only 恢复结果继续通过现有 `prepare_estimate → confirm`，先准备最小合法任务草稿，再进入正式 Task 校验与采用。
+完整任务沿原有材料确认入口处理；两者共用 stable `task_ref`、用户确认、原子发布、progress 与重复提交保护。
+有无今日计划不决定采用入口是否可见：无计划进入现有规划流程，已有计划沿现有新任务更新流程。
+用户真实验收已确认建议 9 → 采用 15 分钟进入今天页，且没有重复任务。
+
 ## 状态一致性
 
 - `DayPlanningState` / `TaskProgress` 保存任务、固定安排、实际完成与生命周期。
@@ -63,7 +77,13 @@ Windows默认目录是 `%LOCALAPPDATA%\CampusFlow`，显式 `CAMPUSFLOW_DATA_DIR
 Windows Job Object绑定安装/Streamlit子进程，启动器关闭时一并结束；实例锁防止重复双击产生多份服务。
 安装进度只显示可公开的包名与阶段，网络/证书/版本等失败返回简短类别，不输出软件源凭据。
 
-模型配置由本机环境或 `.env` 提供，不属于个人设置。缺配置仍可打开页面；失败不伪装成用户信息不足。
+模型默认使用 TJU；统一接口也支持显式选择 DeepSeek。Windows 首次使用在页面连接 TJU，
+配置独立保存在 `%LOCALAPPDATA%\CampusFlow\model-service.json`，可在个人设置的模型服务区域管理。
+配置优先级为进程环境变量 → `.env` → 页面保存值；密钥不属于个人档案，保存配置不发起请求。
+缺配置仍可打开页面；失败不伪装成用户信息不足。
+
+`spacetime_ui.py` 从同一已发布移动段读取起终点、方式、距离和时间，使用现有本地路网提供几何。
+真实路线、连续时间线和校区纹理均属于只读展示层，prototype 不进入正式运行依赖。
 自动测试在 `tests/conftest.py` 阻止真实HTTP和真实dotenv读取，并使用临时数据目录。
 离线排练通过有限合成响应进入正式业务入口；截图只能证明渲染和接线，不能证明真实模型质量。
 
@@ -74,4 +94,5 @@ Windows Job Object绑定安装/Streamlit子进程，启动器关闭时一并结�
 [认证原型](docs/authentication_prototype.md)
 
 开发环境执行 `python -m pytest tests/ -q`、`python -m compileall -q src tests`、`git diff --check`。
-准确的本轮结果在 [本地交付记录](docs/local_release_progress.md)，避免把历史测试数当作当前结果。
+当前修复验证为 focused **225 passed**、full **2679 passed / 0 failed**，1440 / 390 浏览器、compileall 与 diff check 通过。
+[前端冻结记录](docs/FRONTEND_FREEZE.md)和 [RC 构建验收](docs/releases/v1.0.0-rc1-validation.md)保留各阶段的历史结果；后续公开发布及官方 GitLab 同步状态见[比赛交付清单](docs/competition_release_checklist.md)。
