@@ -151,8 +151,10 @@ CampusFlow 根据**最新进度、当前时间与地点、剩余任务和固定�
 ### Windows 推荐方式
 
 1. 安装 **64 位 Python 3.12**，勾选 **Add python.exe to PATH**。已有 Python 3.8–3.12 可用，3.9.7 除外。
-2. 下载源码并完整解压到可写文件夹。
+2. 在 GitHub Releases 下载 `CampusFlow-v1.0.0-rc1-windows.zip`，完整解压到可写文件夹。
 3. 双击 **[启动 CampusFlow.bat](启动%20CampusFlow.bat)**；中文入口无法打开时使用 `start_campusflow.bat`。
+4. 首次在页面连接 TJU 模型服务并保存配置。
+5. 输入今天的安排，开始使用。
 
 首次创建项目独立的 `.venv` 并安装依赖，然后启动页面、自动打开浏览器。后续核对依赖版本，匹配时跳过重复安装。
 重复启动会打开已运行的页面；如果仍在准备，会提示查看原启动窗口，不会再开一份服务。

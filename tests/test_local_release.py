@@ -1,29 +1,95 @@
 from pathlib import Path
 import zipfile
 import pytest
-from scripts.build_local_release import build, source_files
+from scripts.build_local_release import (
+    build, source_files, inspect_archive, REQUIRED_FILES, PACKAGE, ROOT,
+)
 
 
-def test_source_package_excludes_local_data_and_keeps_required_product_files(tmp_path):
+def runtime_source(tmp_path):
     root = tmp_path / 'source'
-    for name in ('README.md','DESIGN.md','requirements.txt','启动 CampusFlow.bat',
-                 'src/p2_live_main.py','.env.example','.streamlit/config.toml',
-                 '.env','.env.dev','.streamlit/secrets.toml','src/__pycache__/a.pyc',
-                 'docs/personal.sqlite3','screenshots/demo.png','artifacts/private.png'):
-        file = root / name
-        file.parent.mkdir(parents=True,exist_ok=True)
-        file.write_text('synthetic',encoding='utf-8')
+    for name in REQUIRED_FILES:
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text('{}' if path.suffix == '.json' else '# synthetic fixture\n', encoding='utf-8')
+    (root / 'requirements.txt').write_text('pytest==7.4.0\nstreamlit==1.31.1\n', encoding='utf-8')
+    return root
+
+
+def test_runtime_package_excludes_development_user_data_and_preserves_existing_zip(tmp_path):
+    root = runtime_source(tmp_path)
+    excluded = ('.env', '.env.dev', '.git/config', '.github/workflows/ci.yml',
+        '.venv/pyvenv.cfg', '.streamlit/secrets.toml', 'src/__pycache__/a.pyc',
+        'src/nested/debug.py', 'src/user.sqlite3', 'src/user.sqlite-wal', 'data/uploads.json',
+        'data/model-service.json', 'docs/personal.sqlite3', 'docs/FRONTEND_FREEZE.md',
+        'docs/assets/readme/today.png', 'screenshots/demo.png', 'artifacts/private.png',
+        'deploy/secrets.toml', 'prototype/app.js', 'tests/test_app.py', 'scripts/spacetime_preview.py')
+    for name in excluded:
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text('excluded private fixture', encoding='utf-8')
     output = tmp_path / 'delivery.zip'
-    build(root,output)
+    count = build(root, output)
     with zipfile.ZipFile(output) as archive:
         names = archive.namelist()
-        assert 'CampusFlow-v1.0/.env.example' in names
-        assert 'CampusFlow-v1.0/screenshots/demo.png' in names
-        assert not any(x.endswith(('.env','.env.dev','secrets.toml','.sqlite3','.pyc','private.png')) for x in names)
+        assert PACKAGE + '/.env.example' in names
+        assert PACKAGE + '/README.md' in names
+        assert not any(PACKAGE + '/' + name in names for name in excluded)
+        assert archive.read(PACKAGE + '/requirements.txt') == b'streamlit==1.31.1\n'
+    assert inspect_archive(output)['files'] == count
     original = output.read_bytes()
     with pytest.raises(FileExistsError):
-        build(root,output)
+        build(root, output)
     assert output.read_bytes() == original
+
+
+@pytest.mark.parametrize('missing', sorted(REQUIRED_FILES))
+def test_builder_requires_every_essential_runtime_file(tmp_path, missing):
+    root = runtime_source(tmp_path)
+    (root / missing).unlink()
+    with pytest.raises(ValueError, match='缺少运行文件'):
+        build(root, tmp_path / 'absent.zip')
+    assert not (tmp_path / 'absent.zip').exists()
+
+
+@pytest.mark.parametrize('kind', ('token', 'private-key', 'machine-path', 'dotenv-value'))
+def test_builder_rejects_sensitive_content_before_creating_zip(tmp_path, kind):
+    root = runtime_source(tmp_path)
+    content = {'token': 'sk-' + 'A' * 32,
+        'private-key': '-----BEGIN ' + 'PRIVATE KEY-----',
+        'machine-path': 'C:' + chr(92) + 'Users' + chr(92) + 'example-user',
+        'dotenv-value': 'TJU_LLM_API_KEY=' + 'A' * 32}[kind]
+    target = '.env.example' if kind == 'dotenv-value' else 'src/p2_live_main.py'
+    (root / target).write_text(content, encoding='utf-8')
+    with pytest.raises(ValueError, match='发布文件检查未通过') as error:
+        build(root, tmp_path / 'absent.zip')
+    assert content not in str(error.value)
+    assert not (tmp_path / 'absent.zip').exists()
+
+
+def test_inspector_rejects_an_extra_unallowlisted_archive_entry(tmp_path):
+    root = runtime_source(tmp_path)
+    output = tmp_path / 'delivery.zip'
+    build(root, output)
+    with zipfile.ZipFile(output, 'a') as archive:
+        archive.writestr(PACKAGE + '/.env', 'private fixture')
+    with pytest.raises(ValueError, match='非运行文件'):
+        inspect_archive(output)
+
+
+def test_production_archive_is_reproducible_and_contains_identical_campus_data(tmp_path):
+    first, second = tmp_path / 'first.zip', tmp_path / 'second.zip'
+    build(ROOT, first)
+    build(ROOT, second)
+    assert first.read_bytes() == second.read_bytes()
+    with zipfile.ZipFile(first) as archive:
+        for campus in ('beiyangyuan', 'weijinlu'):
+            name = 'data/' + campus + '_map.json'
+            assert archive.read(PACKAGE + '/' + name) == (ROOT / name).read_bytes()
+        assert archive.read(PACKAGE + '/src/workspace.css') == (ROOT / 'src/workspace.css').read_bytes()
+        requirements = archive.read(PACKAGE + '/requirements.txt').decode()
+        assert 'pytest' not in requirements
+        assert 'streamlit==1.31.1' in requirements
 
 
 def test_release_story_feedback_uses_real_progress_and_preserves_course():

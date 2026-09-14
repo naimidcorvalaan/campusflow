@@ -49,7 +49,7 @@ Windows 默认保存在 `%LOCALAPPDATA%\CampusFlow\model-service.json`，换目�
 课程结束未知时不编造课后时间。
 
 已有模型能估计工作量时标注AI暂估；无法估计时保留未知，不会偷偷补成60分钟。
-简单任务、原始通知和单张任务图片统一从“难以估计任务时间？让campusflow帮你估”进入；先看摘要和估时，只有真有问题才修改。
+文字、图片、Word 和 PDF 统一从 Sidebar 的“任务估时”进入；先看摘要和估时，只有真有问题才修改。
 确认草稿后才加入并更新正式方案，已安排时长不会记成实际完成。
 
 ## 保存与重开
@@ -59,7 +59,7 @@ Windows 默认保存在 `%LOCALAPPDATA%\CampusFlow\model-service.json`，换目�
 
 Windows默认数据目录为 `%LOCALAPPDATA%\CampusFlow`，不会保存在下载的源码目录里。
 关闭或重启不自动完成任务、不重新调用模型。过期方案显示原参考时间，用户明确更新后再规划。
-复制项目给同学不应包含自己.env或数据库；源码包构建脚本会排除这些本地文件。
+复制项目给同学不应包含自己.env或数据库；Windows 发布包会排除这些本地文件。
 
 ## 常见情况
 
@@ -73,15 +73,3 @@ Windows默认数据目录为 `%LOCALAPPDATA%\CampusFlow`，不会保存在下载
 | 本地端口被占用 | 若是原CampusFlow打开原页面；其他程序占用时由用户决定如何处理 |
 | 模型未配置 | 按上面的三项配置；页面仍能浏览 |
 | 真实服务请求失败 | 保留输入和可靠方案，核对网络/账号后主动重试；不反复点击制造请求 |
-
-## 维护者与离线排练
-
-以下命令只用于开发验证，普通使用不需要：
-
-```powershell
-.venv\Scripts\python.exe scripts\launch_campusflow.py --offline-demo --port 8542
-.venv\Scripts\python.exe scripts\launch_campusflow.py --venv <独立临时目录> --prepare-only
-```
-
-离线演示不读取真实模型配置、阻断外部HTTP、使用临时档案。
-完整三幕脚本见 [演示指南](demo_guide.md)，首次安装与退出证据见 [交付记录](local_release_progress.md)。

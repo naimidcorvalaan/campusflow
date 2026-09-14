@@ -128,3 +128,27 @@ def test_real_batch_without_python_explains_installation(tmp_path):
     assert "未找到 Python" in result.stdout
     assert "Add python.exe to PATH" in result.stdout
     assert "Traceback" not in result.stdout
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows fresh-console batch parsing")
+def test_real_batch_reuses_venv_in_fresh_non_utf8_console(tmp_path):
+    import venv
+    root = Path(__file__).resolve().parents[1]
+    for name in ("启动 CampusFlow.bat", "start_campusflow.bat"):
+        shutil.copy2(root / name, tmp_path / name)
+    venv.EnvBuilder(with_pip=False).create(tmp_path / ".venv")
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "scripts/launch_campusflow.py").write_text(
+        "print('existing-environment-ready')\n", encoding="utf-8")
+    startup = subprocess.STARTUPINFO()
+    startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    startup.wShowWindow = 0
+    command = '"{}" /d /c "chcp 936 >nul & call "{}" --no-pause"'.format(
+        Path(os.environ["SystemRoot"]) / "System32/cmd.exe", tmp_path / "启动 CampusFlow.bat")
+    result = subprocess.run(command, cwd=str(tmp_path), capture_output=True,
+        encoding="utf-8", errors="replace", timeout=20, startupinfo=startup,
+        creationflags=subprocess.CREATE_NEW_CONSOLE)
+    assert result.returncode == 0, result.stderr
+    assert result.stderr == ""
+    assert "existing-environment-ready" in result.stdout
+    assert "未找到 Python" not in result.stdout

@@ -53,3 +53,6 @@ model-service.json
 # Rebuildable spacetime design exports; source archive is tracked.
 /prototype/spacetime-language/assets/
 /prototype/spacetime-language/previews/
+
+# Local release binaries and checksums.
+/dist/
