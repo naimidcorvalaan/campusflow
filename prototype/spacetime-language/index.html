@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="CampusFlow，把当前行动、出发时刻与校园路线接在一起。">
+  <title>CampusFlow · 时空视觉语言</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="assets/networks.js"></script>
+  <script defer src="route_visual.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <header class="review-bar">
+    <div><b>CampusFlow</b><span class="review-separator">/</span><span>时空视觉语言 <span class="edition">01</span></span></div>
+    <div class="review-controls">
+      <label for="campus">校区</label>
+      <select id="campus"><option value="beiyangyuan">北洋园</option><option value="weijinlu">卫津路</option></select>
+    </div>
+  </header>
+  <nav class="review-tabs" aria-label="视觉评审视图">
+    <button type="button" data-view="today" aria-pressed="true"><span>01</span> 今日应用</button>
+    <button type="button" data-view="journey" aria-pressed="false"><span>02</span> 移动过程</button>
+    <button type="button" data-view="textures" aria-pressed="false"><span>03</span> 路网纹理</button>
+    <div class="review-links"><a href="routes.html">路线展示 ↗</a><a href="DESIGN.md">设计说明 ↗</a></div>
+  </nav>
+  <div class="workspace">
+    <aside class="rail">
+      <div class="brand">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 36 V29 Q10 24 15 24 H29 Q36 24 36 17 V10"/><circle cx="10" cy="36" r="3.5"/><circle cx="24" cy="24" r="3.5"/><circle cx="36" cy="10" r="3.5"/></svg>
+        <strong>CampusFlow</strong>
+      </div>
+      <p class="brand-subtitle">让一天，在校园里接起来。</p>
+      <nav class="product-nav" aria-label="工作台预览">
+        <button type="button" data-view="today" aria-pressed="true"><span class="nav-node"></span>今天</button>
+        <button type="button" data-view="journey" aria-pressed="false"><span class="nav-line"></span>时间线</button>
+        <p class="nav-section">辅助工具</p>
+        <span class="retained-nav">任务估时</span>
+      </nav>
+      <div class="rail-bottom">
+        <span class="retained-nav">个人设置</span>
+        <div class="campus-imprint">
+          <img id="rail-texture" src="assets/beiyangyuan-topology.svg" alt="" aria-hidden="true">
+          <span class="imprint-code">BYY / CAMPUS NETWORK</span>
+        </div>
+        <p>天津大学 · <span data-campus-label>北洋园</span>校区</p>
+      </div>
+    </aside>
+    <main>
+      <header class="workspace-header"><strong id="breadcrumb">CampusFlow / 今天</strong><span id="workspace-context">今日工作台</span></header>
+      <section id="today-panel" class="view-panel" aria-label="今日工作台视觉预览">
+        <div class="context"><span><span data-campus-label>北洋园</span>校区</span><span>09 月 13 日</span><span>参考时间 <b id="reference-time"></b></span></div>
+        <div class="today-layout">
+          <div class="action-column">
+            <section class="action-sheet">
+              <div class="now-heading"><span><i class="dot"></i> 当前安排</span><span class="mono" id="now-reference"></span></div>
+              <div class="action-main">
+                <div><h1>写作业</h1><p class="until">做到 <b id="focus-until"></b></p></div>
+                <div class="duration"><strong id="focus-minutes">90</strong><span>分钟 · 本段</span></div>
+              </div>
+              <div class="confirmed-place"><span class="location-mark"></span><b id="current-place"></b><span>当前位置</span></div>
+              <div class="next-action"><span>下一安排</span><b id="next-interval"></b><strong>背单词</strong></div>
+            </section>
+            <div class="next-heading"><h2>接下来，走到下一站</h2><span>时间与路线接在一起</span></div>
+            <section class="departure-strip" aria-label="下一次移动时间">
+              <div><span class="step-cap">收拾</span><b id="strip-pack"></b><span>收好手边的事</span></div>
+              <div class="departure"><span class="step-cap">出发</span><b id="strip-depart"></b><span id="strip-origin"></span></div>
+              <div><span class="step-cap">抵达</span><b id="strip-arrive"></b><span id="strip-destination"></span></div>
+            </section>
+
+            <div class="existing-entry"><span>更新变化</span><span>⌄</span></div>
+            <section class="fixed-commitment"><div><span class="square"></span> 下一固定安排</div><strong id="class-time"></strong><b>上课</b><span id="class-place"></span><p id="class-travel"></p></section>
+          </div>
+          <aside class="route-panel">
+            <div class="route-heading"><h2>下一段校园移动</h2><span class="map-edition">ROUTE / 01</span></div>
+            <div class="route-selector" aria-label="选择要预览的移动">
+              <button type="button" data-leg="0" aria-pressed="true">去吃饭</button><button type="button" data-leg="1" aria-pressed="false">去上课</button>
+            </div>
+            <div id="today-map" class="map-host"></div>
+            <div class="map-caption" id="today-map-caption"></div>
+            <div class="route-caption"><span id="route-origin"></span><span>→</span><b id="route-destination"></b></div>
+            <div class="route-facts"><strong id="route-distance"></strong><span id="route-time"></span></div>
+            <div class="route-departure"><span><b id="route-depart"></b> 出发</span><span>→</span><span><b id="route-arrive"></b> 预计抵达</span></div>
+          </aside>
+        </div>
+        <footer class="view-footer"><span class="signature" id="route-signature"></span><span>时间有刻度，移动有来处与去处。</span><span class="mono">CAMPUSFLOW / SPACE × TIME</span></footer>
+      </section>
+
+      <section id="journey-panel" class="view-panel" aria-label="移动过程视觉预览" hidden>
+        <div class="section-intro"><div><span class="eyebrow">02 / MOVEMENT</span><h1>从收拾东西，到抵达。</h1></div></div>
+        <div id="phase-controls" class="phase-controls" aria-label="选择移动状态"></div>
+        <div class="journey-layout">
+          <div class="journey-map-sheet"><div class="map-sheet-top"><b id="journey-route-label"></b><span id="journey-mode"></span></div><div id="journey-map" class="map-host large"></div><div class="map-caption" id="journey-map-caption"></div></div>
+          <section class="journey-detail">
+            <span id="phase-kicker" class="eyebrow">当前状态</span>
+            <strong id="phase-time" class="phase-time">14:00</strong>
+            <h2 id="phase-title">在图书馆，继续手边的事</h2>
+            <p id="phase-description"></p>
+            <div class="position-evidence"><span id="position-label">当前位置</span><b id="position-evidence"></b></div>
+            <div class="journey-end"><span>这一段的目的地</span><b id="journey-destination"></b><span id="journey-arrival"></span></div>
+            <div class="journey-legend"><span><i class="location-mark"></i>当前位置</span><span><i class="last-location"></i>上次确认</span><span><i class="square"></i>目的地</span><span><i class="connector"></i>路线</span></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="textures-panel" class="view-panel" aria-label="两校区原创路网纹理" hidden>
+        <div class="section-intro"><div><span class="eyebrow">03 / CAMPUS IMPRINT</span><h1>校园的纹理，来自走过的连接。</h1></div><span class="subtle">两套数据 · 同一种语言</span></div>
+        <div class="texture-grid">
+          <figure><div class="texture-heading"><h2>北洋园</h2><span class="mono">BYY / 129 N · 404 E</span></div><div class="network-sample"><img src="assets/beiyangyuan-topology.svg" alt="北洋园129个真实坐标节点与404条原始边去重后的连接拓扑纹理"><span>01</span></div><figcaption>节点连接密集，提取短折线与局部交汇。</figcaption></figure>
+          <figure><div class="texture-heading"><h2>卫津路</h2><span class="mono">WJL / 141 N · 168 E</span></div><div class="network-sample second"><img src="assets/weijinlu-topology.svg" alt="卫津路141个原始节点与168条原始边去重后的连接拓扑纹理"><span>02</span></div><figcaption>道路节点与接入点共存，保留疏密节奏。</figcaption></figure>
+        </div>
+        <div class="specimen-grid">
+          <section><span class="eyebrow">A / 页眉边带</span><div class="ribbon-sample"><strong>今天</strong><img id="ribbon-texture" src="assets/beiyangyuan-ribbon.svg" alt="" aria-hidden="true"><span class="mono">14:00 →</span></div><p>只在文字之外裁切，低对比度出现。</p></section>
+          <section><span class="eyebrow">B / 路线签名</span><div id="signature-sample" class="signature-sample"></div><p>选取当日真实路径，保留转折与端点。</p></section>
+          <section><span class="eyebrow">C / 时间节点</span><div class="time-specimen"><b id="specimen-pack"></b><span class="time-join"></span><b class="time-accent" id="specimen-depart"></b><span class="time-join"></span><b id="specimen-arrival"></b></div><p>收拾 → 出发 → 抵达</p></section>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div id="announcer" class="sr-only" aria-live="polite"></div>
+  <noscript>请启用 JavaScript 查看两校区路网与路线预览。</noscript>
+</body>
+</html>

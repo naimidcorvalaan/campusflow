@@ -1,45 +1,70 @@
-# 正式工作台视觉收尾 · 2026-09-12
+# CampusFlow 正式前端冻结
 
-> 历史验收记录：下文 `artifacts/` 路径为本地验收产物，不随公开仓库发布。当前正式截图见 [README 图片](assets/readme/)，清理记录见[公开发布前检查](publication_hygiene.md)。
+2026-09-14。基于 `main @ 8dcaa9fc29c1f69ce720f14cdc6cc4ef43fd64d6` 的现有未提交工作区收尾，保留已通过的时空视觉迁移、presentation cleanup 和独立原型。
 
-后续环境入口、任务估时标题与对齐的局部调整见 [FRONTEND_POLISH.md](FRONTEND_POLISH.md)。
+**CampusFlow 前端正式冻结。除明确bug外，不建议继续整体视觉优化。下一阶段进入 v1.0.0-rc1 Windows Release。**
 
-本轮基于已通过的正式迁移工作区继续，没有重做设计。分支 `main`，HEAD `423bae5`。开始时已有的未提交展示层修改、原型与验收材料全部保留，未提交或推送。
+## 最终处理
 
-## 最终呈现
+- 今天页右下留白复用当前校区的真实路网 SVG，和 Sidebar 使用同一份节点、边投影。640 × 440px 的局部材质使用现有 `--cf-track-node`，整体透明度 0.10，椭圆 mask 向边缘淡出，没有图片框或背景信息结构。
+- 无计划、有计划无移动、有真实移动的今天页都有这一层。时间线、任务估时、首次 TJU 配置不添加背景；设置抽屉仍为原来的安静工具界面。Sidebar 的纹理样式、浓度不改。
+- 800px 及以下隐藏新背景层，同时取消其桌面最小高度。390px 保持内容优先，不留纹理占位。背景不接受指针事件，无 hover 或动画。
+- 未加入照片、在线地图、新卡片、banner 或整页渐变。背景可删除而不影响任务操作，第一视觉仍是当前行动、90 分钟与下一固定安排。
+- “本次内容未保存到个人档案”由原有非持久化/无法保存分支产生。保持状态值、身份判断和保存逻辑，仅在主内容隐藏这条泛化说明；Sidebar 底部显示“临时使用 · 不保存到档案”。个人档案模式相应显示“个人档案已启用”或“个人档案 · 本次未保存”。真正保存失败、档案读取异常仍保留原有行动提示。
+- “更新变化”用于进度、位置、新情况反馈，置于首位并使用现有 CampusFlow 蓝。“重新规划”实际会重新提交整天输入，改名“重写今日安排”，降为灰色 quiet 折叠入口；无新信息再次计算的“刷新方案”原样保留。三个 handler、原生 widget key、表单身份和提交语义不变。
+- 时间线的时间、修整/收拾/准备和抵达辅助文字改用已有 `--cf-ink-soft`；没有整体加深 muted，没有修改出发暖色、移动蓝色、节点或连续时间线结构。
+- 字号仍是 12 / 14 / 18 / 30 / 72px，手机大数字 62px，字重 400 / 500 / 600，一个字体栈。原有中等屏幕大数字 56px 适配、SVG viewBox 标签字号保持不变。本轮没有新字号或颜色 token。
 
-- 环境缩为「校区 · 日期 时间」和轻量的「切换 / 时间设置」。详细控件仍使用原 key、默认北洋园、原时间覆盖规则；进入其他页面时只收起环境区域，控件始终挂载。
-- 材料估时导航直接显示原工具内容，取消外层 accordion。结果仍按原流程收起来源输入，可通过「更换材料」展开。上传对象、补充说明、估时处理和正式确认门禁未重写。
-- 上传区用原生 dropzone 自己的点击、Enter、拖放和文件 input。Streamlit 1.31 无公开微文案参数，因此通过稳定 data-testid 隐藏整块英文说明，以 CSS 呈现中文；没有替换 React 文本节点、复制 input、改 widget key 或修改依赖包。原生中文字段标签仍提供可访问名称。文件类型与大小校验不变。
-- 桌面隐藏原生 sidebar 顶部关闭按钮，窄屏保留。设置抽屉关闭按钮不受该规则影响。
-- 无计划首页的位置输入放入「补充当前位置（可选）」。已有计划时，「重新规划」本身已折叠，不再嵌套展开区。
-- 设置保留 48% 桌面宽度、三个 Tab、grouped settings、44px 关闭区域、保存逻辑和草稿隔离。
+## 数据与行为保护
 
-## 渲染保护
+本轮生产修改仅 `src/p2_live_main.py`、`src/workspace_ui.py`、`src/workspace.css`。与本轮开始的源码/数据/原型 SHA-256 快照比较，其他文件逐字节未改；尤其 `src/spacetime_ui.py`、地图算法和数据完全相同。
 
-浏览器发现并修正了 Streamlit 不支持嵌套 expander 的限制。位置输入的标签、key 和原处理函数保持不变。
+`p2_live_main.py` AST 仅 `_render_live_page` 的展示部分变化；持久化、身份、planner、P5、progress、refs、What-if、atomic publish、材料估时和模型配置不改。`workspace_ui.py` 仅增加两个只读展示函数，原有函数 AST 不变。
 
-「使用当前时间」的刷新改为沿用已存在的延后 rerun 机制，先挂载输入，再执行原时间重置。这避免提前返回造成原生控件清理；没有修改时间计算或规划业务。
+浏览器用正式入口 `p2_live_main.main`，注入已有离线模型响应，读取当前真实地图生成正式计划。页面切换、折叠入口和设置开关保持已发布计划 hash 与调用计数。两校区在 1440 / 390 的 mini map HTML SHA-256 与修改前完全一致：
+
+| 校区 | 浏览器 mock 计划中的真实路线 | 正式计划距离 / 时间 |
+| --- | --- | --- |
+| 北洋园 | 郑东图书馆 → 天津大学北洋园校区第五学生食堂 | 216m / 步行约 3 分钟 |
+| 卫津路 | 图书馆 → 学三食堂 | 490m / 步行约 7 分钟 |
+
+这些只是隔离验证计划，不是产品默认值，也未从 prototype 读取路线。
 
 ## 验证
 
-使用 `scripts/offline_product_preview.py` 运行正式 Streamlit renderer；mock 模型、隔离临时数据库、禁止 requests 外部请求，不依赖 prototype server。
+| 检查 | 结果 |
+| --- | --- |
+| focused UI/state、身份隔离、设置、路线与 What-if | **301 passed**，28.14s |
+| full，仅运行一次 | **2615 passed，0 failed**，109.61s |
+| compileall src tests scripts | 通过 |
+| pip check | No broken requirements found |
+| git diff --check | 通过 |
+| 离线 secret scan | 非 ignored 工作树文本及敏感文件名扫描；0 真实命中，8 处明确的示例/测试占位值，不读取运行凭据或扫描 Git 历史 |
+| 最终浏览器 | **133 项通过**，14 个页面状态；0 横向溢出、0 JS 错误、0 外部页面请求 |
 
-- focused：235 passed。
-- `compileall -q src scripts` 与 `git diff --check` 均通过。
-- 最终全量：2435 passed，0 failed，119.14 秒。使用全新系统临时目录。此前全量在浏览器修正前通过 2433 项，修正后补上两项渲染契约回归并再次跑全量。
-- 1440：空白首页、首次规划、当前行动与真实规划路线、环境切换、手动时间与恢复、直接材料输入、鼠标/键盘/拖放上传、估时结果、来源展开、部分覆盖、设置三个 Tab。
-- 390：当前行动、连续时间线、材料输入和结果、设置及可达关闭按钮，无横向溢出。截图等待 sidebar 动画结束。
-- 切页、开关设置没有模型调用；计划指纹不变。材料上传字节数与「填表」补充保留。估时没有越过正式确认门禁。
-- THINKING 采样中补充输入与估时提交按钮均最多一套。详情在 `artifacts/frontend-freeze/browser-results.json`。
+1440 实际查看无计划、无移动、两校区有路线、两校区时间线、任务估时、设置和首次配置。390 实际查看无计划、两校区有路线、独立 mini route 和两校区时间线；另补查从今天页打开/关闭设置的遮罩、按钮和计划状态。所有测试和浏览器验证都使用 mock / 本地数据，没有调用真实 TJU、DeepSeek 或地图 API。
 
-## 最终桌面截图
+新增三项针对性保护测试：只读身份状态渲染、移除主内容提示后状态/保存错误仍保留、两校区纹理不触碰发布状态且不出现在工具页。
 
-1. `artifacts/frontend-freeze/01-today-empty-1440.png`
-2. `artifacts/frontend-freeze/02-today-planned-1440.png`
-3. `artifacts/frontend-freeze/03-material-1440.png`
-4. `artifacts/frontend-freeze/04-settings-1440.png`
+机器记录保存在 ignored `artifacts/frontend-freeze/`，包括前后图片与 route hash、focused/full XML、范围审计和 secret scan。最终代码验收时未 commit / push；本次公开整理单独提交，不重做设计。
 
-材料空状态与窄屏补充观察保存在同目录的 `check-*.png`。全部来自正式 renderer 的合成数据演示，并非真实模型理解能力验收。
+## 公开成果整理
 
-本轮不再提出新视觉方向，保留已通过的样式系统。未修改 planner、P5、材料处理算法、地图、SQLite schema、refs、progress 或原子发布。
+正式代码、对应测试、三份长期设计说明与原型必要源文件进入同一笔前端冻结提交。未改业务逻辑，不重复运行已通过的 full。
+
+公开正式截图共 **6 张**，统一存放在 `docs/assets/readme/`：
+
+| 用途 | 最终图片 |
+| --- | --- |
+| README 第一张：有计划与真实校园移动 | [today.png](assets/readme/today.png) |
+| README 第二张：连续时间线 | [timeline.png](assets/readme/timeline.png) |
+| 任务估时结果 | [task-estimate.png](assets/readme/task-estimate.png) |
+| 个人设置 | [settings.png](assets/readme/settings.png) |
+| 北洋园真实路线 | [beiyangyuan-route.png](assets/readme/beiyangyuan-route.png) |
+| 卫津路真实路线 | [weijinlu-route.png](assets/readme/weijinlu-route.png) |
+
+另保留原有决策链路 SVG。迁移、cleanup、freeze 的批量图片和旧提案截图统一移至本地 ignored `artifacts/public-curation/`，不提交重复版本、截图核验 JSON 或 git-status 快照。
+
+`prototype/spacetime-language/` 保留 DESIGN、生成代码及必要网页源文件；assets 可由当前地图再生成，previews 与一次性检查脚本不提交。`scripts/spacetime_preview.py` 被正式回归测试导入，因此作为可复用的离线 fixture 保留在源码仓库；Windows ZIP 不包含它。
+
+冻结验收：Focused 301 passed；Full 2615 passed / 0 failed；浏览器 133 项通过；compileall、pip check、diff check、secret scan 通过。完整历史原始记录在本地 ignored artifacts 中保留。

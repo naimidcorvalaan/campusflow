@@ -400,7 +400,7 @@ def test_render_page_streamlit_renders_card_timeline_from_final_plan_lines():
     assert "11:50–12:20" in page and "背单词 30 分钟" in page
     assert "准备去" not in page
     assert '<section class="cf-confirm-card">' not in page
-    assert 'grid-template-columns:minmax(0,3.15fr) minmax(230px,.95fr)' in page
+    assert 'grid-template-columns: minmax(0,3.15fr) minmax(230px,.95fr)' in page
     assert '下一固定安排' in page
 
 
@@ -428,9 +428,11 @@ def test_render_page_streamlit_uses_one_responsive_grid_for_timeline_and_tip():
     page = "\n".join(stub.calls)
     assert page.count('class="cf-plan-grid"') == 1
     assert page.count('class="cf-side-card"') == 1
-    assert "安排提示" in page
+    assert "安排提示" not in page
+    assert companion.lifestyle_hint not in page
+    assert turn.companion_copy is companion
     assert "温馨提示" not in page
-    assert 'grid-template-columns:minmax(0,1fr)' in page
+    assert 'grid-template-columns: minmax(0,1fr)' in page
 
 
 def test_display_projection_marks_helper_steps_without_timeline_nodes():

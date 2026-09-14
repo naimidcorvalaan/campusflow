@@ -773,7 +773,7 @@ def test_main_intake_flow_then_rerun_no_calls():
     assert caller.count == 10
 
 
-def test_p4b_top_input_chrome_keeps_existing_widget_keys_and_uses_static_hints_only():
+def test_p4b_top_input_chrome_keeps_existing_widget_keys_without_model_calls():
     caller = CountingCaller()
     stub = _StubSt().set_inputs()
     _run_main(stub, caller)
@@ -785,9 +785,10 @@ def test_p4b_top_input_chrome_keeps_existing_widget_keys_and_uses_static_hints_o
     assert ("submit", "更新方案", "primary") in stub.form_widget_calls
     rendered = "\n".join(stub.markdown_calls)
     assert "cf-brand-header" in rendered
-    assert "tjuer专属的校园时空规划系统" in rendered
+    assert "校园时空规划" in rendered
     assert "学生项目 · 非官方教务系统" not in rendered
-    assert "基于高德地图数据" in rendered
+    # Source attribution remains in README; the product sidebar uses a quiet campus imprint.
+    assert "基于高德地图数据" not in rendered
     assert "时间设置" in rendered
     assert caller.count == 0
     stub.set_inputs(intake="今天写作业", intake_submitted=True)

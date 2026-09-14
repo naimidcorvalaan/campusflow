@@ -326,7 +326,7 @@ def test_companion_text_cannot_modify_structured_plan():
     assert turn.result.allocation_plan.total_planned_minutes > 0
 
 
-def test_streamlit_plan_block_between_lively_copy():
+def test_streamlit_plan_keeps_facts_without_generic_companion_copy():
     """Streamlit 渲染：opening/closing 保持普通文本，实际计划区用 divider + 加粗时间突出。"""
     caller = PipelineCaller(
         companion_opening="同学你好呀～今天的安排已经帮你整理好啦！",
@@ -348,13 +348,14 @@ def test_streamlit_plan_block_between_lively_copy():
     render_page_streamlit(stub, turn)
     calls = stub.calls
     page = "\n".join(calls)
-    assert caller.companion_opening in page
-    assert caller.companion_closing in page
+    assert caller.companion_opening not in page
+    assert turn.companion_copy.opening == caller.companion_opening
+    assert caller.companion_closing not in page
     assert "cf-plan-hero" in page
     assert "cf-timeline-card" in page
     # Companion wording remains outside the formal task/movement facts.
     assert "cf-plan-opening" in page
-    assert "cf-plan-closing" in page
+    assert 'class="cf-plan-closing"' not in page
 
 
 def test_companion_failure_uses_fallback_and_plan_ok():

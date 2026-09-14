@@ -16,16 +16,6 @@ from src.file_material import (read_file_material, FileMaterialError, FILE_SOURC
 from src.task_estimation import MAX_IMAGE_BYTES
 from src.material_estimate_recovery import confirm_minimal_task, reestimate_only
 
-FILE_UPLOAD_COPY_CSS = '''<style>
-[data-testid="stVerticalBlock"]:has(> [data-testid="element-container"] .cf-material-result-ready) [data-testid="stFileUploadDropzone"],
-[data-testid="stVerticalBlock"]:has(> [data-testid="element-container"] .cf-material-result-ready) [data-testid="stFileUploader"] > label {
-  display: none;
-}
-[data-testid="stVerticalBlock"]:has(> [data-testid="element-container"] .cf-material-source-hidden) {
-  display: none;
-}
-[data-testid="stVerticalBlock"]:has(> [data-testid="element-container"] .cf-add-task-marker) [data-testid="stFileUploader"] { margin-bottom: 0; }
-</style>'''
 
 
 def _display_fact(value):
@@ -34,22 +24,23 @@ def _display_fact(value):
 
 def _render_estimate_card(st, draft, value, waiting='', show_coverage=True, rough=False):
     partial = draft.estimate_coverage != 'whole'
-    label = '目前识别到的部分 · 专注用时' if partial else '预计专注用时'
+    label = '专注用时' if partial else '预计专注用时'
     if rough:
-        label = '根据目前识别到的内容，先估算'
+        label = '专注用时 · 初估'
     recommendation = '这部分建议预留' if partial else '建议预留'
     esc = lambda text: html.escape(str(text))
     # The local estimate's scope/waiting constraints have dedicated lines below.
     assumptions = '；'.join(value['assumptions'][1:2] if rough else value['assumptions'])
-    waiting_html = ('<div class="cf-material-assumptions">外部等待不计入专注用时。</div>' if rough else
-        '<div class="cf-material-assumptions">外部等待不计入专注用时：{}</div>'.format(esc(waiting)) if waiting else '')
-    note = draft.coverage_note or '这里只估目前识别到的部分，完成整项任务可能需要更久。'
+    waiting_html = ('' if rough else
+        '<div class="cf-material-assumptions">另需等待：{}</div>'.format(esc(waiting)) if waiting else '')
+    note = '仅估算已识别内容'
     st.markdown('<section class="cf-material-estimate"><h3>{}</h3>'
         '<div class="cf-material-scope">{}</div>'
         '<div class="cf-estimate-result"><div class="cf-estimate-metrics">'
         '<div class="cf-estimate-metric">{}<strong>{}–{} <small>分钟</small></strong></div>'
         '<div class="cf-estimate-metric">{}<strong>{} <small>分钟</small></strong></div>'
-        '</div></div><div class="cf-material-basis">{}</div>{}{}{}</section>'.format(
+        '</div></div><details class="cf-estimate-details"><summary>估时依据</summary>'
+        '<div class="cf-material-basis">{}</div>{}</details>{}{}</section>'.format(
             esc(value['task_name']),esc(value['short_scope']),label,value['focused_minutes_min'],
             value['focused_minutes_max'],recommendation,value['recommended_minutes'],esc(value['rationale']),
             '<div class="cf-material-assumptions">前提：{}</div>'.format(esc(assumptions)) if assumptions else '',
@@ -117,7 +108,7 @@ def handle_material_action(st, session, adapter, action, reference, item_id=None
                     and (not (updated.estimate_fallbacks or any(item.minutes for item in updated.items))
                         or (updated.diagnostics.get('estimate_origins')==['local_workload']
                             and inbox.draft.diagnostics.get('estimate_origins')!=['local_workload']))):
-                raise MaterialError('继续保留上次估时，你的补充说明也已保留。')
+                raise MaterialError('估时未更新 · 原估算和补充已保留，请重试。')
             logging.getLogger(__name__).info('material_result %s',json.dumps(updated.diagnostics,sort_keys=True))
             return save_material_edit(st,replace(inbox,draft=updated),reference)
         if action == 'reference_date':
@@ -166,7 +157,7 @@ def handle_material_action(st, session, adapter, action, reference, item_id=None
         if action == 'extract' and isinstance(exc.__cause__, VisionUnavailable):
             flow = st.session_state.get('cf_material_flow')
             if isinstance(flow, dict):
-                flow['message'] = '当前图片理解服务暂不可用，材料和补充说明已保留。'
+                flow['message'] = '图片识别暂不可用 · 材料已保留，请重试。'
         if action == 'extract' and source_draft is None:
             save_material_edit(st,replace(inbox,draft=replace(draft,status='failed',message=str(exc),
                 diagnostics=dict(source_type=draft.source_type,parse_status='request_failed',
@@ -179,9 +170,9 @@ def handle_material_action(st, session, adapter, action, reference, item_id=None
         if isinstance(exc,LocalPersistenceError):
             st.warning(str(exc))
         else:
-            messages = {'estimate':'估时未完成，材料和原方案都已保留，请稍后重试。',
-                'confirm':'这批事项暂未加入，原方案和材料草稿均已保留。'}
-            st.warning(messages.get(action,'整理未完成，原材料已保留，请稍后重试。'))
+            messages = {'estimate':'估时未完成 · 材料和原方案已保留，请重试。',
+                'confirm':'事项未加入 · 原方案和草稿已保留。'}
+            st.warning(messages.get(action,'处理未完成 · 材料已保留，请重试。'))
     return False
 
 
@@ -206,11 +197,11 @@ def _render_material_surface(st, session, adapter, missing, reference):
         source_open=st.session_state.pop('cf_material_source_open',False),message=''))
     processing=flow['phase']=='processing'
     if processing and 'request' not in flow:
-        flow.update(phase='error',message='上次处理已中断，材料和补充说明已保留，请重试。')
+        flow.update(phase='error',message='处理已中断 · 材料已保留，请重试。')
         processing=False
     with st.container():
-        st.markdown(FILE_UPLOAD_COPY_CSS + '<span class="cf-add-task-marker"></span>',unsafe_allow_html=True)
-        st.markdown('<h1 class="cf-estimator-title">难以估计任务时间？让 CampusFlow 帮你估</h1>', unsafe_allow_html=True)
+        st.markdown('<span class="cf-add-task-marker"></span>',unsafe_allow_html=True)
+        st.markdown('<h1 class="cf-estimator-title">任务估时</h1>', unsafe_allow_html=True)
         ready = bool(draft and draft.status == 'ready' and (draft.items or draft.estimate_fallbacks))
         source_open = flow['source_open']
         compact = ready and not source_open
@@ -309,8 +300,8 @@ def _render_material_surface(st, session, adapter, missing, reference):
         if draft is None:
             return False
         if draft.status in ('confirmed','discarded'):
-            st.caption('这份材料已确认并安排。修改上方材料可整理下一份。' if draft.status == 'confirmed'
-                else '已丢弃这份草稿，正式方案未改变。修改上方材料可重新开始。')
+            st.caption('已加入计划 · 可更换材料。' if draft.status == 'confirmed'
+                else '草稿已丢弃 · 可更换材料。')
             return False
         notice = flow.get('message') or (draft.message if not draft.diagnostics.get('estimate_available') else '')
         if notice and not processing:
@@ -347,8 +338,8 @@ def _render_material_surface(st, session, adapter, missing, reference):
                     source_open=False,message='')
             else:
                 flow.update(phase='result' if ready else 'error',message=flow.get('message') or (
-                    '继续保留上次估时，你的补充说明也已保留。' if ready else
-                    '目前还没读到可判断工作量的内容，材料和补充说明已保留。'))
+                    '估时未更新 · 原估算和补充已保留，请重试。' if ready else
+                    '还缺任务内容 · 请补充要做的事。'))
             # Preserve both the submitted supplement and the user's disclosure
             # choice. Finishing a request is not a request to close their editor.
             live._rerun(st)
@@ -374,7 +365,7 @@ def _render_material_surface(st, session, adapter, missing, reference):
                                         simple_confirmed=consent):
                                     live._rerun(st)
                                     return True
-                            st.caption('确认后先生成可核对的任务，尚未改变当前计划。')
+                            st.caption('下一步：核对任务后加入计划。')
             if draft.status != 'ready' or not draft.items:
                 return False
             review_key = 'cf_material_review_' + draft.source_fingerprint
@@ -398,14 +389,14 @@ def _render_material_surface(st, session, adapter, missing, reference):
                 return False
             needs_reference = any(unresolved_relative_fields(item,draft) for item in draft.items)
             if needs_reference and not draft.reference_date:
-                st.warning('材料里有相对日期。告诉我通知是哪天收到的，才能确定具体日期。')
+                st.warning('请填写通知日期，以确定相对时间。')
                 received = st.text_input('这条通知是什么时候收到的？',key='cf_material_notice_date',
                     placeholder='YYYY-MM-DD')
                 if st.button('按这个日期确定时间',key='cf_material_reference_date',disabled=not received.strip()):
                     if handle_material_action(st,session,adapter,'reference_date',reference,received):
                         live._rerun(st)
                         return True
-            st.markdown('**CampusFlow 整理出了 {} 项 · 尚未加入**'.format(len(draft.items)))
+            st.markdown('**{} 项待确认**'.format(len(draft.items)))
             old_bundle = load_live_final_turn(session.store)
             existing = {t.task_ref:t for t in old_bundle.state.tasks} if old_bundle else {}
             estimate_ref = None
@@ -448,13 +439,13 @@ def _render_material_surface(st, session, adapter, missing, reference):
                             '<div class="cf-estimate-metric">{}<strong>{}–{} <small>分钟</small></strong></div>'
                             '<div class="cf-estimate-metric">建议用于规划<strong>{} <small>分钟</small></strong></div>'
                             '</div>{}</section>'.format(
-                                '目前识别到的部分 · 专注用时' if draft.estimate_coverage!='whole' else '预计专注用时',
+                                '专注用时' if draft.estimate_coverage!='whole' else '预计专注用时',
                                 item.estimate_min_minutes,item.estimate_max_minutes,item.minutes,
                                 '<div class="cf-estimate-note">{}</div>'.format(
                                     html.escape(_compact_text(estimate_note, 130))) if estimate_note else ''),
                             unsafe_allow_html=True)
                         if draft.estimate_coverage!='whole':
-                            st.caption(draft.coverage_note or '这里只估目前识别到的部分，完成整项任务可能需要更久。')
+                            st.caption('仅估算已识别内容')
                         st.caption('估时依据：' + item.estimate_basis)
                         for assumption in item.estimate_assumptions:
                             st.caption('假设：' + assumption)
@@ -517,7 +508,7 @@ def _render_material_surface(st, session, adapter, missing, reference):
                         from src.p3_location_resolver import resolve_location
                         resolution = resolve_location(session.map_data,session._personal_location_text(values['location_text']))
                         if not resolution.usable:
-                            st.warning('这个地点还没有匹配到校园地图。可改写，或选择一个已有地点。')
+                            st.warning('地点未匹配 · 请修改或选择校园地点。')
                             places = {node.id:node.name for node in session.map_data.nodes if node.node_kind == 'poi'}
                             selected_place = st.selectbox('选择校园地点',[None]+list(places),key=prefix+'place_choice',
                                 format_func=lambda x: '暂不选择' if x is None else places[x])
@@ -530,15 +521,15 @@ def _render_material_surface(st, session, adapter, missing, reference):
                     if editing:
                         values['minutes'] = st.text_input('采用分钟（可留空）',value=v['minutes'],
                             key=prefix+'minutes_'+str(item.estimate_revision))
-                        st.caption('补充已有任务时，这里是任务总用时；实际完成分钟另行保留。')
+                        st.caption('填写任务总用时')
                         values['supplement'] = st.text_input('有什么影响完成速度？（可选）',value=v['supplement'],key=prefix+'supplement')
                     if item.estimate:
                         r = item.estimate.result
                         if estimate_basis(dict(v,**values)) != item.estimate_basis_fingerprint:
-                            st.warning('范围或补充已变化：下方是旧估算，请重新估时或自行修改采用分钟。')
+                            st.warning('范围已变化 · 请重新估时或修改采用分钟。')
                         if r.ready:
                             if item.estimate_completed_minutes:
-                                st.caption('下方估算的是剩余工作；采用总分钟已加回实际完成的{}分钟，不会再次安排这部分。'.format(
+                                st.caption('剩余工作估时 · 已完成{}分钟已计入总用时。'.format(
                                     item.estimate_completed_minutes))
                             st.caption('专注用时 {}–{}分钟；建议{}分钟。{}'.format(
                                 r.min_focus_minutes,r.max_focus_minutes,r.recommended_minutes,r.basis or ''))
@@ -551,7 +542,7 @@ def _render_material_surface(st, session, adapter, missing, reference):
                     if st.button('帮我估时' if not (item.estimate or item.estimate_min_minutes) else '重新估算',key=prefix+'estimate'):
                         estimate_ref = item.item_id
                     if item.possible_task_ref in existing:
-                        st.warning('这可能是你已有的“{}”，不会自动合并。'.format(existing[item.possible_task_ref].title))
+                        st.warning('可能与“{}”重复 · 请选择如何处理。'.format(existing[item.possible_task_ref].title))
                     if item.possible_task_ref:
                         options = ['choose',item.possible_task_ref,'new']
                         target = v['target'] if v['target'] in options else 'choose'
@@ -582,7 +573,7 @@ def _render_material_surface(st, session, adapter, missing, reference):
                         st.caption('新材料：范围{}；截止{}；地点{}。'.format(values.get('scope',v['scope']) or '未补充',
                             values.get('deadline',v['deadline']) or '未补充',values.get('location_text',v['location_text']) or '未补充'))
                         if conflicts:
-                            st.warning('有信息与已有任务不同，请只选择发生冲突的字段。')
+                            st.warning('信息有冲突 · 请选择采用值。')
                             for field,label,old_value,new_value in conflicts:
                                 choices=('choose','existing','new')
                                 choice_labels={'choose':'还没有决定','existing':'保留已有：'+_display_fact(old_value),
@@ -590,8 +581,6 @@ def _render_material_surface(st, session, adapter, missing, reference):
                                 values[field+'_conflict'] = st.radio(label,choices,
                                     index=choices.index(v[field+'_conflict']),key=prefix+field+'_conflict',
                                     format_func=lambda x,labels=choice_labels:labels[x],horizontal=True)
-                        else:
-                            st.caption('新材料只补充缺少的信息；原任务与实际进度保持不变。')
                 if editing:
                     st.caption('原文依据：'+item.evidence)
                     if item.estimate_basis:
@@ -605,19 +594,18 @@ def _render_material_surface(st, session, adapter, missing, reference):
                 return False
             if estimate_ref:
                 if missing:
-                    st.warning('本机模型尚未配置，草稿已保留。')
+                    st.warning('请连接模型服务 · 草稿已保留。')
                 else:
                     with st.spinner('THINKING.......'):
                         ok = handle_material_action(st,session,adapter,'estimate',reference,estimate_ref)
                     if ok:
                         live._rerun(st)
                         return True
-            st.caption('确认后会一次加入选中事项并更新当前方案；还不知道用时的任务会保留待估算，不写成已经完成。')
             confirm = st.button('确认并加入计划',key='cf_material_confirm',type='primary',disabled=not any(i.user_edits.get('selected',True) for i in rows))
             discard = st.button('丢弃这份草稿',key='cf_material_discard')
             if confirm or discard:
                 if confirm and missing:
-                    st.warning('本机模型尚未配置，材料草稿已保留。')
+                    st.warning('请连接模型服务 · 草稿已保留。')
                 else:
                     with st.spinner('THINKING.......'):
                         ok = handle_material_action(st,session,adapter,'confirm' if confirm else 'discard',reference)

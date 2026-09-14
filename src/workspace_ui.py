@@ -118,8 +118,42 @@ def render_navigation(st, brand, settings_key):
                 st.session_state[settings_key] = True
             if sidebar is not None:
                 campus=st.session_state.get('p2_live_campus_select','北洋园校区')
+                from src.p3_campus_registry import DEFAULT_CAMPUS_REGISTRY
+                from src.spacetime_ui import campus_texture_html
+                registration = next((item for item in DEFAULT_CAMPUS_REGISTRY.list_campuses() if item.display_name == campus), None)
+                if registration is not None:
+                    # Decorative geometry must not block first-run setup or navigation.
+                    # The existing live page still owns map availability errors.
+                    try:
+                        texture = campus_texture_html(DEFAULT_CAMPUS_REGISTRY.get_campus_map(registration.campus_id))
+                    except (OSError, ValueError):
+                        texture = ''
+                    if texture:
+                        st.markdown(texture, unsafe_allow_html=True)
                 st.markdown('<div class="cf-nav-environment">天津大学 · {}</div>'.format(html.escape(str(campus))),unsafe_allow_html=True)
-        st.markdown('<div class="cf-nav-environment">基于高德地图数据 · 本地校园路线</div>', unsafe_allow_html=True)
-    if sidebar is not None:
-        st.markdown('<div class="cf-workspace-header"><strong>CampusFlow / {}</strong><span>今日工作台</span></div>'.format(
-            view_label(st.session_state.get(VIEW_KEY,VIEWS[0]))),unsafe_allow_html=True)
+
+
+def render_profile_status(st, identity, status):
+    """Read the existing identity; do not initialize or persist a profile."""
+    sidebar = getattr(st, 'sidebar', None)
+    if sidebar is None:
+        return
+    if not getattr(identity, 'persistent', False):
+        label = '临时使用 · 不保存到档案'
+    elif status == '本次内容未保存到个人档案':
+        label = '个人档案 · 本次未保存'
+    else:
+        label = '个人档案已启用'
+    with sidebar:
+        st.markdown('<div class="cf-nav-profile">{}</div>'.format(label), unsafe_allow_html=True)
+
+
+def render_today_texture(st, map_data, view):
+    """Reuse the sidebar's real campus geometry as a noninteractive material."""
+    if view != VIEWS[0] or map_data is None:
+        return
+    from src.spacetime_ui import campus_texture_html
+    texture = campus_texture_html(map_data)
+    if texture:
+        st.markdown(texture.replace('class="cf-campus-imprint"', 'class="cf-today-texture"'),
+            unsafe_allow_html=True)

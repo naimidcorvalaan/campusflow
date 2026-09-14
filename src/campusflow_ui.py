@@ -23,7 +23,7 @@ BRAND_HEADER_HTML = """
       </div>
       <div>
         <div class="cf-brand-name">CampusFlow</div>
-        <div class="cf-brand-subtitle">tjuer专属的校园时空规划系统</div>
+        <div class="cf-brand-subtitle">校园时空规划</div>
       </div>
     </div>
   </header>

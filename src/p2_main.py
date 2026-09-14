@@ -13,13 +13,14 @@ from datetime import datetime
 from src.campusflow_ui import CAMPUSFLOW_THEME_CSS
 from src.p1_models import SourceKind
 from src.p1_window_models import AvailabilityLevel, FixedCommitment
-from src.p2_companion_copy import CONTEXT_INITIAL, companion_fallbacks
+from src.p2_companion_copy import CONTEXT_INITIAL, CONTEXT_FEEDBACK, companion_fallbacks
 from src.p2_day_plan import compact_plan_lines
 from src.p2_models import DayPlanningState, TaskProgress, TaskState
 from src.p2_question_filter import filter_pending_questions
 from src.p2_session import P2SessionController, P2SessionTurn
 from src.p2_window_derivation import derive_day_state
 from src.p3_route_planner import final_plan_overlap_errors
+from src.spacetime_ui import build_next_route, route_map_html
 
 P2_INPUT_KEY = "p2_feedback_input"
 
@@ -568,7 +569,7 @@ _CURRENT_PLAN_CSS = CAMPUSFLOW_THEME_CSS
 
 def render_page_streamlit(
     st, turn: P2SessionTurn, extra_questions=(), saved_snapshot=False,
-    default_walk_hint=False, part="all",
+    default_walk_hint=False, part="all", map_data=None,
 ) -> None:
     """Render the persisted plan as an action workspace and continuous timeline.
 
@@ -590,8 +591,16 @@ def render_page_streamlit(
             display, saved_snapshot=saved_snapshot, provisional=provisional,
             question=provisional_reason, turn=turn,
         )
-        side = "" if saved_snapshot else _side_card_html(turn)
-        st.markdown('<div class="cf-plan-grid">{}{}</div>'.format(hero, side)
+        # A reviewed feedback receipt tells the user which change took effect.
+        # Generic opening/closing and plan rationales stay out of the page.
+        companion = getattr(turn, "companion_copy", None)
+        if (not saved_snapshot and companion is not None
+                and companion.context_type == CONTEXT_FEEDBACK and companion.copy_reviewed):
+            st.markdown('<div class="cf-persist-notice">{}</div>'.format(
+                html.escape(sanitize_user_facing_text(display.opening))), unsafe_allow_html=True)
+        side = "" if saved_snapshot else _side_card_html(turn, map_data)
+        layout = "cf-plan-grid cf-has-route" if "cf-mini-route" in side else "cf-plan-grid"
+        st.markdown('<div class="{}">{}{}</div>'.format(layout, hero, side)
                     if side else hero, unsafe_allow_html=True)
     if part == "focus":
         return
@@ -616,25 +625,6 @@ def render_page_streamlit(
     else:
         _render_timeline_card(st, timeline_entries, default_walk_hint=default_walk_hint)
 
-    # Preserve the verified companion explanation without letting it compete
-    # with the current action.  Native details keeps it keyboard accessible
-    # and collapsed in the normal action-first view.
-    if display.opening and not saved_snapshot:
-        st.markdown(
-            '<details class="cf-plan-explanation"><summary>安排依据</summary>'
-            '<div>{}</div></details>'.format(
-                html.escape(sanitize_user_facing_text(display.opening))
-            ),
-            unsafe_allow_html=True,
-        )
-
-    if display.closing and part not in ("summary", "timeline"):
-        st.markdown(
-            '<div class="cf-plan-closing">{}</div>'.format(
-                html.escape(sanitize_user_facing_text(display.closing))
-            ),
-            unsafe_allow_html=True,
-        )
 
 
 def _pending_questions(turn, extra_questions):
@@ -715,7 +705,7 @@ def _hero_html(display, saved_snapshot=False, provisional=False, question="", tu
         title = "上次保存的方案"
     elif provisional:
         safe_question = html.escape(sanitize_user_facing_text(question))
-        contents = '<div class="cf-focus-action">缺少必要信息</div>'
+        contents = '<div class="cf-focus-action" role="heading" aria-level="1">缺少必要信息</div>'
         if safe_question:
             contents += '<div class="cf-plan-opening">{}</div>'.format(safe_question)
         elif opening:
@@ -723,7 +713,7 @@ def _hero_html(display, saved_snapshot=False, provisional=False, question="", tu
         title = "待确认"
     else:
         action, until = _split_focus_body(current.body if current is not None else display.opening)
-        contents = '<div class="cf-focus-main"><div><div class="cf-focus-action">{}</div>'.format(
+        contents = '<div class="cf-focus-main"><div><div class="cf-focus-action" role="heading" aria-level="1">{}</div>'.format(
             html.escape(sanitize_user_facing_text(action))
         )
         if until:
@@ -784,7 +774,7 @@ def _timeline_card_html(entries, default_walk_hint=False, compact=False):
     contents = "".join(chunks)
     if not contents:
         contents = '<div class="cf-body">暂时还没有可展示的安排。</div>'
-    return '<section class="cf-current-plan cf-timeline-card"><div class="cf-section-eyebrow">今天</div>{}</section>'.format(contents)
+    return '<section class="cf-current-plan cf-timeline-card">{}</section>'.format(contents)
 
 
 def _timeline_entry_html(item):
@@ -798,16 +788,22 @@ def _timeline_entry_html(item):
         ).format(html.escape(item.time_text), body)
     if not item.is_primary:
         return (
-            '<div class="cf-helper"><span class="cf-time">{}</span><div>{}</div></div>'
-        ).format(html.escape(item.time_text), body)
+            '<div class="cf-helper{}"><span class="cf-time">{}</span><div>{}</div></div>'
+        ).format(" cf-pack" if item.body == "收拾东西" else (" cf-arrival" if item.body in ("进楼找教室", "课前准备") else ""), html.escape(item.time_text), body)
     icon = {"movement": "›", "meal": "餐", "class": "课", "task": "•"}.get(item.kind, "•")
-    extra = " cf-current" if item.is_current else ""
+    extra = " cf-movement" if item.kind == "movement" else ""
     if item.kind in ('class', 'fixed'):
         extra += ' cf-fixed'
+    if item.is_current:
+        extra += " cf-current"
+    time_html = html.escape(item.time_text)
+    if item.kind == "movement" and re.fullmatch(r"\d{1,2}:\d{2}–\d{1,2}:\d{2}", item.time_text):
+        start, end = item.time_text.split("–")
+        time_html = '<span class="cf-leg-time" aria-label="{}"><b>{}</b><small>出发</small><b>{}</b><small>抵达</small></span>'.format(html.escape(item.time_text), start, end)
     return (
         '<div class="cf-timeline-item{}"><div class="cf-node">{}</div>'
         '<div class="cf-time">{}</div><div class="cf-body">{}</div></div>'
-    ).format(extra, icon, html.escape(item.time_text), body)
+    ).format(extra, icon, time_html, body)
 
 
 def _decorate_entry_body(item):
@@ -841,37 +837,34 @@ def _render_side_cards(st, notes, turn):
         st.markdown(contents, unsafe_allow_html=True)
 
 
-def _side_card_html(turn):
-    """Read only published commitments/movements; never call route planning."""
+def _side_card_html(turn, map_data=None):
+    """Read published facts; optionally attach verified local route geometry."""
     state = turn.result.updated_state
     upcoming = sorted((c for c in state.commitments if c.starts_at and c.starts_at >= state.now), key=lambda c: c.starts_at)
-    chunks = []
+    visual = build_next_route(turn, map_data)
+    chunks = [route_map_html(visual)] if visual is not None else []
     if upcoming:
+        chunks.append('<section class="cf-next-fixed">')
         fixed = upcoming[0]
         chunks.append('<div class="cf-side-title">下一固定安排</div><div class="cf-fixed-clock">{}</div><div class="cf-fixed-title">{}</div><div>{}</div>'.format(
             fixed.starts_at.strftime('%H:%M'), html.escape(fixed.title), html.escape(fixed.location_text or '地点待确认')))
         fixed_leg = next((b for b in getattr(turn, 'movement_blocks', ()) if b.destination_activity_ref == fixed.commitment_ref), None)
         if fixed_leg is not None:
             chunks.append('<div class="cf-fixed-departure">{} 出发 · {} 到达</div>'.format(fixed_leg.window_start.strftime('%H:%M'), fixed_leg.end_time.strftime('%H:%M')))
+        chunks.append('</section>')
     movements = sorted((b for b in getattr(turn, 'movement_blocks', ()) if b.end_time > state.now), key=lambda b: b.window_start)
-    if movements:
+    if movements and visual is None:
         block = movements[0]
         chunks.append('<div class="cf-route-summary"><div class="cf-side-title">校园移动</div><strong>{} › {}</strong><div>{} 出发 · 约 {} 分钟</div>{}</div>'.format(
             html.escape(block.origin_name), html.escape(block.destination_name), block.window_start.strftime('%H:%M'), block.estimated_minutes,
             '<div>{} 开始收拾 · {} 分钟准备</div>'.format(block.transition_start.strftime('%H:%M'), block.transition_minutes) if block.transition_start else ''))
-    companion = getattr(turn, "companion_copy", None)
-    lifestyle = sanitize_user_facing_text(getattr(companion, "lifestyle_hint", None)) if companion else ""
-    if lifestyle:
-        chunks.append('<details class="cf-side-hint"><summary>安排提示</summary><div>{}</div></details>'.format(
-            html.escape(lifestyle)
-        ))
     return '<aside class="cf-side-card">{}</aside>'.format(''.join(chunks)) if chunks else ''
 
 
 def _rhythm_html(turn):
     plan = turn.result.allocation_plan
     movements = getattr(turn, 'movement_blocks', ())
-    return '<aside class="cf-side-card"><div class="cf-side-title">当天安排概览</div><div class="cf-rhythm-stat"><b>{}</b>分钟已安排任务</div><div class="cf-rhythm-stat"><b>{}</b>段校园移动</div><div class="cf-rhythm-stat"><b>{}</b>项固定安排</div><div class="cf-side-hint">计划用时不代表已完成。进度以实际反馈为准。</div></aside>'.format(
+    return '<aside class="cf-side-card"><div class="cf-side-title">安排概览</div><div class="cf-rhythm-stat"><b>{}</b>分钟任务</div><div class="cf-rhythm-stat"><b>{}</b>段校园移动</div><div class="cf-rhythm-stat"><b>{}</b>项固定安排</div></aside>'.format(
         plan.total_planned_minutes, len(movements), len(turn.result.updated_state.commitments))
 
 

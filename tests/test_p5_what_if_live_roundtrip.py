@@ -165,7 +165,8 @@ def test_reverse_preview_then_apply_uses_exact_candidate_once():
     assert "优先守住固定安排和移动时间，再利用可行窗口推进任务。" not in rendered
     assert "17:00前吃完晚饭" not in rendered
     assert "18:50前到达教室" not in rendered
-    assert "连续安排150分钟" in rendered
+    assert "连续安排150分钟" in adopted.agent_intelligence.narrative.why_this_plan
+    assert "连续安排150分钟" not in rendered
     assert "17:00–17:40" in rendered
     assert "17:40–18:41" in rendered
     if adopted.execution_context.current_location.source.value == "assumed":
@@ -189,7 +190,12 @@ def test_initial_expression_rejects_wrong_meal_and_classroom_deadlines_from_mode
     rendered = "\n".join(page.markdown_calls)
     assert "17:00前吃完晚饭" not in rendered
     assert "18:50前到达教室" not in rendered
-    assert "连续安排150分钟" in rendered
+    narrative = bundle.agent_intelligence.narrative
+    assert "连续安排150分钟" in narrative.why_this_plan
+    validated = " ".join(x for x in (narrative.opening, narrative.why_this_plan, narrative.closing) if x)
+    assert "17:00前吃完晚饭" not in validated
+    assert "18:50前到达教室" not in validated
+    assert "连续安排150分钟" not in rendered
     assert "17:00–17:40" in rendered
     assert "17:40–18:41" in rendered
 

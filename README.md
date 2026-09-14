@@ -10,9 +10,9 @@
 > CampusFlow 安排现在做什么、做到几点，并算出什么时候收拾、出发和到达。
 > 做慢了、提前完成了，或人已经换了地方，都可以从最新状态继续规划。
 
-[![今日工作台：当前写作业到15:30，右侧同时显示下一门课、出发时间和校园移动](docs/assets/readme/today.png)](docs/assets/readme/today.png)
+[![今日工作台：当前写作业到15:30，下一固定安排与真实校园移动](docs/assets/readme/today.png)](docs/assets/readme/today.png)
 
-点击截图可查看原尺寸。
+点击截图可查看原尺寸。[前端冻结记录](docs/FRONTEND_FREEZE.md)。
 
 ## CampusFlow 有什么不同
 
@@ -55,7 +55,7 @@ CampusFlow 根据**最新进度、当前时间与地点、剩余任务和固定�
 **同一份材料，对不同人的工作量并不相同。** CampusFlow 结合任务内容与个人情况，给出预计专注时间区间、建议用于规划的分钟数、工作量依据和必要假设。
 时间花在填写、做题、主观文字、回忆、查资料、准备证明和复核上；外部签字、审批等待不计入专注用时。
 
-[![任务估时：测评表结合个人补充得到35至65分钟的建议，并明确只覆盖目前识别到的部分](docs/assets/readme/task-estimate.png)](docs/assets/readme/task-estimate.png)
+[![任务估时：测评表得到专注用时区间与建议分钟，并明确只覆盖目前识别到的部分](docs/assets/readme/task-estimate.png)](docs/assets/readme/task-estimate.png)
 
 完整任务还没整理好，也可以先得到已识别工作量的估时。部分识别会明确标注范围，说明整项任务可能更久。
 估时可以修改；**确认任务及必要信息后才加入计划**，不会因为上传了一份材料就自动写入正式安排。

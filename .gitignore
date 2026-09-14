@@ -49,3 +49,7 @@ logs/
 # Local model credentials, including atomic-write temporary files.
 model-service.json
 .model-service-*.tmp
+
+# Rebuildable spacetime design exports; source archive is tracked.
+/prototype/spacetime-language/assets/
+/prototype/spacetime-language/previews/

@@ -338,6 +338,6 @@ def test_visual_unavailable_notice_survives_material_action_boundary(deepseek,mo
     assert not handle_material_action(st,session,adapter,'extract',NOW,
         source_draft=draft,image_mime=kw['image_mime'],image_bytes=kw['image_bytes'])
     flow=st.session_state['cf_material_flow']
-    assert '图片理解服务暂不可用' in flow['message'] and flow['supplement']=='填表'
+    assert '图片识别暂不可用' in flow['message'] and flow['supplement']=='填表'
     assert st.session_state[MATERIAL_INBOX_KEY].draft is draft
     assert len(calls)==1

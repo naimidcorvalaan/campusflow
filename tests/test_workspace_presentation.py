@@ -34,7 +34,7 @@ def test_complete_timeline_includes_current_and_does_not_mutate_plan():
     render_page_streamlit(st, turn, part='timeline')
     page = '\n'.join(st.markdown_calls)
     assert 'cf-current"' in page
-    assert '当天安排概览' in page
+    assert '安排概览' in page
     assert 'class="cf-plan-hero' not in page
     assert repr(turn) == before
 
@@ -180,3 +180,94 @@ def test_reopening_restores_retained_dates_over_removed_widget_defaults():
     store[key] = date(2026, 9, 7)
     _initialize_settings_draft(store)
     assert store[key] == date(2026, 9, 7)  # ordinary rerun keeps fresh edits
+
+
+def test_compact_partial_estimate_keeps_scope_and_waiting_without_mutating_draft():
+    from src.material_ui import _render_estimate_card
+    draft = SimpleNamespace(estimate_coverage='partial', coverage_note='long explanation')
+    value = dict(task_name='实验记录', short_scope='已读取的前三页', focused_minutes_min=20,
+        focused_minutes_max=30, recommended_minutes=25, rationale='<script>unsafe</script>',
+        assumptions=['数据已经收集'])
+    st = _StubSt()
+    before = repr((draft, value))
+    _render_estimate_card(st, draft, value, waiting='等待实验结果 1 天')
+    page = '\n'.join(st.markdown_calls)
+    assert '仅估算已识别内容' in page
+    assert '已读取的前三页' in page and '等待实验结果 1 天' in page
+    assert '<details class="cf-estimate-details">' in page
+    assert '&lt;script&gt;unsafe&lt;/script&gt;' in page and '<script>unsafe' not in page
+    assert repr((draft, value)) == before
+    draft.estimate_coverage = 'whole'
+    st.markdown_calls.clear()
+    _render_estimate_card(st, draft, value)
+    assert '仅估算已识别内容' not in '\n'.join(st.markdown_calls)
+
+
+def test_profile_footer_reads_identity_without_initializing_or_persisting_it():
+    from contextlib import contextmanager
+    from src.profile_identity import ProfileIdentity
+    from src.workspace_ui import render_profile_status
+    anonymous = ProfileIdentity('anonymous-review', False, 'anonymous')
+    personal = ProfileIdentity('personal-review', True, 'student')
+    cases = ((None, None, '临时使用 · 不保存到档案'),
+        (anonymous, '本次内容未保存到个人档案', '临时使用 · 不保存到档案'),
+        (personal, '已在本机保存。', '个人档案已启用'),
+        (personal, '本次内容未保存到个人档案', '个人档案 · 本次未保存'))
+    for identity, status, expected in cases:
+        st = _StubSt()
+        entered = []
+        @contextmanager
+        def sidebar():
+            entered.append(True)
+            yield
+            entered.pop()
+        st.sidebar = sidebar()
+        def markdown(text, **kwargs):
+            assert entered, 'Persistence mode belongs to the sidebar'
+            st.markdown_calls.append(text)
+        st.markdown = markdown
+        before = (dict(st.session_state), repr(identity))
+        render_profile_status(st, identity, status)
+        assert expected in ''.join(st.markdown_calls)
+        assert before == (dict(st.session_state), repr(identity))
+
+
+def test_temporary_save_status_keeps_state_but_leaves_main_content():
+    from src.p2_live_main import LOCAL_PROFILE_STATUS_KEY, LOCAL_PROFILE_SAVE_ERROR_KEY
+    st = _StubSt().set_inputs(intake='今天写作业', intake_submitted=True)
+    caller = CountingCaller()
+    _run_main(st, caller)
+    published = load_live_final_turn(st.session_state)
+    assert st.session_state[LOCAL_PROFILE_STATUS_KEY] == '本次内容未保存到个人档案'
+    st.set_inputs()
+    st.markdown_calls.clear()
+    st.session_state[LOCAL_PROFILE_SAVE_ERROR_KEY] = '保存失败，请重试'
+    _run_main(st, caller)
+    page = ''.join(st.markdown_calls)
+    assert '本次内容未保存到个人档案' not in page
+    assert '保存失败，请重试' in page
+    assert st.session_state[LOCAL_PROFILE_STATUS_KEY] == '本次内容未保存到个人档案'
+    assert load_live_final_turn(st.session_state) is published
+
+
+def test_today_material_uses_selected_map_without_touching_published_state():
+    from src.p3_campus_registry import DEFAULT_CAMPUS_REGISTRY
+    from src.workspace_ui import render_today_texture
+    from src.spacetime_ui import campus_texture_html
+    import re
+    st = _StubSt().set_inputs(intake='今天写作业', intake_submitted=True)
+    _run_main(st, CountingCaller())
+    before = dict(st.session_state)
+    for campus in ('beiyangyuan', 'weijinlu'):
+        map_data = DEFAULT_CAMPUS_REGISTRY.get_campus_map(campus)
+        st.markdown_calls.clear()
+        render_today_texture(st, map_data, '今天')
+        material = ''.join(st.markdown_calls)
+        assert 'data-campus-id="{}"'.format(campus) in material
+        assert re.search(r'<path d="([^"]+)"', material).group(1) == re.search(
+            r'<path d="([^"]+)"', campus_texture_html(map_data)).group(1)
+        for quiet_view in ('时间线', '材料估时'):
+            st.markdown_calls.clear()
+            render_today_texture(st, map_data, quiet_view)
+            assert not st.markdown_calls
+        assert st.session_state == before

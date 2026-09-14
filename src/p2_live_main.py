@@ -38,7 +38,7 @@ from src.runtime_environment import apply_configured_timezone
 from src.campusflow_ui import BRAND_HEADER_HTML, CAMPUSFLOW_THEME_CSS, SETTINGS_ACCESSIBILITY_HTML
 from src.p2_tju_live_adapter import TJUP2CallAdapter
 from src.p2_day_intake import DayIntakeOutcome, run_day_intake
-from src.workspace_ui import region, quiet_button, setting_row, render_navigation, toggle_environment, VIEW_KEY, DeferredDrawerRerun
+from src.workspace_ui import region, quiet_button, setting_row, render_navigation, render_profile_status, render_today_texture, toggle_environment, VIEW_KEY, DeferredDrawerRerun
 from src.p2_main import render_page_streamlit, render_page_text, sanitize_user_facing_text
 from src.p2_session import (
     LAST_CACHE_KEY,
@@ -191,8 +191,8 @@ PERSONAL_SETTINGS_DRAFT_VALUES_KEY = "personal_settings_draft_values"
 PERSONAL_SETTINGS_PLACE_CAMPUS_KEY = "personal_settings_draft_place_campus"
 TIMETABLE_IMPORT_CAMPUS_KEY = "personal_settings_timetable_import_default_campus"
 TIMETABLE_IMPORT_APPLIED_CAMPUS_KEY = "personal_settings_timetable_import_applied_campus"
-SAFE_ERROR_TEXT = "这次调整没有成功，原可靠方案仍保留。可以保留输入，稍后重试。"
-PAGE_INIT_ERROR_TEXT = "页面暂时未能打开，请刷新后重试；本机保存的记录不会因此清空。"
+SAFE_ERROR_TEXT = "调整未完成 · 原方案和输入已保留，请重试。"
+PAGE_INIT_ERROR_TEXT = "页面暂时未能打开，请刷新重试。"
 _LIVE_EXECUTION_CACHE_VERSION = "p4-initial-intake-audit-v1"
 _LIVE_EXECUTION_SESSION_VERSION_KEY = "p2_live_execution_session_version"
 
@@ -500,7 +500,7 @@ def _switch_to_student_profile(
 ):
     """Resolve, validate and load a complete target before changing session facts."""
     if import_legacy and keep_current_session:
-        raise LocalPersistenceError("旧本机档案和当前临时内容请选择一种迁入来源。")
+        raise LocalPersistenceError("请选择一种迁入来源。")
     current = current_identity(store)
     directory = _profile_directory_for(persistence_factory)
     if current.persistent:
@@ -628,7 +628,7 @@ def _persist_after_mutation(st, before, reference=None, campus_id=None, now=None
     persistence = st.session_state.get(LOCAL_PROFILE_STORE_KEY)
     if persistence is None or not callable(getattr(persistence, "save", None)):
         st.session_state[LOCAL_PROFILE_STATUS_KEY] = (
-            "本次会话内容已更新；开启个性化后可保存到个人档案。"
+            "本次内容未保存到个人档案"
         )
         return True
     try:
@@ -902,7 +902,7 @@ def _render_place_fields(st, campus_id):
             )
         saved = load_personal_settings(st.session_state).place_for(campus_id, role)
         if saved is not None and not saved.matched and current == "__unmatched__":
-            st.caption("原记录尚未匹配，请选择校园地点后再用于路线。")
+            st.caption("请选择匹配的校园地点。")
 
 
 def _import_widget_key(item_ref, name):
@@ -923,7 +923,7 @@ def _render_timetable_import_diagnostic(st, diagnostic):
         st.caption("识别到 {} 门课程 · {} 组需要核对".format(
             diagnostic.draft_course_count, diagnostic.ambiguity_count))
         if diagnostic.exception_type:
-            st.caption("部分内容未识别，原课表未改变。可以修改材料后重新识别。")
+            st.caption("部分内容未识别 · 请补充材料后重试。")
 
 
 def _settings_semester_context(store):
@@ -968,7 +968,7 @@ def _render_timetable_importer(
     store = st.session_state
     st.markdown(
         '<div class="cf-timetable-import"><div class="cf-settings-section">导入课表</div>'
-        '<div class="cf-settings-help">粘贴课表文字或上传截图。CampusFlow 会先整理成可编辑预览，确认后才保存。</div></div>',
+        '</div>',
         unsafe_allow_html=True,
     )
     raw_text = st.text_area(
@@ -980,8 +980,6 @@ def _render_timetable_importer(
     uploaded = st.file_uploader(
         "上传课表截图",type=("jpg","jpeg","png"),key=TIMETABLE_IMPORT_IMAGE_KEY,
     ) if image_supported and callable(getattr(st,"file_uploader",None)) else None
-    if image_supported and callable(getattr(st,"file_uploader",None)):
-        st.caption("截图会先进入可编辑预览；复杂课表请逐项确认。")
     use_image = uploaded is not None
     recognize = st.button(
         "识别课表",
@@ -989,10 +987,10 @@ def _render_timetable_importer(
         disabled=(not use_image and not str(raw_text or "").strip()),
     )
     if use_image and str(raw_text or "").strip():
-        st.caption("当前将识别已上传的课表截图；文字内容不会同时提交。")
+        st.caption("将识别已上传截图。")
     if recognize:
         if missing:
-            st.warning("请先连接模型服务后再识别课表；手动录入仍可使用。")
+            st.warning("请连接模型服务，或手动录入课表。")
             return
         try:
             with (st.spinner("THINKING.......") if callable(getattr(st, "spinner", None)) else nullcontext()):
@@ -1037,7 +1035,7 @@ def _render_timetable_importer(
         image_bytes=(uploaded.getvalue() if uploaded is not None else None),
     )
     if not source_current:
-        st.warning("课表材料已变化或原截图已不在当前会话。请重新识别后再导入；原课表未改变。")
+        st.warning("材料已变化或丢失 · 请重新识别后导入。")
     if draft.diagnostic is not None:
         _render_timetable_import_diagnostic(st, draft.diagnostic)
     st.markdown('<div class="cf-import-preview-title">识别预览</div>', unsafe_allow_html=True)
@@ -1060,7 +1058,7 @@ def _render_timetable_importer(
             )
         )
     else:
-        st.caption("本次课表尚未设置默认校区；未标明校区的课程需要确认。")
+        st.caption("请选择未标明课程的校区。")
 
     previous_import_campus = store.get(TIMETABLE_IMPORT_APPLIED_CAMPUS_KEY, "__unset__")
     if previous_import_campus != import_campus:
@@ -1183,7 +1181,7 @@ def _render_timetable_importer(
                     value.location_text, value.campus_id, "study", map_data,
                 )
                 if matched is not None and not matched.matched:
-                    st.caption("地点尚未匹配校园地图；导入后会保留原文，不会猜测锚点。")
+                    st.caption("地点待匹配 · 可修改或保留原文。")
 
     try:
         base = _settings_draft_from_widgets(store, bump_revision=False)
@@ -1195,7 +1193,7 @@ def _render_timetable_importer(
         for error in check.errors:
             st.warning(sanitize_user_facing_text(error))
         if check.duplicate_item_refs:
-            st.caption("已存在的相同课程会跳过，不会重复创建。")
+            st.caption("将跳过重复课程。")
     confirm = st.button(
         "确认导入并保存设置",
         key="personal_settings_timetable_import_confirm",
@@ -1221,7 +1219,7 @@ def _render_timetable_importer(
     store.pop(TIMETABLE_IMPORT_DRAFT_KEY, None)
     store.pop(TIMETABLE_IMPORT_CAMPUS_KEY, None)
     store.pop(TIMETABLE_IMPORT_APPLIED_CAMPUS_KEY, None)
-    store[PERSONAL_SETTINGS_STATUS_KEY] = "已导入{}门课程并保存；当前方案尚未更新。".format(
+    store[PERSONAL_SETTINGS_STATUS_KEY] = "已导入 {} 门课程 · 请更新方案。".format(
         len(merged.added_template_refs)
     )
     store.pop(PERSONAL_SETTINGS_DRAFT_REVISION_KEY, None)
@@ -1285,7 +1283,7 @@ def _render_course_editor(
                 store[anchor_key] = ""
                 saved_anchor = ""
             st.selectbox(
-                "地点锚点（可选）", anchor_options,
+                "匹配校园地点（可选）", anchor_options,
                 index=anchor_options.index(saved_anchor),
                 format_func=lambda value, lookup=names: "不指定" if not value else lookup.get(value, value),
                 key=anchor_key,
@@ -1321,12 +1319,12 @@ def _render_profile_controls(st, persistence_factory, reference):
     authentication = current_authentication_context(st.session_state)
     if st.session_state.get(EXTERNAL_AUTH_MODE_KEY) and not authentication.authenticated:
         st.checkbox("当前为临时使用", value=False, disabled=True, key="campusflow_external_auth_waiting")
-        st.caption("需要个人档案时，请使用页面提供的认证入口；学号不能用于登录。")
+        st.caption("请通过认证入口打开个人档案。")
         return False
     if authentication.authenticated:
         st.checkbox("认证个人档案已启用", value=True, disabled=True,
             key="campusflow_authenticated_profile_enabled")
-        st.caption("档案由外部认证身份保护；退出请使用认证服务提供的退出入口。")
+        st.caption("退出请使用认证服务的退出入口。")
         directory = _profile_directory_for(persistence_factory)
         try:
             has_student_identifier = directory.has_student_identifier(identity)
@@ -1334,11 +1332,11 @@ def _render_profile_controls(st, persistence_factory, reference):
             st.warning(sanitize_user_facing_text(str(exc)))
             has_student_identifier = True
         if has_student_identifier:
-            st.caption("已关联学号资料；学号不是认证凭据，也不会发送给模型。")
+            st.caption("已关联学号资料")
             return False
         st.text_input("学号（可选）", key=STUDENT_IDENTIFIER_DRAFT_KEY,
             placeholder="用于关联天津大学个性化资料")
-        st.caption("学号只作为可选档案资料，不决定认证结果，也不会发送给模型。")
+        st.caption("学号不会发送给模型。")
         if st.button("关联学号资料", key="campusflow_authenticated_student_link"):
             try:
                 directory.associate_student_identifier(
@@ -1348,7 +1346,7 @@ def _render_profile_controls(st, persistence_factory, reference):
                 st.warning(sanitize_user_facing_text(str(exc)))
                 return True
             st.session_state.pop(STUDENT_IDENTIFIER_DRAFT_KEY, None)
-            st.session_state[PROFILE_SWITCH_STATUS_KEY] = "学号资料已关联；认证身份没有改变。"
+            st.session_state[PROFILE_SWITCH_STATUS_KEY] = "学号资料已关联"
             _rerun(st)
             return True
         return False
@@ -1359,11 +1357,11 @@ def _render_profile_controls(st, persistence_factory, reference):
     if switch_status:
         st.caption(sanitize_user_facing_text(switch_status))
     elif identity.kind == "student":
-        st.caption("个人档案已启用；完整学号只在切换档案时输入。")
+        st.caption("个人档案已启用")
     if profile_enabled:
         st.text_input("学号", key=STUDENT_IDENTIFIER_DRAFT_KEY,
             placeholder="用于区分并保存你的个人档案")
-        st.caption("学号具有唯一性，但这里只用于选择档案，不是登录或身份认证。不会发送给模型。")
+        st.caption("学号用于选择本机档案，不是身份认证；不会发送给模型。")
         legacy_available = False
         try:
             legacy_available = _profile_directory_for(persistence_factory).has_legacy_data()
@@ -1378,10 +1376,10 @@ def _render_profile_controls(st, persistence_factory, reference):
         if st.button("打开并使用此档案", key="campusflow_profile_switch"):
             import_legacy = bool(st.session_state.get(PROFILE_IMPORT_LEGACY_DRAFT_KEY))
             if _has_unsaved_settings_draft(st.session_state):
-                st.warning("请先保存当前设置，或关闭面板保留草稿，再切换个人档案。")
+                st.warning("请先保存设置或关闭面板，再切换档案。")
                 return True
             if import_legacy and keep_current:
-                st.warning("旧本机档案和当前临时内容请选择一种迁入来源。")
+                st.warning("请选择一种迁入来源。")
                 return True
             try:
                 _switch_to_student_profile(
@@ -1396,10 +1394,10 @@ def _render_profile_controls(st, persistence_factory, reference):
             _rerun(st)
             return True
     elif identity.kind == "student":
-        st.caption("关闭后将进入新的临时会话；当前个人档案会先安全保存。")
+        st.caption("切换后开启临时会话，当前档案会保存。")
         if st.button("切换为临时使用", key="campusflow_profile_use_temporary"):
             if _has_unsaved_settings_draft(st.session_state):
-                st.warning("请先保存当前设置，或关闭面板保留草稿，再切换为临时使用。")
+                st.warning("请先保存设置或关闭面板，再切换为临时使用。")
                 return True
             try:
                 _switch_to_anonymous_profile(st.session_state, reference or datetime.now())
@@ -1409,7 +1407,7 @@ def _render_profile_controls(st, persistence_factory, reference):
             _rerun(st)
             return True
     else:
-        st.caption("临时使用不要求学号，也不会读取其他人的个人档案。")
+        st.caption("临时使用 · 计划和设置不保存到个人档案。")
     return False
 
 
@@ -1430,7 +1428,7 @@ def _render_personal_settings_panel(
             actions = st.columns((8, 1))
             with actions[0]:
                 st.markdown('<span class="cf-settings-action-marker"></span>', unsafe_allow_html=True)
-                st.markdown('<div class="cf-settings-title">个人设置</div>', unsafe_allow_html=True)
+                st.markdown('<div class="cf-settings-title" role="heading" aria-level="1">个人设置</div>', unsafe_allow_html=True)
             with actions[1]:
                 close_clicked = st.button("×", key="personal_settings_close")
         if close_clicked:
@@ -1444,7 +1442,6 @@ def _render_personal_settings_panel(
                 st.session_state[PERSONAL_SETTINGS_STATUS_KEY] = "未保存的编辑草稿已保留。"
             _rerun(st)
             return True
-        st.markdown('<div class="cf-settings-unsaved">保存后用于后续规划。本次安排中的明确要求优先。</div>', unsafe_allow_html=True)
         settings_notice = st.session_state.get(PERSONAL_SETTINGS_STATUS_KEY)
         if settings_notice:
             st.markdown('<div class="cf-persist-notice">{}</div>'.format(
@@ -1481,21 +1478,18 @@ def _render_personal_settings_panel(
                 placeholder="我做数学比较慢；连续学习久了希望留一点休息",
             )
         with tabs[1]:
-            st.markdown('<div class="cf-settings-section">常用地点</div>', unsafe_allow_html=True)
             place_campus = st.selectbox(
                 "校区", ("beiyangyuan", "weijinlu"),
                 format_func=lambda value: DEFAULT_CAMPUS_REGISTRY.get_registration(value).display_name,
                 key=PERSONAL_SETTINGS_PLACE_CAMPUS_KEY,
             )
             _render_place_fields(st, place_campus)
-            st.caption("宿舍只是常用目的地，不会被当成你当前所在的位置。")
         with tabs[2]:
             _render_course_editor(
                 st, caller=caller, repair_caller=repair_caller,
                 image_caller=image_caller,image_supported=image_supported,
                 missing=missing, reference=reference,
             )
-            st.caption("课表按规划日期和教学周展开；保存本身不会立刻重排当前方案。")
         with st.container():
             st.markdown('<span class="cf-settings-save-marker"></span>', unsafe_allow_html=True)
             save_clicked = st.button("保存设置", key="personal_settings_save", type="primary")
@@ -1514,9 +1508,9 @@ def _render_personal_settings_panel(
             st.session_state[PERSONAL_SETTINGS_DRAFT_REVISION_KEY] = settings.revision
             _capture_settings_draft_widgets(st.session_state)
             st.session_state[PERSONAL_SETTINGS_STATUS_KEY] = (
-                "设置已保存到个人档案；当前方案尚未更新。"
+                "设置已保存 · 请更新方案。"
                 if current_identity(st.session_state).persistent
-                else "设置已用于本次临时会话；当前方案尚未更新。"
+                else "设置已用于本次会话 · 请更新方案。"
             )
             st.session_state[PERSONAL_SETTINGS_PANEL_OPEN_KEY] = False
             _rerun(st)
@@ -1571,7 +1565,7 @@ def _render_task_estimator(st, session, adapter, missing, reference):
         )
         if estimate_submitted:
             if missing:
-                st.error("请先连接模型服务后再估时，当前输入已保留。")
+                st.error("请先连接模型服务后估时 · 输入已保留。")
                 return False
             before = _business_snapshot(st.session_state)
             try:
@@ -1592,7 +1586,7 @@ def _render_task_estimator(st, session, adapter, missing, reference):
                 return False
             except Exception as exc:  # noqa: BLE001 - service failure, no raw output in UI
                 logger.error("[CampusFlow][task_estimate] %s", type(exc).__name__)
-                st.error("估时服务暂时没有完成；材料仍在输入框中，已有估算也会保留。请稍后重试。")
+                st.error("估时未完成 · 材料和原估算已保留，请重试。")
                 return False
             if not _persist_after_mutation(st, before, reference=reference):
                 return False
@@ -1628,7 +1622,7 @@ def _render_task_estimator(st, session, adapter, missing, reference):
             draft = stale_draft
         result = draft.result
         if draft.status == "stale":
-            st.warning("任务材料或补充情况已变化，请重新估算后再加入。")
+            st.warning("材料已变化 · 请重新估算后加入。")
         if not result.ready:
             st.warning(sanitize_user_facing_text(result.clarification_question))
             return False
@@ -1677,7 +1671,7 @@ def _render_task_estimator(st, session, adapter, missing, reference):
             unsafe_allow_html=True,
         )
         if draft.status == "added":
-            st.markdown('<div class="cf-persist-notice">已更新今日计划，不会重复加入；可以收起这里查看方案。</div>', unsafe_allow_html=True)
+            st.markdown('<div class="cf-persist-notice">已加入今日计划</div>', unsafe_allow_html=True)
             return False
         widget_suffix = "{}_{}".format(draft.draft_id, draft.call_count)
         task_name, scope, completion = result.task_name, result.scope_summary, result.completion_criteria
@@ -1699,7 +1693,7 @@ def _render_task_estimator(st, session, adapter, missing, reference):
             value=int(draft.adopted_minutes), step=5,
             key="p2_task_estimate_minutes_" + widget_suffix,
         )
-        st.caption("最终采用 {} 分钟 · {}。这不代表已经完成，也不会改变任务范围。".format(
+        st.caption("采用 {} 分钟 · {}".format(
             int(adopted), "用户修改" if int(adopted) != result.recommended_minutes else "沿用估算建议"
         ))
         edited_result = result
@@ -1752,16 +1746,16 @@ def _render_task_estimator(st, session, adapter, missing, reference):
                 format_func=lambda ref: labels.get(ref, "加入一项新任务"),
                 key="p2_task_estimate_existing_target",
             )
-            st.caption("为已有任务补充用时会保留原任务，不重复创建。")
+            st.caption("补充已有任务用时")
         add_today = st.button(
             "确认用时并更新计划" if existing_ref else "加入今日计划", key="p2_task_estimate_add", type="primary",
             disabled=draft.status != "ready",
         )
         if draft.status != "ready":
-            st.caption("材料或确认范围已变化，先重新估算，再加入今日计划。")
+            st.caption("范围已变化 · 请重新估算后加入。")
         if reestimate:
             if missing:
-                st.error("请先连接模型服务后再估时，当前输入已保留。")
+                st.error("请先连接模型服务后估时 · 输入已保留。")
                 return False
             before = _business_snapshot(st.session_state)
             try:
@@ -1781,7 +1775,7 @@ def _render_task_estimator(st, session, adapter, missing, reference):
                 return False
             except Exception as exc:  # noqa: BLE001
                 logger.error("[CampusFlow][task_reestimate] %s", type(exc).__name__)
-                st.error("估时服务暂时没有完成；材料仍在输入框中，已有估算也会保留。请稍后重试。")
+                st.error("估时未完成 · 材料和原估算已保留，请重试。")
                 return False
             if not _persist_after_mutation(st, before, reference=reference):
                 return False
@@ -1822,10 +1816,10 @@ def _render_task_estimator(st, session, adapter, missing, reference):
             except Exception as exc:  # noqa: BLE001
                 logger.error("[CampusFlow][task_estimate_add] %s", type(exc).__name__)
                 _restore_business_snapshot(st.session_state, before)
-                st.error("这份任务暂时没有加入，原方案和估时草稿都已保留。")
+                st.error("任务未加入 · 原方案和估时已保留。")
                 return False
             if not _persist_after_mutation(st, before, reference=reference):
-                st.error("这份任务暂时没有加入，原方案和估时草稿都已保留。")
+                st.error("任务未加入 · 原方案和估时已保留。")
                 return False
             st.session_state[LOCAL_PROFILE_STALE_KEY] = False
             st.session_state[PERSONAL_SETTINGS_PLAN_STALE_KEY] = False
@@ -2145,7 +2139,7 @@ def _handle_intake_submit(
 ) -> bool:
     """“生成全天计划”：Intake -> 程序构造 state -> P3 空间 intake -> P2c start_day。"""
     if missing:
-        st.error("请先连接模型服务后再生成计划，当前输入已保留。")
+        st.error("请先连接模型服务后规划 · 输入已保留。")
         return False
     if not user_text:
         st.warning("请先输入今天的情况和想完成的任务。")
@@ -2308,10 +2302,11 @@ def _render_live_page(
             persistence_factory=persistence_factory,
         )
     profile_status = st.session_state.get(LOCAL_PROFILE_STATUS_KEY)
+    render_profile_status(st, st.session_state.get(CURRENT_USER_CONTEXT_KEY), profile_status)
     temporary_profile_notice = "当前为临时使用；开启个性化后可跨会话保存。"
     if (
         profile_status
-        and profile_status != temporary_profile_notice
+        and profile_status not in (temporary_profile_notice, "本次内容未保存到个人档案")
         and not (settings_status and profile_status == "已在本机保存。")
     ):
         st.markdown(
@@ -2394,7 +2389,7 @@ def _render_live_page(
     require_campus_map(registration.campus_id, map_data)
     other_courses = tuple(st.session_state.get(PERSONAL_OTHER_CAMPUS_COURSES_KEY, ()) or ())
     if other_courses:
-        st.info("今天还有其他校区的课表安排；当前不会自动切换校区或生成跨校区路线。")
+        st.info("另有其他校区课程 · 请分校区安排。")
 
     # Streamlit keeps session_state across hot reloads.  A P4 context saved by
     # an older timeline contract must not be rendered beside a newer planner:
@@ -2450,6 +2445,7 @@ def _render_live_page(
             render_page_streamlit(
                 st, turn,
                 extra_questions=bundle.extra_questions if bundle is not None else (),
+                map_data=map_data,
             )
         return
     reference = _resolve_reference_time(reference_time, now_provider())
@@ -2467,31 +2463,34 @@ def _render_live_page(
             quiet_button(st, '时间设置', key='cf_environment_time_inline',
                 on_click=toggle_environment, args=(st.session_state, 'time'))
     if missing:
-        st.caption("需要先连接模型服务；可以先查看页面和编辑设置。")
+        st.caption("请先连接模型服务。")
         from src.model_service_ui import editor_allowed, open_service_settings
         if editor_allowed(st):
             st.button("连接模型服务", key="cf_model_open", on_click=open_service_settings,
                       args=(st.session_state, PERSONAL_SETTINGS_PANEL_OPEN_KEY))
         else:
-            st.caption("请由运行此服务的配置者补全模型配置。")
+            st.caption("请联系服务配置者补全配置。")
 
     view = st.session_state.get(VIEW_KEY, '今天')
+    render_today_texture(st, map_data, view)
     if not has_current_plan and view == '今天':
-        st.markdown('<div class="cf-empty-title">接下来有什么安排？</div><div class="cf-empty-intro">填写任务、时间要求和固定安排。</div>', unsafe_allow_html=True)
+        st.markdown('<h1 class="cf-empty-title">接下来有什么安排？</h1>', unsafe_allow_html=True)
     elif view == '时间线':
-        st.markdown('<div class="cf-page-title">{}</div>'.format(view), unsafe_allow_html=True)
+        st.markdown('<h1 class="cf-page-title">{}</h1>'.format(view), unsafe_allow_html=True)
     focus_slot = st.container() if hasattr(st, 'container') else nullcontext()
-    intake_slot = st.container() if hasattr(st, 'container') else nullcontext()
     feedback_slot = st.container() if hasattr(st, 'container') else nullcontext()
+    intake_slot = st.container() if hasattr(st, 'container') else nullcontext()
     timeline_slot = st.container() if hasattr(st, 'container') else nullcontext()
     material_slot = st.container() if hasattr(st, 'container') else nullcontext()
 
     # Keep existing widgets alive on rerun, while giving the current action
     # priority once a reliable plan exists. Collapsing never submits anything.
     with intake_slot, region(st, 'intake', view == '今天'):
-        with (st.expander("重新规划", expanded=False) if has_current_plan else nullcontext()):
+        if has_current_plan:
+            st.markdown('<span class="cf-rewrite-marker" hidden></span>', unsafe_allow_html=True)
+        with (st.expander("重写今日安排", expanded=False) if has_current_plan else nullcontext()):
             with st.form("p2_live_intake_form"):
-                st.markdown('<div class="cf-input-heading">今天还有什么事？</div>', unsafe_allow_html=True)
+                st.markdown('<span class="cf-input-heading" hidden></span>', unsafe_allow_html=True)
                 first_input = st.text_area(
                     "接下来想做什么？", key=LIVE_INTAKE_KEY,
                     label_visibility="collapsed",
@@ -2504,10 +2503,6 @@ def _render_live_page(
                 # nesting expanders. Only the empty homepage needs this one.
                 with (st.expander("补充当前位置（可选）", expanded=False) if not has_current_plan else nullcontext()):
                     current_location = st.text_input("我现在的位置（可选）", key=LIVE_CURRENT_LOCATION_KEY)
-                    st.markdown(
-                        '<div class="cf-input-help">只有包含通勤时才需要确认位置。</div>',
-                        unsafe_allow_html=True,
-                    )
                 intake_submitted = st.form_submit_button("帮我安排", type="primary")
     if intake_submitted:
         before = _business_snapshot(st.session_state)
@@ -2548,7 +2543,7 @@ def _render_live_page(
                 feedback_submitted = st.form_submit_button("更新方案", type="primary")
     if feedback_submitted:
         if missing:
-            st.error("请先连接模型服务后再更新方案，原方案已保留。")
+            st.error("请先连接模型服务后更新 · 原方案已保留。")
         elif not str(feedback).strip():
             pass
         elif load_live_final_turn(st.session_state) is None and session.last_turn() is None:
@@ -2599,7 +2594,7 @@ def _render_live_page(
             return
     if not has_current_plan:
         if view == '时间线':
-            st.caption('当前没有计划。请在“今天”创建安排。')
+            st.caption('去“今天”创建安排。')
         archived = st.session_state.get(LOCAL_PROFILE_STALE_BUNDLE_KEY)
         if archived is not None and view != '材料估时':
             render_page_streamlit(st, archived.turn, extra_questions=archived.extra_questions, saved_snapshot=True)
@@ -2703,7 +2698,7 @@ def _render_live_page(
             lambda: render_page_streamlit(
                 st, turn, extra_questions=intake_questions,
                 saved_snapshot=bool(st.session_state.get(LOCAL_PROFILE_STALE_KEY)),
-                default_walk_hint=default_walk_hint, part="focus",
+                default_walk_hint=default_walk_hint, part="focus", map_data=map_data,
             ),
         )
     with timeline_slot, region(st, "timeline", view != "材料估时"):
@@ -2721,9 +2716,9 @@ def _render_retained_plan(st):
     """An unsuccessful action must not make the reliable plan disappear."""
     bundle = load_live_final_turn(st.session_state)
     if bundle is not None:
-        st.caption("原方案仍保留在下面。输入没有清空，可以修改后再试。")
         _safe_user_action(st, st.session_state, "render", lambda: render_page_streamlit(
             st, bundle.turn, extra_questions=bundle.extra_questions,
+            map_data=st.session_state.get(LIVE_MAP_KEY),
             saved_snapshot=bool(st.session_state.get(LOCAL_PROFILE_STALE_KEY)),
         ))
 

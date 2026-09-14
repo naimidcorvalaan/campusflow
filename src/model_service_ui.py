@@ -37,7 +37,7 @@ def _save(st):
     state.pop(PREFIX + "test", None)
     state[PREFIX + "key"] = ""
     state[PREFIX + "skip"] = True
-    state[PREFIX + "notice"] = "模型配置已保存在本机，可直接使用。"
+    state[PREFIX + "notice"] = "配置已保存"
 
 
 def _clear(st):
@@ -48,7 +48,7 @@ def _clear(st):
         return
     for name in ("key", "address", "model", "test", "error", "notice"):
         st.session_state.pop(PREFIX + name, None)
-    st.session_state[PREFIX + "notice"] = "已清除页面保存的配置；环境变量和 .env 保持原样。"
+    st.session_state[PREFIX + "notice"] = "本机配置已清除"
     st.session_state[PREFIX + "clear_confirm"] = False
     st.session_state[PREFIX + "skip"] = True
 
@@ -70,7 +70,7 @@ def render_editor(st):
         st.warning(st.session_state[PREFIX + "error"])
     external = {name: bool(os.environ.get(name, "").strip()) for name in FIELDS}
     if any(external.values()):
-        st.caption("已有环境变量或 .env 管理的字段保留原值；如需修改，请在原配置来源调整。")
+        st.caption("锁定字段由环境配置管理，请在原来源修改。")
     with st.form("cf_model_service_form"):
         st.text_input("API 地址", value=values.get(FIELDS[0], ""), key=PREFIX + "address", max_chars=4096,
                       disabled=external[FIELDS[0]], placeholder="请填写你获得的 TJU 模型服务地址")
@@ -78,11 +78,10 @@ def render_editor(st):
                       disabled=external[FIELDS[2]])
         st.text_input("API Key", type="password", key=PREFIX + "key", max_chars=4096, disabled=external[FIELDS[1]],
                       placeholder="已配置；留空保留，输入新值可更新" if values.get(FIELDS[1]) else "填写自己的 API Key")
-        st.caption("配置保存在本机用户目录，与个人档案分开。保存不会发起模型请求。")
         st.form_submit_button("保存配置", type="primary", on_click=_save, args=(st,),
                               disabled=all(external.values()))
     if all(values.get(name) for name in FIELDS):
-        st.caption("测试使用已保存配置，将发起一次短模型请求。")
+        st.caption("测试会发送一次短模型请求。")
         if st.button("测试已保存的连接", key=PREFIX + "test_button"):
             with st.spinner("正在测试连接…"):
                 st.session_state[PREFIX + "test"] = test_saved_connection()
@@ -90,7 +89,7 @@ def render_editor(st):
         if result:
             (st.success if result[0] else st.warning)(result[1])
     if local_config_exists():
-        st.caption("清除仅影响在此页面保存的模型配置，不影响任务、课表和偏好。")
+        st.caption("清除范围：本机模型配置")
         if st.checkbox("确认清除本机模型配置", key=PREFIX + "clear_confirm"):
             st.button("清除配置", key=PREFIX + "clear_button", on_click=_clear, args=(st,))
 
@@ -101,8 +100,8 @@ def render_first_run(st, missing):
     if missing and not st.session_state.get(PREFIX + "skip"):
         with st.container():
             st.markdown('<span class="cf-model-setup-marker"></span>', unsafe_allow_html=True)
-            st.markdown('<div class="cf-page-title">连接 TJU 模型服务</div>', unsafe_allow_html=True)
-            st.write("CampusFlow 使用模型服务理解任务、估计工作量并生成规划。首次使用请填写自己的 TJU 模型配置。")
+            st.markdown('<h1 class="cf-page-title">连接 TJU 模型服务</h1>', unsafe_allow_html=True)
+            st.write("请填写你的 TJU 服务地址和 API Key。")
             render_editor(st)
             st.button("暂时跳过，先看看", key=PREFIX + "skip_button",
                       on_click=_skip, args=(st,))

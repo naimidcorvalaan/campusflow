@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>CampusFlow · 校园路线</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="routes.css">
+  <script defer src="assets/networks.js"></script>
+  <script defer src="route_visual.js"></script>
+  <script defer src="routes.js"></script>
+</head>
+<body class="route-gallery-page">
+  <header class="gallery-tools"><strong>CampusFlow / 校园路线</strong><a href="index.html">返回今日工作台 ↗</a></header>
+  <main class="route-gallery" id="route-gallery" aria-label="两校区校园路线"></main>
+  <template id="route-template">
+    <article class="route-showcase">
+      <header class="showcase-header">
+        <div class="brand"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 36 V29 Q10 24 15 24 H29 Q36 24 36 17 V10"/><circle cx="10" cy="36" r="3.5"/><circle cx="24" cy="24" r="3.5"/><circle cx="36" cy="10" r="3.5"/></svg><strong>CampusFlow</strong></div>
+        <div class="showcase-campus"><b data-field="campus"></b><span data-field="code"></span></div>
+      </header>
+      <div class="showcase-body">
+        <section class="showcase-description">
+          <p class="showcase-kicker"><i class="dot"></i> 下一段校园移动</p>
+          <div class="showcase-stops"><span>从</span><h2 data-field="origin"></h2><span class="showcase-arrow" aria-hidden="true">↓</span><span>到</span><h2 data-field="destination"></h2></div>
+          <div class="showcase-metrics">
+            <div class="showcase-minutes"><span data-field="mode"></span><div><strong data-field="minutes"></strong><span>分钟</span></div></div>
+            <div class="showcase-distance"><span>路线距离</span><div><strong data-field="distance"></strong><span>m</span></div></div>
+          </div>
+        </section>
+        <div class="showcase-map-area"><div class="showcase-map-heading"><span data-field="map-campus"></span><span data-field="map-mode"></span></div><div class="map-host showcase-map"></div></div>
+      </div>
+      <footer class="showcase-footer">
+        <div class="showcase-time-line" aria-label="校园移动时间">
+          <div><span>收拾</span><b data-field="pack"></b><small>收好手边的事</small></div>
+          <div class="depart-node"><span>出发</span><b data-field="depart"></b><small data-field="origin"></small></div>
+          <div class="arrive-node"><span>预计抵达</span><b data-field="arrive"></b><small data-field="destination"></small></div>
+        </div>
+        <span class="showcase-signoff">时间有刻度，移动有来处与去处。</span>
+      </footer>
+    </article>
+  </template>
+</body>
+</html>
