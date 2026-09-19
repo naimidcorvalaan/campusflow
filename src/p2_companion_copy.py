@@ -97,22 +97,14 @@ def extract_plan_facts(state, allocation_plan, movement_blocks=()):
     now = state.now
     day_end = state.day_end
     task_lines = []
-    for window in state.windows:
-        allocations = sorted(
-            (a for a in allocation_plan.allocations if a.window_ref == window.window_ref),
-            key=lambda a: (a.sequence_index, a.allocation_ref),
-        )
-        cursor = window.starts_at
-        for allocation in allocations:
-            start = cursor
-            end = start + timedelta(minutes=allocation.planned_minutes)
-            task_lines.append(
-                "{}–{}：{} {}分钟".format(
-                    start.strftime("%H:%M"), end.strftime("%H:%M"),
-                    allocation.task_title, allocation.planned_minutes,
-                )
+    from src.task_attention import allocation_spans
+    for allocation, start, end in allocation_spans(state, allocation_plan):
+        task_lines.append(
+            "{}–{}：{} {}分钟".format(
+                start.strftime("%H:%M"), end.strftime("%H:%M"),
+                allocation.task_title, allocation.planned_minutes,
             )
-            cursor = end
+        )
     commitments = [
         "{} {}-{}".format(
             c.title,
@@ -370,6 +362,8 @@ def build_companion_prompt(facts, context_type=CONTEXT_INITIAL, change_facts=Non
         "和 closing（计划结尾1~3句温暖贴合节奏的话），像校园生活助理。\n"
         "规则：\n"
         "1. 只描述和回应给定计划；不得新增任务、不得修改时间/地点/路线/耗时。\n"
+        "地点没有给出时，不替买东西等任务发明商店或目的地。到达时刻不能写成出发时刻。"
+        "任务已安排只表示计划工作量，不表示实际完成。\n"
         "2. 不得编造用户状态、天气、健康、情绪等外部事实；不做医疗/心理判断，不说教。\n"
         "3. 时间表述必须来自给定计划：只有下午计划就说“今天下午/接下来”，"
         "不要硬说全天时间段。\n"

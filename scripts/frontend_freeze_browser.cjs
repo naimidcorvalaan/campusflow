@@ -6,14 +6,14 @@ module.exports=async function(browser,base='http://127.0.0.1:8577/') {
   let page;const results=[];
   const record=(name,value=true)=>{results.push({name,value});fs.writeFileSync(path.join(out,'browser-results.json'),JSON.stringify(results,null,2));};
   const assert=(value,message)=>{if(!value)throw Error(message);};
-  const displayName=name=>name==='材料估时'?'任务估时':name;
+  const displayName=name=>({'材料估时':'任务估时','今天':'制定计划','时间线':'今日计划表'}[name]||name);
   const button=name=>page.getByRole('button',{name:displayName(name),exact:true});
   // Allow the widget's websocket event to start its rerun before waiting for
   // the status to disappear. The pre-event idle gap is not completion.
   const idle=async()=>{await page.waitForTimeout(400);await page.locator('[data-testid=stStatusWidget]').waitFor({state:'hidden',timeout:30000});await page.waitForTimeout(200);};
   const sidebar=async()=>{if(await page.locator('[data-testid=stSidebar]').getAttribute('aria-expanded')==='false')await page.locator('[data-testid=collapsedControl]').click();};
   const closeSidebar=async()=>{if(page.viewportSize().width<800&&await page.locator('[data-testid=stSidebar]').getAttribute('aria-expanded')==='true')await page.locator('[data-testid=stSidebarContent]>div:first-child button').click();};
-  const nav=async(name)=>{await sidebar();await button(name).click();await page.waitForFunction(name=>document.querySelector('.cf-workspace-header')?.innerText.includes(name),displayName(name));await idle();await closeSidebar();};
+  const nav=async(name)=>{await sidebar();await button(name).click();await idle();await closeSidebar();};
   const open=async(query)=>{
     const context=await browser.newContext({viewport:{width:1440,height:900}});context.setDefaultTimeout(6000);
     page=await context.newPage();await page.goto(base+'?identity=anonymous&ui_probe=1&profile=visual&'+query);
@@ -55,7 +55,7 @@ module.exports=async function(browser,base='http://127.0.0.1:8577/') {
     assert((await page.getByRole('textbox',{name:'接下来想做什么？',exact:true}).inputValue()).includes('写90分钟作业'),'Task draft lost before submit');
     await button('帮我安排').click();await page.locator('.cf-focus-action').waitFor({timeout:20000});await idle();
     const planned=await probe();assert((await page.locator('.cf-focus-action').innerText())==='写作业','Current action missing');
-    assert((await page.locator('.cf-side-card').innerText()).includes('18:46 出发'),'Published route missing');
+    assert((await page.locator('.cf-action-workspace > .cf-side-card').innerText()).includes('18:46 出发'),'Published route missing');
     await environmentHidden();await shot('02-today-planned-1440');record('current action, optional location submitted, published departure');
     await button('个人设置').click();await idle();const dialog=page.getByRole('dialog');
     assert(Math.abs((await dialog.boundingBox()).width-1440*.48)<2,'Drawer width changed');
@@ -73,10 +73,10 @@ module.exports=async function(browser,base='http://127.0.0.1:8577/') {
 
     await open('documents=1&estimate_rehearsal=workload');await nav('材料估时');await environmentHidden();
     assert(await page.locator('details').filter({has:page.locator('.cf-add-task-marker')}).count()===0,'Material has a second entry');
-    assert(await page.getByRole('textbox',{name:'任务、通知或说明',exact:true}).isVisible(),'Material input not direct');
+    assert(await page.getByRole('textbox',{name:'或用文字描述你的任务',exact:true}).isVisible(),'Material input not direct');
     const dz=page.getByRole('button',{name:'上传任务材料',exact:true});
     assert(!(await tool().innerText()).includes('Drag and drop'),'English uploader visible');
-    assert((await dz.evaluate(e=>getComputedStyle(e,'::before').content)).includes('选择或拖入材料'),'Chinese dropzone missing');
+    assert((await dz.evaluate(e=>getComputedStyle(e,'::before').content)).includes('拖放文件到这里，或'),'Chinese dropzone missing');
     await shot('check-material-empty-1440');
     const file=path.resolve('artifacts/document_material/workload/assessment.docx');
     let chooser=page.waitForEvent('filechooser');await dz.focus();await page.keyboard.press('Enter');await(await chooser).setFiles([]);
@@ -104,7 +104,7 @@ module.exports=async function(browser,base='http://127.0.0.1:8577/') {
     record('material result, source expansion, confirmation gate and thinking single input',{frames:frames.length,maxSupplement:Math.max(...frames.map(f=>f.supplements)),maxSubmit:Math.max(...frames.map(f=>f.buttons))});
     await page.setViewportSize({width:390,height:844});await shot('check-material-result-390');await noOverflow();
     await button('更换材料').click();await idle();await shot('check-material-input-390');await noOverflow();
-    assert((await dz.evaluate(e=>getComputedStyle(e,'::before').content)).includes('选择或拖入材料'),'Narrow upload text');
+    assert((await dz.evaluate(e=>getComputedStyle(e,'::before').content)).includes('拖放文件到这里，或'),'Narrow upload text');
     await sidebar();assert(await page.locator('[data-testid=stSidebarContent]>div:first-child button').isVisible(),'Narrow sidebar cannot close');await closeSidebar();
     record('390 material input/result, Chinese uploader, sidebar close, no overflow');
     await page.context().close();
@@ -112,7 +112,7 @@ module.exports=async function(browser,base='http://127.0.0.1:8577/') {
     await page.locator('input[type=file]').setInputFiles(path.resolve('artifacts/document_material/workload/assessment-partial.docx'));
     await page.getByText(/已读取材料/).waitFor({state:'attached',timeout:15000});await idle();await button('帮我看看').click();
     await page.locator('.cf-material-estimate').waitFor({timeout:30000});await idle();
-    assert((await tool().innerText()).includes('可能需要更久'),'Partial scope lost');await shot('check-material-partial-1440');record('partial coverage remains explicit');
+    assert((await tool().innerText()).includes('仅估算已识别内容'),'Partial scope lost');await shot('check-material-partial-1440');record('partial coverage remains explicit');
     await page.context().close();record('complete');return{out,results};
   } catch(error) {if(page&&!page.isClosed()){await page.screenshot({path:path.join(out,'failure.png')});record('failure text',(await page.locator('body').innerText()).slice(-4500));}record('failure',String(error));throw error;}
 };

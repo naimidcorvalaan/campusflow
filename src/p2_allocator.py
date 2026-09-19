@@ -14,7 +14,7 @@ minimum_slice_minutes / window capacity / availability。
 - 任务默认按 state.tasks 输入顺序；可用 task_order 覆盖（供 P2c Agent 注入）。
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
 from src.p1_window_models import AvailabilityLevel
@@ -38,6 +38,8 @@ def allocate_tasks_across_windows(
     latest_end_by_task_ref: Optional[Mapping[str, datetime]] = None,
     preferred_chunk_by_task_ref: Optional[Mapping[str, int]] = None,
     concurrent_minutes_by_task_ref: Optional[Mapping[str, int]] = None,
+    predecessors_by_task_ref: Optional[Mapping[str, Sequence[str]]] = None,
+    presence_intervals_by_task_ref: Optional[Mapping[str, Sequence[Tuple[datetime, datetime]]]] = None,
 ) -> DayAllocationPlan:
     """把 ACTIVE 任务按确定性策略分配到今天剩余窗口，返回计划快照。
 
@@ -59,6 +61,13 @@ def allocate_tasks_across_windows(
     latest_ends = _validate_latest_ends(state, latest_end_by_task_ref)
     preferred_chunks = _validate_chunk_preferences(state, preferred_chunk_by_task_ref)
     concurrent_minutes = _validate_concurrent_minutes(state, concurrent_minutes_by_task_ref)
+    presence = dict(presence_intervals_by_task_ref or {})
+    for ref, intervals in presence.items():
+        if ref not in {task.task_ref for task in state.tasks}:
+            raise ValueError("unknown task in presence intervals")
+        if any(not isinstance(start, datetime) or not isinstance(end, datetime)
+               or start >= end for start, end in intervals):
+            raise ValueError("invalid presence interval")
 
     usable_windows = []
     for window in state.windows:
@@ -72,6 +81,19 @@ def allocate_tasks_across_windows(
 
     task_by_ref = {task.task_ref: task for task in state.tasks}
     task_refs = _resolve_task_order(state, task_order)
+    from src.task_dependencies import validate_predecessors, dependency_order
+    predecessors = validate_predecessors(task_by_ref,
+        predecessors_by_task_ref if predecessors_by_task_ref is not None else
+        {ref: task.predecessor_task_refs for ref, task in task_by_ref.items() if task.predecessor_task_refs})
+    task_refs = dependency_order(task_refs, predecessors)
+    if any(task.attention_mode == 'background' and task.state is TaskState.ACTIVE
+           for task in state.tasks):
+        from src.task_attention import allocate_attention
+        return allocate_attention(state, task_refs, usable_windows, duration_overrides,
+            protected_durations, earliest_starts, latest_ends, preferred_chunks,
+            concurrent_minutes, predecessors, presence)
+    completed_at = {ref: state.now for ref, task in task_by_ref.items()
+                    if task.state is TaskState.COMPLETED}
 
     remaining_capacity = {window.window_ref: window.capacity_minutes for window in usable_windows}
     allocations: List[TaskAllocation] = []
@@ -85,6 +107,11 @@ def allocate_tasks_across_windows(
         task = task_by_ref[ref]
         if task.state != TaskState.ACTIVE:
             continue
+        parents = predecessors.get(ref, ())
+        if any(parent not in completed_at for parent in parents):
+            unallocated.append(ref)
+            continue
+        release = max((completed_at[parent] for parent in parents), default=state.now)
         task_windows = [
             window for window in usable_windows
             if (
@@ -95,6 +122,10 @@ def allocate_tasks_across_windows(
                 ref not in latest_ends
                 or window.starts_at < latest_ends[ref]
             )
+            and (not parents or window.starts_at + timedelta(minutes=(
+                window.capacity_minutes - remaining_capacity[window.window_ref])) >= release)
+            and (ref not in presence or any(start <= window.starts_at and window.ends_at <= end
+                 for start, end in presence[ref]))
         ]
         remaining_task = _remaining_for_allocation(task, duration_overrides.get(ref))
         if remaining_task is not None:
@@ -191,6 +222,18 @@ def allocate_tasks_across_windows(
                     planned = remaining_to_plan
                 else:
                     planned = min(available, preferred_chunk) if preferred_chunk is not None else available
+                    # A preferred chunk is a soft rhythm preference, not a
+                    # per-window workload cap. Do not leave usable time idle
+                    # when later windows cannot hold the deferred remainder.
+                    if preferred_chunk is not None and not protected_after:
+                        later_capacity = sum(
+                            _available_before_latest_end(
+                                remaining_capacity[later.window_ref], later,
+                                remaining_capacity[later.window_ref], latest_ends.get(ref),
+                            )
+                            for later in task_windows[window_index + 1:]
+                        )
+                        planned = max(planned, min(available, remaining_to_plan - later_capacity))
                     if planned < min_slice:
                         continue
                 allocations.append(
@@ -263,8 +306,17 @@ def allocate_tasks_across_windows(
                         low_attention_used = True
                     break
 
+        allocation_satisfied = planned_total >= remaining_task or (
+            is_preferred_meal and planned_total >= MEAL_MINIMUM_MINUTES)
         if planned_total < remaining_task:
             unallocated.append(ref)
+        if allocation_satisfied and concurrent_minutes.get(ref, 0) == 0:
+            # This is a planned completion boundary, never recorded progress.
+            used_windows = {item.window_ref for item in allocations if item.task_ref == ref}
+            if used_windows:
+                completed_at[ref] = max(
+                    window.starts_at + timedelta(minutes=(window.capacity_minutes - remaining_capacity[window.window_ref]))
+                    for window in usable_windows if window.window_ref in used_windows)
 
     if low_attention_used:
         warnings.append(WARNING_LOW_ATTENTION)

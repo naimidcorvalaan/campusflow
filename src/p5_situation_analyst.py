@@ -6,9 +6,58 @@ from typing import Optional, Tuple
 
 from src.p2_agentic_parser import AgenticParseError, extract_json_object
 from src.p5_agent_context import AgentDecisionContext
-from src.p5_agent_runtime import AgentCallTrace, call_structured_stage
+from src.p5_agent_runtime import StructuredValidationError, call_structured_stage
 
 SITUATION_SCHEMA_VERSION = "p5.situation-analysis.v1"
+STRING_LIST_FIELDS = (
+    "important_constraints", "user_priority_signals", "timing_pressure",
+    "fragmentation_concerns", "flexibility_opportunities", "risk_flags",
+    "recommended_strategy_focus",
+)
+
+
+def situation_output_schema(context):
+    """One contract for the model prompt and the production parser."""
+    text = {"type": "string", "minLength": 1, "pattern": r"\S"}
+    assessment = {
+        "task_ref": dict(text, enum=[task.task_ref for task in context.active_tasks]),
+        "priority": dict(text, enum=["high", "medium", "low"]),
+        "reason": text,
+    }
+    properties = {
+        "schema_version": {"type": "string", "const": SITUATION_SCHEMA_VERSION},
+        "primary_goal": text,
+    }
+    properties.update({name: {"type": "array", "items": text} for name in STRING_LIST_FIELDS})
+    properties.update({
+        "task_priority_assessment": {
+            "type": "array", "items": _object_schema(assessment),
+            "description": "每个元素是对象；task_ref 只能取 enum 中的值，且不得重复。无任务时为 []。",
+        },
+        "meal_context": dict(text, type=["string", "null"]),
+        "movement_context": dict(text, type=["string", "null"]),
+        "clarification_value": dict(text, enum=["none", "low", "medium", "high"]),
+    })
+    return _object_schema(properties)
+
+
+def _object_schema(properties):
+    return {"type": "object", "properties": properties,
+            "required": list(properties), "additionalProperties": False}
+
+
+def situation_output_example(context):
+    example = {name: [] for name in STRING_LIST_FIELDS}
+    example.update({
+        "schema_version": SITUATION_SCHEMA_VERSION, "primary_goal": "在固定安排内完成任务",
+        "task_priority_assessment": [
+            {"task_ref": task.task_ref, "priority": "medium", "reason": "保留任务安排"}
+            for task in context.active_tasks[:1]
+        ],
+        "meal_context": None, "movement_context": None, "clarification_value": "none",
+    })
+    example["important_constraints"] = ["固定安排不可冲突"]
+    return example
 
 
 @dataclass(frozen=True)
@@ -74,40 +123,44 @@ def build_situation_prompt(context):
         "不计算路线，不修改事实。所有 task_ref 必须来自输入。只输出 JSON，schema_version={}。"
         "偏好优先级固定为：latest_user_text/latest_feedback_text 中的本次明确要求，"
         "高于 day_preferences，后者高于 personal_defaults；任何软偏好都不能覆盖固定安排。"
-        "字段：primary_goal:string, important_constraints:[string], user_priority_signals:[string],"
-        "task_priority_assessment:[{{task_ref,priority:high|medium|low,reason}}],"
-        "timing_pressure:[string], fragmentation_concerns:[string], meal_context:string|null,"
-        "movement_context:string|null, flexibility_opportunities:[string], risk_flags:[string],"
-        "recommended_strategy_focus:[string], clarification_value:none|low|medium|high。"
         "不要输出思维过程，只给系统可执行的简短结论。"
     ).format(SITUATION_SCHEMA_VERSION)
-    return system, "只读决策上下文：\n{}".format(context.to_json())
+    system += (
+        "所有字段必须出现，不增加字段。字符串数组即使只有一项也必须用 [\"结论\"]，"
+        "不能输出单个字符串、对象或 null；只有 meal_context/movement_context 可用 null。"
+        "task_priority_assessment 是对象数组，不是以 task_ref 为键的字典，也不是字符串数组。"
+        "禁止使用任务标题、序号、fixed commitment/ref 或自行缩写替代 task_ref。每项结论保持简短。"
+        "\n正式输出 JSON Schema：\n" + json.dumps(situation_output_schema(context), ensure_ascii=False)
+        + "\n有效结构示例（只演示类型，不照抄结论）：\n"
+        + json.dumps(situation_output_example(context), ensure_ascii=False)
+    )
+    facts = context.to_payload()
+    facts.pop("schema_version")  # Input projection version is not an output field.
+    return system, (
+        "允许的 task_ref 完整集合：\n"
+        + json.dumps([task.task_ref for task in context.active_tasks], ensure_ascii=False)
+        + "\n只读决策上下文（不是输出模板）：\n" + json.dumps(facts, ensure_ascii=False)
+    )
 
 
 def parse_situation_analysis(text, context):
     payload = extract_json_object(text)
-    allowed = {
-        "schema_version", "primary_goal", "important_constraints",
-        "user_priority_signals", "task_priority_assessment", "timing_pressure",
-        "fragmentation_concerns", "meal_context", "movement_context",
-        "flexibility_opportunities", "risk_flags", "recommended_strategy_focus",
-        "clarification_value",
-    }
-    if not isinstance(payload, dict) or set(payload) != allowed:
-        raise AgenticParseError("situation analysis fields invalid")
-    if payload.get("schema_version") != SITUATION_SCHEMA_VERSION:
-        raise AgenticParseError("situation schema mismatch")
-    known = {item.task_ref for item in context.active_tasks}
+    issues = _contract_issues(payload, situation_output_schema(context))
+    if issues:
+        raise StructuredValidationError(issues[:16])
     assessments = []
+    seen = set()
     for item in _list(payload, "task_priority_assessment"):
-        if not isinstance(item, dict) or set(item) != {"task_ref", "priority", "reason"}:
-            raise AgenticParseError("task priority assessment invalid")
         assessment = TaskPriorityAssessment(
             _required_text(item, "task_ref"), _required_text(item, "priority"),
             _required_text(item, "reason"),
         )
-        if assessment.task_ref not in known:
-            raise AgenticParseError("unknown task_ref in situation analysis")
+        if assessment.task_ref in seen:
+            raise StructuredValidationError(((
+                "$.task_priority_assessment[{}].task_ref".format(len(assessments)),
+                "duplicate_task_ref", "unique allowed task_ref", "string",
+            ),))
+        seen.add(assessment.task_ref)
         assessments.append(assessment)
     return SituationAnalysis(
         primary_goal=_required_text(payload, "primary_goal"),
@@ -123,6 +176,48 @@ def parse_situation_analysis(text, context):
         recommended_strategy_focus=_strings(payload, "recommended_strategy_focus"),
         clarification_value=_required_text(payload, "clarification_value"),
     )
+
+
+def _contract_issues(value, schema, path="$"):
+    """Validate the closed subset used by situation_output_schema.
+
+    Paths only use schema-owned field names and numeric indices. In
+    particular, neither unknown model keys nor invalid ref values are logged.
+    """
+    actual = ("null" if value is None else "boolean" if isinstance(value, bool) else
+              "string" if isinstance(value, str) else "array" if isinstance(value, list) else
+              "object" if isinstance(value, dict) else "number")
+    expected = schema["type"]
+    types = expected if isinstance(expected, list) else [expected]
+    if actual not in types:
+        code = "list_type" if "array" in types else "type_mismatch"
+        return [(path, code, "|".join(types), actual)]
+    if actual == "null":
+        return []
+    issues = []
+    if actual == "object":
+        properties = schema["properties"]
+        for name in schema["required"]:
+            if name not in value:
+                issues.append((path + "." + name, "missing_field", "required", "missing"))
+        if not schema["additionalProperties"] and set(value) - set(properties):
+            issues.append((path, "field_set", "only declared fields", "extra_fields"))
+        for name, child in properties.items():
+            if name in value:
+                issues.extend(_contract_issues(value[name], child, path + "." + name))
+    elif actual == "array":
+        for index, item in enumerate(value):
+            issues.extend(_contract_issues(item, schema["items"], path + "[{}]".format(index)))
+    elif actual == "string":
+        if schema.get("minLength") and not value.strip():
+            issues.append((path, "text_type", "non-empty string", "empty_string"))
+        if "const" in schema and value != schema["const"]:
+            issues.append((path, "schema_version", "declared output version", actual))
+        if "enum" in schema and value.strip() not in schema["enum"]:
+            is_ref = path.endswith(".task_ref")
+            issues.append((path, "unknown_task_ref" if is_ref else "enum_value",
+                           "allowed task_ref" if is_ref else "declared enum", actual))
+    return issues
 
 
 def fallback_situation_analysis(context):

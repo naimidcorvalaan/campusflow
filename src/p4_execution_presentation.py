@@ -30,7 +30,10 @@ def execution_confirmation_questions(context):
         return ()
     questions = []
     for confirmation in context.confirmations:
-        if confirmation.kind is ExecutionConfirmationKind.CURRENT_LOCATION_ASSUMED:
+        if confirmation.kind is ExecutionConfirmationKind.CURRENT_LOCATION_REQUIRED:
+            if context.current_location.source is CurrentLocationSource.UNKNOWN:
+                questions.append("你现在在哪里？")
+        elif confirmation.kind is ExecutionConfirmationKind.CURRENT_LOCATION_ASSUMED:
             current = context.current_location
             if current.source is CurrentLocationSource.ASSUMED and current.location is not None:
                 questions.append(
@@ -40,6 +43,10 @@ def execution_confirmation_questions(context):
                 )
         elif confirmation.kind is ExecutionConfirmationKind.MEAL_LOCATION_CONTEXT_REQUIRED:
             questions.append("你现在大概在哪里？我可以帮你选一个顺路的食堂。")
+        elif confirmation.kind is ExecutionConfirmationKind.TASK_LOCATION_REQUIRED:
+            binding = context.binding_for(confirmation.task_ref)
+            if binding and binding.raw_location_text and binding.execution_location is None:
+                questions.append("任务地点“{}”具体是哪里？".format(binding.raw_location_text))
     return tuple(dict.fromkeys(questions))
 
 

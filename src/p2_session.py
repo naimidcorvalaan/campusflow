@@ -185,7 +185,8 @@ def _without_unroutable_default_meals(plan, context):
     if not removed:
         return plan
     unallocated = tuple(dict.fromkeys(tuple(plan.unallocated_task_refs) + tuple(sorted(meal_refs))))
-    current = next((item for item in allocations if item.window_ref == plan.current_window_ref), None)
+    current = next((item for item in allocations if item.window_ref == plan.current_window_ref
+                    and item.occupies_attention), None)
     later = tuple(item for item in allocations if item.window_ref != plan.current_window_ref)
     return replace(
         plan,
@@ -323,9 +324,19 @@ def build_live_final_turn(
     state = turn.result.updated_state
     plan = turn.result.allocation_plan
     p4_execution = any(
-        binding.activity_kind in ("generic", "meal") for binding in context.bindings
+        binding.activity_kind in ("generic", "meal")
+        or getattr(binding, "before_commitment_ref", None) is not None
+        for binding in context.bindings
     ) or bool(context.concurrency_authorizations)
-    errors = []
+    from src.task_dependencies import dependency_errors
+    from src.p4_execution_enrichment import protected_meal_duration_overrides
+    errors = list(dependency_errors(state, plan, effective_duration_overrides(context, state),
+                                   protected_meal_duration_overrides(context, state)))
+    from src.task_dependencies import departure_dependency_errors
+    errors.extend(departure_dependency_errors(state, plan, turn.movement_blocks))
+    if any(task.attention_mode == 'background' for task in state.tasks):
+        from src.task_attention import attention_validation_errors
+        errors.extend(attention_validation_errors(state, plan, context))
     if p4_execution:
         errors.extend(final_plan_overlap_errors(state, plan, turn.movement_blocks))
         errors.extend(
@@ -337,7 +348,7 @@ def build_live_final_turn(
     if errors:
         raise ValueError("invalid live final turn: {}".format("; ".join(errors)))
     intelligence = turn.agent_intelligence
-    questions = list(extra_questions or ())
+    questions = list(extra_questions or ()) + list(turn.result.questions)
     clarification = getattr(intelligence, "clarification", None)
     if clarification is not None and clarification.should_ask:
         questions.append(clarification.question)
@@ -385,6 +396,9 @@ def _live_turn_execution_errors(state, plan, blocks, context, map_data, concurre
         locations.append(context.current_location.location)
     if campus_id and any(item.campus_id != campus_id for item in locations):
         errors.append("execution location does not belong to selected campus")
+    if campus_id and not errors:
+        from src.p4_execution_movement import execution_route_coverage_errors
+        errors.extend(execution_route_coverage_errors(state, plan, blocks, context, map_data))
 
     state_task_refs = {task.task_ref for task in state.tasks}
     state_commitment_refs = {item.commitment_ref for item in state.commitments}
@@ -411,6 +425,13 @@ def _live_turn_execution_errors(state, plan, blocks, context, map_data, concurre
             errors.append("meal_default allocation must be one 20--40 minute block or unplanned: {}".format(binding.task_ref))
 
     task_intervals = _allocation_intervals(state, plan)
+    earliest = earliest_start_overrides(context, state)
+    latest = latest_end_overrides(context, state)
+    for ref, intervals in task_intervals.items():
+        if ref in earliest and any(start < earliest[ref] for start, _ in intervals):
+            errors.append("task starts before explicit boundary: {}".format(ref))
+        if ref in latest and any(end > latest[ref] for _, end in intervals):
+            errors.append("task ends after explicit boundary: {}".format(ref))
     for block in blocks:
         origin_ref = getattr(block, "origin_activity_ref", None)
         binding = context.binding_for(origin_ref) if origin_ref else None
@@ -421,7 +442,14 @@ def _live_turn_execution_errors(state, plan, blocks, context, map_data, concurre
         if getattr(block, "destination_node_id", None) == binding.execution_location.node_id:
             continue
         departure = getattr(block, "transition_start", None) or block.window_start
-        if any(start >= departure or end > departure for start, end in task_intervals.get(origin_ref, ())):
+        if any(
+            end > departure and not any(
+                back.destination_node_id == binding.execution_location.node_id
+                and departure < back.end_time <= start
+                for back in blocks
+            )
+            for start, end in task_intervals.get(origin_ref, ())
+        ):
             errors.append("location-bound task continues after departure: {}".format(origin_ref))
     errors.extend(
         concurrency_validation_errors(
@@ -436,26 +464,9 @@ def _live_turn_execution_errors(state, plan, blocks, context, map_data, concurre
 
 
 def _allocation_intervals(state, plan):
-    """Derive task intervals exactly as the execution timeline does."""
-    from datetime import timedelta
-
-    windows = {item.window_ref: item for item in state.windows}
-    offsets = {}
+    from src.task_attention import allocation_spans
     result = {}
-    allocations = sorted(
-        getattr(plan, "allocations", ()),
-        key=lambda item: (
-            windows[item.window_ref].starts_at,
-            item.sequence_index,
-            item.allocation_ref,
-        ),
-    )
-    for allocation in allocations:
-        window = windows[allocation.window_ref]
-        offset = offsets.get(allocation.window_ref, 0)
-        start = window.starts_at + timedelta(minutes=offset)
-        end = start + timedelta(minutes=allocation.planned_minutes)
-        offsets[allocation.window_ref] = offset + allocation.planned_minutes
+    for allocation, start, end in allocation_spans(state, plan):
         result.setdefault(allocation.task_ref, []).append((start, end))
     return {key: tuple(value) for key, value in result.items()}
 
@@ -635,8 +646,14 @@ class P2SessionController:
             if value
         ]
         return CompanionCopy(
-            opening=narrative.opening,
-            closing=narrative.closing,
+            # A material unmet preference/risk must reach the visible summary;
+            # optional architectural/lifestyle explanations remain secondary.
+            opening=" ".join(dict.fromkeys(value for value in
+                (narrative.opening, narrative.risk_note) if value)),
+            # The old lifestyle panel is no longer rendered. Keep a validated
+            # decision explanation in the existing closing slot rather than
+            # silently discarding it or adding another UI section.
+            closing=narrative.why_this_plan or narrative.closing,
             generated=narrative.generated,
             context_type=(
                 CONTEXT_FEEDBACK
@@ -739,11 +756,10 @@ class P2SessionController:
                     task_order_override=order,
                     deterministic_facts=True,
                 )
-                has_locations = any(
-                    item.execution_location is not None for item in context.bindings
-                ) or any(item.location_text for item in base_state.commitments)
-                if has_locations and not sequence.applied:
-                    raise ValueError("strategy candidate could not reserve movement")
+                # No movement reservation is also the correct result for a
+                # same-place plan. The shared final execution validator below
+                # rejects an actually missing route, rather than treating the
+                # presence of any location as proof that travel is required.
                 if sequence.applied:
                     candidate_result = replace(
                         provisional,
@@ -768,6 +784,8 @@ class P2SessionController:
                 meal_task_refs=decision_context.meals and tuple(
                     item.task_ref for item in decision_context.meals
                 ),
+                effective_duration_by_task_ref=self._effective_duration_overrides(candidate_result.updated_state),
+                protected_duration_by_task_ref=self._protected_meal_durations(candidate_result.updated_state),
             )
             return {
                 "result": candidate_result,
@@ -921,6 +939,8 @@ class P2SessionController:
                     safe_result,
                     overrides,
                     deterministic_facts=deterministic_preview,
+                    deferred_task_refs=set(result.allocation_plan.planned_minutes_by_task) -
+                    set(safe_result.allocation_plan.planned_minutes_by_task),
                 )
                 if retried.applied:
                     result = safe_result
@@ -1223,11 +1243,11 @@ class P2SessionController:
         clear_what_if_preview(self.store)
         return EstimatedTaskAddOutcome(candidate_bundle, task_ref, duplicate=False)
 
-    def apply_feedback(self, user_text: str) -> P2SessionTurn:
+    def apply_feedback(self, user_text: str, reference_datetime=None) -> P2SessionTurn:
         """“应用反馈并重新规划”：commitment 反馈 -> 重派生窗口 -> P2c 重新规划。"""
         if not isinstance(user_text, str) or not user_text.strip():
             raise ValueError("user_text must be a non-empty string")
-        current = self._current_state()
+        current = self._feedback_state_at_reference(self._current_state(), reference_datetime)
         key = make_cache_key(user_text, current)
         cached = self._cached(key)
         if cached is not None:
@@ -1239,7 +1259,8 @@ class P2SessionController:
 
     def rebuild_feedback_atomic(
         self, user_text: str, accepted_decision=None, use_unified=True,
-        agent_flow=None,
+        agent_flow=None, reference_datetime=None,
+        confirmed_task_location=None,
     ):
         """Apply feedback to canonical facts, then publish one complete new P4 turn.
 
@@ -1261,6 +1282,7 @@ class P2SessionController:
         base_state = real_movement_data.get("p4_execution_base_state")
         if not isinstance(base_state, DayPlanningState):
             base_state = self._current_state()
+        base_state = self._feedback_state_at_reference(base_state, reference_datetime)
 
         previous_decision = load_feedback_decision(self.store)
         previous_summary = (
@@ -1318,6 +1340,19 @@ class P2SessionController:
         )
 
         candidate_context = reconcile_execution_context(previous_context, planning_state)
+        if confirmed_task_location is not None:
+            from src.p4_execution_context import ExecutionConfirmationKind
+            target_ref, location = confirmed_task_location
+            target = previous_context.binding_for(target_ref)
+            pending = any(c.task_ref == target_ref and c.kind is ExecutionConfirmationKind.TASK_LOCATION_REQUIRED
+                          for c in previous_context.confirmations)
+            if (not pending or target is None or target.execution_location is not None
+                    or not isinstance(location, ExecutionLocation) or location.campus_id != self.campus_id):
+                raise ValueError('task location answer has no matching unresolved field')
+            candidate_context = candidate_context.upsert(replace(target, execution_location=location))
+            candidate_context = candidate_context.with_confirmations(tuple(
+                c for c in candidate_context.confirmations
+                if not (c.task_ref == target_ref and c.kind is ExecutionConfirmationKind.TASK_LOCATION_REQUIRED)))
         explicit_current = _explicit_current_location_feedback(user_text)
         interpreted_current = getattr(outcome, "current_location_text", None) if outcome else None
         current_text = (
@@ -1459,7 +1494,28 @@ class P2SessionController:
             previous_version,
             int(self.store.get(LIVE_FINAL_TURN_SEQUENCE_KEY, 0) or 0),
         ) + 1
+        # The interpreter may defer an update pending a specific answer. Its
+        # questions belong to this result, not to a discarded interim plan.
+        # Preserve them in the final bundle, and replace (rather than inherit)
+        # the previous turn's interpreter questions when the user responds.
+        interpreted_questions = tuple(
+            getattr(getattr(outcome, "result", None), "questions",
+                    previous_bundle.result.questions if previous_bundle is not None else ())
+        )
+        candidate_turn = replace(candidate_turn, result=replace(
+            candidate_turn.result,
+            questions=tuple(dict.fromkeys(
+                candidate_turn.result.questions + interpreted_questions
+            )),
+        ))
+        candidate_store[LAST_TURN_KEY] = candidate_turn
+        candidate_store[RESULT_KEY] = candidate_turn.result
         prior_questions = previous_bundle.extra_questions if previous_bundle is not None else ()
+        if previous_bundle is not None and getattr(outcome, "result", None) is not None:
+            prior_questions = tuple(
+                question for question in prior_questions
+                if question not in previous_bundle.result.questions
+            )
         if previous_bundle is not None:
             prior_clarification = getattr(
                 getattr(previous_bundle, "agent_intelligence", None),
@@ -1751,6 +1807,8 @@ class P2SessionController:
                     safe_result,
                     self._effective_duration_overrides(execution_base_state),
                     deterministic_facts=self.agent_intelligence_enabled,
+                    deferred_task_refs=set(result.allocation_plan.planned_minutes_by_task) -
+                    set(safe_result.allocation_plan.planned_minutes_by_task),
                 )
                 if retried.applied:
                     result = safe_result
@@ -2085,6 +2143,29 @@ class P2SessionController:
     def _concurrent_minutes(self, state):
         return concurrent_minutes_by_task(self._concurrent_execution(state).allocations)
 
+    def _feedback_state_at_reference(self, state, reference_datetime):
+        """Advance future capacity from the UI clock without inventing progress.
+
+        Build privately; callers publish only after the normal final guards.
+        A material/task-reported time later than the UI clock is not rewound.
+        """
+        from datetime import datetime
+        if reference_datetime is None:
+            return state
+        if not isinstance(reference_datetime, datetime):
+            raise TypeError("reference_datetime must be datetime or None")
+        reference_datetime = reference_datetime.replace(second=0, microsecond=0)
+        if reference_datetime <= state.now:
+            return state
+        if reference_datetime >= state.day_end:
+            raise ValueError("当前时间已超出原方案的时间范围，请重新生成当天计划。")
+        return derive_day_state(
+            reference_datetime, state.day_end, state.commitments, state.tasks,
+            default_safety_buffer_minutes=self.config.default_safety_buffer_minutes,
+            travel_minutes_by_commitment=self.config.travel_minutes_by_commitment,
+            history=state.history, reference_datetime=state.reference_datetime,
+        )
+
     def _preferred_chunk_overrides(self, state):
         return preferred_chunk_overrides(load_execution_context(self.store), state)
 
@@ -2104,15 +2185,16 @@ class P2SessionController:
         for binding in context.bindings:
             profile = binding.execution_profile
             task = tasks.get(binding.task_ref)
-            if profile is None or task is None or not profile.splittable:
+            if profile is None or task is None or not profile.splittable or not task.is_splittable:
                 continue
+            minimum = max(profile.minimum_chunk_minutes, task.minimum_slice_minutes or 1)
             if fragmentation_level == "high":
-                values[binding.task_ref] = profile.minimum_chunk_minutes
+                values[binding.task_ref] = minimum
             elif fragmentation_level == "low":
                 remaining = task.remaining_minutes
                 if remaining is not None and remaining > 0:
                     values[binding.task_ref] = max(
-                        profile.minimum_chunk_minutes, remaining
+                        minimum, remaining
                     )
         return values
 
@@ -2157,9 +2239,13 @@ class P2SessionController:
     def _with_execution_task_order(self, result):
         """Replace only the deterministic allocation ordering at the boundary."""
         state = result.updated_state
+        from src.p4_execution_movement import _split_windows_at_earliest_starts
+        earliest = self._execution_earliest_starts(state)
+        latest = self._execution_latest_ends(state)
+        state = _split_windows_at_earliest_starts(state, earliest)
         fallback = result.day_plan_intent.task_order if result.day_plan_intent is not None else None
         order = self._execution_task_order(state, fallback)
-        if order is None:
+        if order is None and not earliest and not latest:
             return result
         include_low = (
             result.day_plan_intent.include_low_attention
@@ -2171,16 +2257,17 @@ class P2SessionController:
             include_low_attention=include_low,
             effective_duration_by_task_ref=self._effective_duration_overrides(state),
             protected_duration_by_task_ref=self._protected_meal_durations(state),
-            earliest_start_by_task_ref=self._execution_earliest_starts(state),
+            earliest_start_by_task_ref=earliest,
+            latest_end_by_task_ref=latest,
             preferred_chunk_by_task_ref=self._preferred_chunk_overrides(state),
             concurrent_minutes_by_task_ref=self._concurrent_minutes(state),
         )
-        return replace(result, allocation_plan=plan, day_summary=summarize_day_plan(plan, state))
+        return replace(result, updated_state=state, allocation_plan=plan, day_summary=summarize_day_plan(plan, state))
 
     def _apply_feedback_current_location_correction(self, outcome, result, movement_data, outcome_blocks):
-        """Replace an assumed location only after selected-campus resolution.
+        """Confirm an unknown/legacy assumed origin after campus-scoped resolution.
 
-        Unified feedback validates the text first.  For an assumed origin we
+        Unified feedback validates the text first. For an unconfirmed origin we
         rebuild from the saved pre-movement execution base, so old route
         occupancy cannot leak into the corrected plan.
         """
@@ -2189,7 +2276,7 @@ class P2SessionController:
         if (
             not text
             or self.map_data is None
-            or context.current_location.source.value != "assumed"
+            or context.current_location.source.value not in ("unknown", "assumed")
         ):
             return result, outcome_blocks
         resolution = resolve_location(
@@ -2245,7 +2332,7 @@ class P2SessionController:
 
     def _apply_execution_sequence(
         self, provisional_result, duration_overrides, task_order_override=None,
-        deterministic_facts=False,
+        deterministic_facts=False, deferred_task_refs=(),
     ):
         """P4a-b3: one provisional result, one formal deterministic allocation."""
         from src.p4_execution_movement import ExecutionMovementOutcome
@@ -2271,19 +2358,29 @@ class P2SessionController:
             save_execution_context(self.store, assumed)
             context = assumed
         intent = provisional_result.day_plan_intent
+        earliest_starts = self._execution_earliest_starts(provisional_result.updated_state)
+        protected_durations = self._protected_meal_durations(provisional_result.updated_state)
+        # A route retry must not reintroduce the default meal just deferred
+        # for lack of a feasible route. Keep its canonical task untouched,
+        # but give this allocation candidate no eligible window for it.
+        if deferred_task_refs:
+            earliest_starts = dict(earliest_starts)
+            protected_durations = dict(protected_durations)
+            for ref in deferred_task_refs:
+                earliest_starts[ref] = provisional_result.updated_state.day_end
+                protected_durations.pop(ref, None)
         return apply_execution_sequence_movements(
             provisional_result.updated_state,
             provisional_result.allocation_plan,
             context,
             self.map_data,
             effective_duration_by_task_ref=duration_overrides,
-            protected_duration_by_task_ref=self._protected_meal_durations(
-                provisional_result.updated_state
-            ),
-            earliest_start_by_task_ref=self._execution_earliest_starts(
-                provisional_result.updated_state
-            ),
+            protected_duration_by_task_ref=protected_durations,
+            earliest_start_by_task_ref=earliest_starts,
             preferred_start_by_task_ref=self._execution_preferred_starts(
+                provisional_result.updated_state
+            ),
+            latest_end_by_task_ref=self._execution_latest_ends(
                 provisional_result.updated_state
             ),
             preferred_chunk_by_task_ref=self._preferred_chunk_overrides(
@@ -2438,7 +2535,7 @@ def _explicit_current_location_feedback(user_text: str) -> Optional[str]:
     if not isinstance(user_text, str):
         return None
     match = re.search(
-        r"(?:其实\s*)?我(?:现在)?(?:已经)?\s*(?:在|到)\s*([^，。！？!?；;\n]+)",
+        r"(?:其实\s*)?我(?:现在)?(?:已经)?\s*(?:在|到)\s*([^，。！？!?；;,\n\"{}]+)",
         user_text.strip(),
     )
     if match is None:

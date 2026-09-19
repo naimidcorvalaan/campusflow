@@ -7,6 +7,8 @@ retained, with estimate attachment restricted to an exact, unique task/scope.
 from dataclasses import replace
 import json
 import re
+from src.material_estimate_diagnostics import record
+from src.estimate_arithmetic import ensure_estimate_arithmetic
 from src.material_inbox import (MaterialError, MaterialItem, SCHEMA, fingerprint,
     parse_extraction, extract_json_object, AgenticParseError, estimate_basis, item_values)
 
@@ -48,18 +50,28 @@ def apply_coverage(result, responses, file_source=None):
 
 def validate_estimate(value):
     if not isinstance(value, dict) or set(value) != ESTIMATE_KEYS:
+        record('material_estimate','validate_estimate','unknown_field' if isinstance(value,dict)
+            and set(value)-ESTIMATE_KEYS else 'missing_field',field='estimate',parsed=True,valid=False)
         raise MaterialError('还缺少可以判断工作量的信息。')
     for key, limit in (('task_name',100),('short_scope',500),('rationale',400)):
         if not isinstance(value[key],str) or not value[key].strip() or len(value[key]) > limit:
+            record('material_estimate','validate_estimate','missing_scope' if key=='short_scope'
+                else 'invalid_field',field=key,parsed=True,valid=False)
             raise MaterialError('还缺少可以判断工作量的信息。')
     numbers = [value[k] for k in ('focused_minutes_min','recommended_minutes','focused_minutes_max')]
     if (any(type(n) is not int or not 1 <= n <= MAX_FALLBACK_MINUTES for n in numbers)
             or not numbers[0] <= numbers[1] <= numbers[2]):
+        field=next((k for k in ('focused_minutes_min','recommended_minutes','focused_minutes_max')
+            if type(value[k]) is not int or not 1<=value[k]<=MAX_FALLBACK_MINUTES),'minutes')
+        record('material_estimate','validate_estimate','missing_field' if any(n is None for n in numbers)
+            else 'invalid_duration_range',field=field,parsed=True,valid=False)
         raise MaterialError('用时还不能确定，请补充任务范围后再估算。')
     assumptions = value['assumptions']
     if (not isinstance(assumptions,(tuple,list)) or len(assumptions) > 6
             or any(not isinstance(s,str) or not s.strip() or len(s)>200 for s in assumptions)):
+        record('material_estimate','validate_estimate','invalid_field',field='assumptions',parsed=True,valid=False)
         raise MaterialError('估算依据还不完整。')
+    record('material_estimate','validate_estimate','accepted',parsed=True,valid=True)
     return dict(value, assumptions=tuple(assumptions))
 
 
@@ -88,8 +100,8 @@ def _workload_evidence(evidence, draft):
         return False
     if draft.source_type not in ('text', 'docx', 'pdf_text'):
         return True
-    normalize = lambda text: re.sub(r'\s+', ' ', text).strip()
-    return normalize(evidence) in normalize(draft.original_text)
+    from src.material_evidence import workload_quote_matches
+    return workload_quote_matches(evidence,draft.original_text)
 
 
 def _scope_question(estimate):
@@ -182,7 +194,16 @@ def minimal_confirmation_mode(entry):
         return 'blocked'
     if scope_clarification(entry):
         return 'blocked'
-    fields = set(entry.get('confirmation_fields') or ())
+    if entry.get('final_validation_errors'):
+        return 'blocked'
+    if entry.get('final_contract'):
+        from src.material_estimate_contract import validate_final_estimate
+        try:
+            fields=set(validate_final_estimate(entry))
+        except (ValueError,TypeError,KeyError):
+            return 'blocked'
+    else:
+        fields = set(entry.get('confirmation_fields') or ())
     if fields - {'scope'}:
         return 'blocked'
     if entry.get('simple_confirmation_allowed'):
@@ -217,12 +238,20 @@ def _estimate(row, draft, index, singleton):
     estimate = row.get('estimate')
     if not isinstance(estimate,dict):
         raise MaterialError('还需要补充任务范围。')
+    from src.material_output_schema import ESTIMATE_REQUIRED,LEGACY_ESTIMATE_OPTIONAL
+    from src.material_formal_validation import fields
+    fields(estimate,ESTIMATE_REQUIRED,'$.estimate',LEGACY_ESTIMATE_OPTIONAL)
     unresolved = _scope_question(estimate)
     safe = validate_estimate(dict(task_name=row.get('title'),short_scope=row.get('scope'),
         focused_minutes_min=estimate.get('min_focus_minutes'),
         focused_minutes_max=estimate.get('max_focus_minutes'),
         recommended_minutes=estimate.get('recommended_minutes'),rationale=estimate.get('basis'),
         assumptions=estimate.get('assumptions')))
+    from src.material_effort import ensure_effort,sources_for_draft,digest
+    from src.material_effort_provenance import receipt
+    ensure_effort(safe['recommended_minutes'],safe['focused_minutes_min'],
+        safe['focused_minutes_max'],safe['rationale'],safe['assumptions'],
+        ledger=estimate.get('effort_ledger'),sources=sources_for_draft(draft))
     # Eligibility requires explicit absence, not missing/invalid facts. Only a
     # single clearly identified task can be converted by explicit user consent.
     known={'kind','title','scope','completion','evidence','deadline','start','end','location_text',
@@ -234,7 +263,9 @@ def _estimate(row, draft, index, singleton):
         and row.get('uncertainties') == []
         and row.get('minutes','missing') is None
         and row.get('campus_id','missing') is None)
-    return dict(estimate=safe, item_id=fingerprint(draft.source_fingerprint,index)[:24],
+    return dict(estimate=safe,effort_ledger=estimate.get('effort_ledger'),
+        effort_provenance=receipt(sources_for_draft(draft),estimate.get('effort_ledger')),
+        effort_grounding=digest(estimate['effort_ledger']) if estimate.get('effort_ledger') else None, quantity_claims=estimate.get('quantity_claims',[]), item_id=fingerprint(draft.source_fingerprint,index)[:24],
         simple_confirmation_allowed=not unresolved and singleton and facts_clear, scope_unresolved=unresolved,
         scope_confirmation_allowed=facts_clear,
         confirmation_fields=_blocking_confirmation_fields({'items': [row]}),
@@ -247,22 +278,52 @@ def _action_estimate(obj, draft):
     """An explicitly estimatable action can exist without any formal items."""
     action=obj.get('actionability'); estimate=obj.get('estimate')
     if not isinstance(action,dict) or action.get('is_estimatable') is not True or not isinstance(estimate,dict):
+        record('material_estimate','action_estimate','missing_estimate',field='estimate',parsed=True,valid=False)
         raise MaterialError('没有合法的可估时行为。')
     evidence=action.get('evidence'); reason=action.get('reason')
-    if (not _workload_evidence(evidence, draft)
-            or not isinstance(reason,str) or not reason.strip() or len(reason)>400):
-        raise MaterialError('没有足够的工作量依据。')
+    from src.material_formal_validation import invariant,shape
+    from src.material_actionability_sources import resolve
+    evidence_refs,source_audit=resolve(action,draft)
+    uses_refs='evidence_refs' in action
+    checks=dict(evidence_present=uses_refs or ('evidence' in action and evidence is not None),
+        evidence_string=uses_refs or isinstance(evidence,str),
+        evidence_nonempty=uses_refs or (isinstance(evidence,str) and bool(evidence.strip())),
+        evidence_length_valid=uses_refs or (isinstance(evidence,str) and len(evidence)<=600),
+        verified_evidence_required=source_audit['verified_evidence_required'],
+        reason_present='reason' in action and reason is not None,reason_string=isinstance(reason,str),
+        reason_nonempty=isinstance(reason,str) and bool(reason.strip()),
+        reason_length_valid=isinstance(reason,str) and len(reason)<=400)
+    observed=dict(source_audit,**checks,evidence_shape=shape(evidence),reason_shape=shape(reason),
+        is_estimatable=True,failed_conditions=[k for k,v in checks.items() if not v],combined_decision=all(checks.values()))
+    from src.material_estimate_diagnostics import record_actionability
+    record_actionability(observed)
+    if not all(checks.values()):
+        record('material_estimate','workload_evidence','evidence_mismatch',field='evidence',parsed=True,valid=False)
+        invariant('action_estimate_grounded_evidence_and_reason',
+            ['$.actionability.evidence_refs','$.actionability.evidence','$.actionability.reason','$.source.original_text','$.source.source_type'],
+            'verified current material source refs (or unambiguous legacy quote); reason is nonempty <=400 characters',
+            observed)
+    from src.material_output_schema import ESTIMATE_REQUIRED,LEGACY_ESTIMATE_OPTIONAL
+    from src.material_formal_validation import fields
+    fields(estimate,ESTIMATE_REQUIRED,'$.estimate',LEGACY_ESTIMATE_OPTIONAL)
     unresolved = _scope_question(estimate)
     safe=validate_estimate(dict(task_name=action.get('task_name'),short_scope=action.get('short_scope'),
         focused_minutes_min=estimate.get('min_focus_minutes'),focused_minutes_max=estimate.get('max_focus_minutes'),
         recommended_minutes=estimate.get('recommended_minutes'),rationale=estimate.get('basis'),
         assumptions=estimate.get('assumptions')))
+    from src.material_effort import ensure_effort,sources_for_draft,digest
+    from src.material_effort_provenance import receipt
+    ensure_effort(safe['recommended_minutes'],safe['focused_minutes_min'],
+        safe['focused_minutes_max'],safe['rationale'],safe['assumptions'],
+        ledger=estimate.get('effort_ledger'),sources=sources_for_draft(draft))
     waiting=action.get('waiting_note') or ''
     if not isinstance(waiting,str) or len(waiting)>300:
         raise MaterialError('等待时间说明无效。')
-    allowed={'is_estimatable','task_name','short_scope','reason','evidence','confirmation_required','waiting_note'}
+    allowed={'is_estimatable','task_name','short_scope','reason','evidence','evidence_refs','confirmation_required','waiting_note'}
     simple=(not unresolved and obj.get('items')==[] and action.get('confirmation_required')==[] and not set(action)-allowed)
-    return dict(estimate=safe,item_id=fingerprint(draft.source_fingerprint,'action')[:24],
+    return dict(estimate=safe,effort_ledger=estimate.get('effort_ledger'),
+        effort_provenance=receipt(sources_for_draft(draft),estimate.get('effort_ledger')),
+        effort_grounding=digest(estimate['effort_ledger']) if estimate.get('effort_ledger') else None,quantity_claims=estimate.get('quantity_claims',obj.get('quantity_claims',[])),item_id=fingerprint(draft.source_fingerprint,'action')[:24],
         simple_confirmation_allowed=simple,waiting_note=waiting,scope_unresolved=unresolved,
         scope_confirmation_allowed=not _blocking_confirmation_fields(obj) and not set(action)-allowed,
         confirmation_fields=_blocking_confirmation_fields(obj),
@@ -288,6 +349,9 @@ def finish_result(result, responses, draft, refs, repair_used):
             obj=extract_json_object(responses[-1])
             action=obj.get('actionability') if isinstance(obj,dict) else None
             if isinstance(action,dict) and action.get('is_estimatable') is True:
+                # Preserve the actual failing ledger field instead of replacing
+                # it with a generic root-level "requires valid estimate" error.
+                _action_estimate(obj,draft)
                 raise ValueError('estimatable action requires a valid estimate')
         result=recovered
         if not result.items:
@@ -413,6 +477,27 @@ def recover_result(responses, draft, refs, repair_used, error_category='structur
         'estimate_fallback' if estimates else 'full_structured',error_category,missing))
 
 
+def matching_unestimated_item(entry, items):
+    """Bind only one untouched, unconstrained recognition row to its estimate.
+
+    Exact identity/scope equality is required; no text similarity or cross-task
+    inference. Existing durations, edits, constraints and ambiguities survive.
+    """
+    if len(items) != 1:
+        return None
+    row=items[0]; value=entry.get('estimate',{})
+    from src.material_inbox import MaterialTime
+    if (row.kind=='task' and row.title==value.get('task_name')
+            and row.scope==value.get('short_scope') and row.minutes is None
+            and row.estimate is None and not row.user_edits and not row.ambiguities
+            and not row.possible_task_ref and not row.location_text and not row.campus_id
+            and not row.commitment_kind and not row.duration_source
+            and not row.estimate_completed_minutes
+            and all(t==MaterialTime() for t in (row.deadline,row.start,row.end))):
+        return row
+    return None
+
+
 def confirm_minimal_task(draft, item_id, title, minutes, user_confirmed=False, confirmed_scope=None):
     """Consent creates only a draft, then the unchanged atomic confirmation gate runs."""
     if draft.status!='ready' or not user_confirmed:
@@ -429,14 +514,19 @@ def confirm_minimal_task(draft, item_id, title, minutes, user_confirmed=False, c
     scope = value['short_scope'] if confirmed_scope is None else confirmed_scope
     if not isinstance(scope, str) or not scope.strip() or len(scope) > 500:
         raise MaterialError('请填写本次采用的任务范围（500字以内）。')
-    row=MaterialItem(item_id,'task',title.strip(),scope.strip(),'',
-        '用户确认的简单任务；工作量来自未完整整理结果的估时',minutes=value['recommended_minutes'],
+    existing=next((row for row in draft.items if row.item_id==item_id),None)
+    if existing is not None and matching_unestimated_item(entry,draft.items) != existing:
+        raise MaterialError('任务内容已变化，请重新核对后采用估时。')
+    base=existing or MaterialItem(item_id,'task',title.strip(),scope.strip(),'',
+        '用户确认的简单任务；工作量来自未完整整理结果的估时')
+    row=replace(base,title=title.strip(),scope=scope.strip(),minutes=value['recommended_minutes'],
         duration_source='user_confirmed',estimate_min_minutes=value['focused_minutes_min'],
         estimate_max_minutes=value['focused_minutes_max'],estimate_basis=value['rationale'],
         estimate_assumptions=value['assumptions'],estimate_waiting_note=entry.get('waiting_note',''),
         user_edits={'reviewed':True,'minutes':str(minutes)})
     row=replace(row,estimate_basis_fingerprint=estimate_basis(item_values(row,draft)))
-    return replace(draft,items=draft.items+(row,),
+    items=tuple(row if old.item_id==item_id else old for old in draft.items) if existing else draft.items+(row,)
+    return replace(draft,items=items,
         estimate_fallbacks=tuple(v for v in draft.estimate_fallbacks if v['item_id']!=item_id))
 
 
@@ -458,10 +548,11 @@ def reestimate_only(draft, item_id, caller, supplement='', default_context=''):
     revised=validate_estimate(dict(value,focused_minutes_min=result.min_focus_minutes,
         focused_minutes_max=result.max_focus_minutes,recommended_minutes=result.recommended_minutes,
         rationale=result.basis,assumptions=result.assumptions))
-    return replace(draft,estimate_fallbacks=tuple(dict(v,estimate=revised,
+    from src.material_estimate_contract import refresh_final_estimate
+    return replace(draft,estimate_fallbacks=tuple(refresh_final_estimate(dict(v,estimate=revised,effort_ledger=None,effort_grounding=None,effort_provenance=None,
         simple_confirmation_allowed=v['simple_confirmation_allowed'] and not (result.location_text or result.deadline_time),
         scope_confirmation_allowed=v.get('scope_confirmation_allowed', False) and not (result.location_text or result.deadline_time),
         confirmation_fields=tuple(sorted(set(v.get('confirmation_fields', ()))
             | ({'location'} if result.location_text else set())
-            | ({'deadline'} if result.deadline_time else set())))) if v['item_id']==item_id
+            | ({'deadline'} if result.deadline_time else set()))))) if v['item_id']==item_id
         else v for v in draft.estimate_fallbacks))

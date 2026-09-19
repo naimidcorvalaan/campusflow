@@ -276,7 +276,7 @@ def test_unknown_current_does_not_invent_the_first_leg_but_routes_later_location
     assert outcome.blocks[0].destination_name == context.bindings[1].execution_location.display_name
 
 
-def test_unknown_current_assumes_the_first_routeable_execution_location():
+def test_unknown_current_asks_for_origin_without_assuming_first_destination():
     proposal, applied, context, _ = _outcome((
         IntakeTask("写报告", total_minutes=20, is_splittable=False, location_text="图书馆", activity_kind="generic"),
         IntakeTask("吃饭", activity_kind="meal"),
@@ -289,10 +289,10 @@ def test_unknown_current_assumes_the_first_routeable_execution_location():
     events = execution_movement.execution_timeline(applied.state, provisional, context, map_data)
     assumed = execution_movement.assume_current_location_for_timeline(context, events)
 
-    assert assumed.current_location.source is CurrentLocationSource.ASSUMED
-    assert assumed.current_location.location.display_name == "图书馆"
+    assert assumed.current_location.source is CurrentLocationSource.UNKNOWN
+    assert assumed.current_location.location is None
     assert any(
-        item.kind is ExecutionConfirmationKind.CURRENT_LOCATION_ASSUMED
+        item.kind is ExecutionConfirmationKind.CURRENT_LOCATION_REQUIRED
         for item in assumed.confirmations
     )
     outcome = execution_movement.apply_execution_sequence_movements(
@@ -304,7 +304,7 @@ def test_unknown_current_assumes_the_first_routeable_execution_location():
     ]
 
 
-def test_assumption_skips_unlocated_tasks_and_meal_first_keeps_provenance_separate():
+def test_unknown_origin_stays_separate_from_task_and_auto_meal_destinations():
     proposal = _proposal((
         IntakeTask("背单词", total_minutes=15, is_splittable=False, activity_kind="generic"),
         IntakeTask("写报告", total_minutes=20, is_splittable=False, location_text="图书馆", activity_kind="generic"),
@@ -315,7 +315,7 @@ def test_assumption_skips_unlocated_tasks_and_meal_first_keeps_provenance_separa
     provisional = allocate_tasks_across_windows(applied.state)
     events = execution_movement.execution_timeline(applied.state, provisional, context, map_data)
     assumed = execution_movement.assume_current_location_for_timeline(context, events)
-    assert assumed.current_location.location.display_name == "图书馆"
+    assert assumed.current_location.location is None
 
     meal_first = _proposal(
         (IntakeTask("吃饭", activity_kind="meal"),),
@@ -333,8 +333,8 @@ def test_assumption_skips_unlocated_tasks_and_meal_first_keeps_provenance_separa
         meal_applied.state, meal_provisional, meal_context, map_data
     )
     assumed_meal = execution_movement.assume_current_location_for_timeline(meal_context, meal_events)
-    assert assumed_meal.current_location.source is CurrentLocationSource.ASSUMED
-    assert assumed_meal.current_location.location.node_id == meal.execution_location.node_id
+    assert assumed_meal.current_location.source is CurrentLocationSource.UNKNOWN
+    assert assumed_meal.current_location.location is None
     assert assumed_meal.binding_for("day_task_001").execution_location.source is ExecutionLocationSource.AUTO_SELECTED_MEAL
 
 

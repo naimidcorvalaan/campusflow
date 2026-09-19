@@ -788,7 +788,7 @@ API Key 不应：
 进入项目根目录：
 
 ```powershell
-cd C:\Users\<用户名>\Desktop\code\agent2026-campusflow
+cd campusflow
 ```
 
 运行：

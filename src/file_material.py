@@ -18,6 +18,11 @@ MAX_DOCX_BYTES = 10 * 1024 * 1024
 MAX_PDF_BYTES = 10 * 1024 * 1024
 MAX_PDF_PAGES = 20
 MAX_VISION_PAGES = 5
+# Product admission limit, not a claim about the provider context window.
+# Capacity research found larger successful files, but repeated tool-adherence
+# failures do not yet establish a stable interval for a larger default.
+# Isolated capacity evaluations may patch this one constant for their process;
+# there is deliberately no environment/UI switch changing the default.
 MAX_TEXT_CHARS = 12000
 MAX_RENDER_EDGE = 1800
 RENDER_DPI = 140
@@ -81,7 +86,7 @@ def parse_page_range(value, page_count):
 
 def _text_limit(text):
     if len(text) > MAX_TEXT_CHARS:
-        raise FileMaterialError('可读取文字超过12000字，请缩小Word材料，或选择较少的PDF页码。未截断分析。')
+        raise FileMaterialError('可读取文字超过{}字，请缩小Word材料，或选择较少的PDF页码。未截断分析。'.format(MAX_TEXT_CHARS))
     return text
 
 

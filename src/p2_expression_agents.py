@@ -695,6 +695,11 @@ def _schedule_intervals(state, allocation_plan, movement_blocks):
         if start is not None and end is not None and end > now:
             intervals.append((start, end))
     for allocation in allocation_plan.allocations:
+        if allocation.starts_at is not None:
+            end = allocation.starts_at + timedelta(minutes=allocation.planned_minutes)
+            if end > now:
+                intervals.append((allocation.starts_at, end))
+            continue
         window = window_by_ref.get(allocation.window_ref)
         if window is None:
             continue
@@ -801,6 +806,11 @@ def _expression_segments(state, allocation_plan, movement_blocks):
     for allocation in allocation_plan.allocations:
         window = windows.get(allocation.window_ref)
         task = task_by_ref.get(allocation.task_ref)
+        if task is not None and allocation.starts_at is not None:
+            segments.append({"kind": "background" if task.attention_mode == "background" else "task",
+                "title": task.title, "start": allocation.starts_at,
+                "end": allocation.starts_at + timedelta(minutes=allocation.planned_minutes)})
+            continue
         if window is None or task is None:
             continue
         start = window.starts_at
@@ -824,7 +834,8 @@ def _expression_segments(state, allocation_plan, movement_blocks):
             if prior.allocation_ref == allocation.allocation_ref:
                 break
             start += timedelta(minutes=prior.planned_minutes)
-        segments.append({"kind": "task", "title": task.title, "start": start, "end": start + timedelta(minutes=allocation.planned_minutes)})
+        start = allocation.starts_at or start
+        segments.append({"kind": "background" if task.attention_mode == "background" else "task", "title": task.title, "start": start, "end": start + timedelta(minutes=allocation.planned_minutes)})
     return tuple(sorted(segments, key=lambda item: (item["start"], item["kind"])))
 
 
@@ -838,7 +849,7 @@ def _current_expression_segment(state, allocation_plan, movement_blocks):
     now = state.now
     for segment in _expression_segments(state, allocation_plan, movement_blocks):
         end = segment["end"]
-        if segment["start"] <= now and (end is None or now < end):
+        if segment["kind"] != "background" and segment["start"] <= now and (end is None or now < end):
             return _public_segment(segment)
     return None
 

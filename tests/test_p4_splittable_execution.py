@@ -93,11 +93,42 @@ def test_real_progress_limits_next_round_to_remaining_work():
     assert plan.allocations[0].remaining_before == 30
 
 
+def test_feedback_single_session_supersedes_old_split_preferences():
+    from src.p4_execution_enrichment import reconcile_execution_context
+    from src.p2_session import P2SessionController
+    from src.p4_execution_context import EXECUTION_PLAN_CONTEXT_KEY
+    state=_state((_window('w1',_dt(14),_dt(16),120),),_task(splittable=False,minimum=None))
+    profile=TaskExecutionProfile('day_task_001',True,15,30,False,'qwen_semantic')
+    context=ExecutionPlanContext((ExecutableTaskBinding('day_task_001',execution_profile=profile),))
+    # Even before reconciliation a stale soft preference cannot override the
+    # canonical task's hard indivisibility.
+    assert preferred_chunk_overrides(context,state)=={}
+    updated=reconcile_execution_context(context,state)
+    assert not updated.binding_for('day_task_001').execution_profile.splittable
+    session=P2SessionController({EXECUTION_PLAN_CONTEXT_KEY:updated},lambda *args: '')
+    for fragmentation in ('low','medium','high'):
+        preferences=session._strategy_chunk_overrides(state,fragmentation)
+        assert preferences=={}
+        plan=allocate_tasks_across_windows(state,preferred_chunk_by_task_ref=preferences)
+        assert len(plan.allocations)==1 and plan.total_planned_minutes==60
+    assert state.tasks[0].completed_minutes==0
+
+
+def test_feedback_raised_minimum_updates_preference_without_changing_work():
+    from src.p4_execution_enrichment import reconcile_execution_context
+    state=_state((_window('w1',_dt(14),_dt(16),120),),_task(minimum=45))
+    profile=TaskExecutionProfile('day_task_001',True,15,30,False,'qwen_semantic')
+    context=ExecutionPlanContext((ExecutableTaskBinding('day_task_001',execution_profile=profile),))
+    updated=reconcile_execution_context(context,state)
+    assert preferred_chunk_overrides(updated,state)=={'day_task_001':45}
+    assert context.binding_for('day_task_001').execution_profile.minimum_chunk_minutes==15
+
+
 def test_presentation_marks_only_later_chunk_as_continuation_and_does_not_repeat_ai_badge():
     state = _state((_window("w1", _dt(14), _dt(14, 30), 30), _window("w2", _dt(16), _dt(16, 30), 30)), _task(), now=_dt(13))
     plan = allocate_tasks_across_windows(state)
     lines = compact_plan_lines(plan, state)
     rendered = "\n".join(lines)
     assert "整理资料 30 分钟（AI暂估）" in rendered
-    assert "继续整理资料 30 分钟" in rendered
+    assert "再做整理资料 30 分钟" in rendered
     assert rendered.count("AI暂估") == 1

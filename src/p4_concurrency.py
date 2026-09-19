@@ -105,6 +105,7 @@ def plan_explicit_concurrency(
             or task is None
             or commitment is None
             or task.state is not TaskState.ACTIVE
+            or task.attention_mode == 'background'
             or commitment.starts_at is None
             or commitment.ends_at is None
             or commitment.ends_at <= state.now

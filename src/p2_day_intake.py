@@ -14,6 +14,7 @@
 """
 
 import re
+import json
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import Callable, Mapping, Optional, Sequence, Tuple
@@ -21,14 +22,43 @@ from typing import Callable, Mapping, Optional, Sequence, Tuple
 from src.p1_models import SourceKind
 from src.p1_window_models import AvailabilityLevel, FixedCommitment
 from src.p2_agentic_parser import AgenticParseError, extract_json_object
-from src.p2_agentic_prompt_builder import build_repair_prompt
 from src.p2_models import DayPlanningState, TaskProgress, TaskState
 from src.p2_window_derivation import DEFAULT_SAFETY_BUFFER_MINUTES, derive_day_state
 from src.p3_map_schema import CampusMapData
 from src.p3_route_planner import run_spatial_intake
 
 INTAKE_SCHEMA_VERSION = "p2.day-intake.v1"
-DEFAULT_DAY_END = "22:00"
+# The default planning horizon is the end of today, not an inferred bedtime.
+# An explicit earlier user boundary still takes precedence.
+DEFAULT_DAY_END = "24:00"
+TASK_TIME_BOUNDARY_SEMANTICS = (
+    "开始或到达的时间区间，下界是该任务最早开始，不可遗漏；上界不是完成截止，"
+    "不能当作最晚结束，也不能反推其他任务的截止。只有明确要求在某时刻前完成，才记录最晚结束。"
+    "每个钟点约束只归属于用户明确指定的事件；先后偏好不使前项继承后项的截止。"
+    "先后关系由独立关系字段表达，不能为了表示顺序而复制时间边界。"
+)
+COMMITMENT_END_FIELDS = ("ends_at", "duration_minutes", "relative_end_minutes")
+LOCATION_ROLE_SEMANTICS = (
+    "当前位置只来自用户现在所在/出发地点，不能由课程地点、后续任务地点、食堂候选或路线目的地推断。"
+    "任务location_text是执行该动作所需地点；用户指定在那里办理或交付，就必须保留那个地点，"
+    "不能因为到那里需要移动，就把任务地点改成当前位置。移动由程序连接当前地点与任务地点。"
+    "没有明确当前位置时current_location为null；课后吃饭仅建立meal after commitment关系。"
+)
+CLOCK_RANGE_SEMANTICS = (
+    "中文数字与阿拉伯数字的钟点等价；时间范围中首端明确的上午/下午语义延续到另一端。"
+    "完整起止时刻都要保留，不把已明确的结束时间标为缺失，不生成额外时长。"
+)
+
+
+
+def commitment_end_contract():
+    return (
+        "固定安排的" + "、".join(COMMITMENT_END_FIELDS) + "最多一个非null。"
+        "用户给了明确结束钟点时保留ends_at，其余两项为null；不要从起止钟点再计算一个duration_minutes。"
+        "不能为了消除重复表示而丢失原文已给的结束钟点。"
+    )
+
+
 MAX_TITLE_LENGTH = 100
 MAX_QUESTION_LENGTH = 200
 MAX_LOCATION_LENGTH = 200
@@ -68,8 +98,7 @@ class IntakeCommitment:
         if self.ends_at is not None:
             _require_time("ends_at", self.ends_at)
         end_forms = sum(
-            value is not None
-            for value in (self.ends_at, self.duration_minutes, self.relative_end_minutes)
+            getattr(self, name) is not None for name in COMMITMENT_END_FIELDS
         )
         if end_forms > 1:
             raise ValueError("ends_at、duration_minutes、relative_end_minutes 只能出现一个")
@@ -114,9 +143,46 @@ class IntakeTask:
     meal_period: Optional[str] = None
     meal_before_commitment_index: Optional[int] = None
     meal_time: Optional[str] = None
+    earliest_start_time: Optional[str] = None
+    latest_end_time: Optional[str] = None
+    # Hard finish boundary relative to a proposal-local fixed commitment.
+    before_commitment_index: Optional[int] = None
+    predecessor_task_indexes: Tuple[int, ...] = ()
+    attention_mode: str = 'active'
+    launch_task_index: Optional[int] = None
+    background_reason: Optional[str] = None
+    user_reported_running: bool = False
+    departure_after_task_indexes: Tuple[int, ...] = ()
+    overlap_task_index: Optional[int] = None
 
     def __post_init__(self):
         _require_text("title", self.title)
+        from types import SimpleNamespace
+        from src.task_attention import validate_attention
+        if self.launch_task_index is not None:
+            _require_positive_int('launch_task_index', self.launch_task_index)
+        if self.overlap_task_index is not None:
+            _require_positive_int('overlap_task_index', self.overlap_task_index)
+        validate_attention(SimpleNamespace(task_ref='proposal_task',
+            attention_mode=self.attention_mode,
+            launch_task_ref=str(self.launch_task_index) if self.launch_task_index else None,
+            overlap_task_ref=str(self.overlap_task_index) if self.overlap_task_index else None,
+            background_reason=self.background_reason, user_reported_running=self.user_reported_running,
+            is_splittable=self.is_splittable))
+        if not isinstance(self.predecessor_task_indexes, tuple):
+            raise ValueError("predecessor_task_indexes must be a tuple")
+        for index in self.predecessor_task_indexes:
+            _require_positive_int("predecessor_task_indexes", index)
+        if not isinstance(self.departure_after_task_indexes, tuple):
+            raise ValueError('departure_after_task_indexes must be a tuple')
+        for index in self.departure_after_task_indexes:
+            _require_positive_int('departure_after_task_indexes', index)
+        for name in ("earliest_start_time", "latest_end_time"):
+            if getattr(self, name) is not None:
+                _require_time(name, getattr(self, name))
+        if self.earliest_start_time and self.latest_end_time:
+            if tuple(map(int, self.earliest_start_time.split(":"))) >= tuple(map(int, self.latest_end_time.split(":"))):
+                raise ValueError("task time window must have positive duration")
         if self.total_minutes is not None:
             _require_positive_int("total_minutes", self.total_minutes)
         if self.is_splittable is not None and not isinstance(self.is_splittable, bool):
@@ -149,6 +215,12 @@ class IntakeTask:
             raise ValueError("duration_source 需要 total_minutes")
         if self.after_commitment_index is not None:
             _require_positive_int("after_commitment_index", self.after_commitment_index)
+        if self.before_commitment_index is not None:
+            _require_positive_int("before_commitment_index", self.before_commitment_index)
+            if self.before_commitment_index == self.after_commitment_index:
+                raise ValueError("task 不能同时位于同一固定安排之前和之后")
+            if self.meal_before_commitment_index not in (None, self.before_commitment_index):
+                raise ValueError("before commitment 字段不能指向不同固定安排")
         if self.meal_period is not None and self.meal_period not in ("lunch", "dinner", "unspecified"):
             raise ValueError("meal_period 必须是 lunch、dinner、unspecified 或 null")
         if self.meal_before_commitment_index is not None:
@@ -196,6 +268,7 @@ class DayIntakeProposal:
                 raise TypeError("tasks 必须包含 IntakeTask")
             for index, field_name in (
                 (task.after_commitment_index, "after_commitment_index"),
+                (task.before_commitment_index, "before_commitment_index"),
                 (task.meal_before_commitment_index, "meal_before_commitment_index"),
             ):
                 if index is not None and index > len(self.commitments):
@@ -204,6 +277,22 @@ class DayIntakeProposal:
             _require_time("day_end", self.day_end)
         for question in self.questions:
             _require_text("question", question)
+        from src.task_dependencies import validate_predecessors
+        validate_predecessors(tuple(str(index + 1) for index in range(len(self.tasks))), {
+            str(index + 1): tuple(dict.fromkeys(str(parent) for parent in
+                task.predecessor_task_indexes + task.departure_after_task_indexes
+                + ((task.overlap_task_index,) if task.overlap_task_index else ())
+                + ((task.launch_task_index,) if task.launch_task_index else ())))
+            for index, task in enumerate(self.tasks)})
+        for task in self.tasks:
+            if task.overlap_task_index and self.tasks[task.overlap_task_index - 1].attention_mode != 'background':
+                raise ValueError('overlap target must be a background process')
+            if task.overlap_task_index in task.predecessor_task_indexes + task.departure_after_task_indexes:
+                raise ValueError('cannot require both overlap and completion of the same process')
+            if task.launch_task_index and self.tasks[task.launch_task_index - 1].attention_mode != 'active':
+                raise ValueError('background launch must be an active-attention task')
+            if task.launch_task_index and task.user_reported_running:
+                raise ValueError('initial task list is pending work: already-running process cannot also require a pending launch')
         if self.current_location is not None:
             if not isinstance(self.current_location, str) or not self.current_location.strip():
                 raise ValueError("current_location 必须是非空字符串或 null")
@@ -306,6 +395,12 @@ def _parse_commitment(item) -> IntakeCommitment:
 def _parse_task(item) -> IntakeTask:
     if not isinstance(item, dict):
         raise AgenticParseError("tasks 中的每一项必须是对象")
+    predecessors = item.get("predecessor_task_indexes", [])
+    departures = item.get('departure_after_task_indexes', [])
+    if not isinstance(departures, list):
+        raise AgenticParseError('departure_after_task_indexes must be an array when supplied')
+    if not isinstance(predecessors, list):
+        raise AgenticParseError("predecessor_task_indexes must be an array when supplied")
     try:
         return IntakeTask(
             title=_field_text(item.get("title"), "title"),
@@ -329,11 +424,23 @@ def _parse_task(item) -> IntakeTask:
             after_commitment_index=_optional_positive_int(
                 item.get("after_commitment_index"), "after_commitment_index"
             ),
+            before_commitment_index=_optional_positive_int(
+                item.get("before_commitment_index"), "before_commitment_index"
+            ),
             meal_period=item.get("meal_period"),
             meal_before_commitment_index=_optional_positive_int(
                 item.get("meal_before_commitment_index"), "meal_before_commitment_index"
             ),
             meal_time=_optional_time(item.get("meal_time"), "meal_time"),
+            earliest_start_time=_optional_time(item.get("earliest_start_time"), "earliest_start_time"),
+            latest_end_time=_optional_time(item.get("latest_end_time"), "latest_end_time"),
+            predecessor_task_indexes=tuple(predecessors),
+            departure_after_task_indexes=tuple(departures),
+            overlap_task_index=item.get('overlap_task_index'),
+            attention_mode=item.get('attention_mode', 'active'),
+            launch_task_index=item.get('launch_task_index'),
+            background_reason=item.get('background_reason'),
+            user_reported_running=item.get('user_reported_running', False),
         )
     except ValueError as exc:
         raise AgenticParseError(str(exc))
@@ -352,6 +459,7 @@ def apply_day_intake(
     travel_minutes_by_commitment: Optional[Mapping[str, int]] = None,
     history: Tuple[str, ...] = (),
     user_text: Optional[str] = None,
+    semantically_reviewed: bool = False,
 ) -> IntakeApplied:
     """把解析后的提案转成 DayPlanningState；时间基于 reference_datetime 解析。"""
     if not isinstance(reference_datetime, datetime):
@@ -359,8 +467,14 @@ def apply_day_intake(
     if not isinstance(proposal, DayIntakeProposal):
         raise TypeError("proposal must be a DayIntakeProposal")
 
+    if not semantically_reviewed:
+        if any(task.attention_mode == 'background' for task in proposal.tasks):
+            raise AgenticParseError('background execution requires successful semantic audit')
+        proposal = _preserve_explicit_task_durations(proposal, user_text)
     warnings = []
-    questions = list(proposal.questions)
+    # Validator-generated questions are required by construction. Model
+    # suggestions are filtered separately against the materialized facts.
+    questions = []
     commitments = []
     new_commitment_refs = []
     for index, item in enumerate(proposal.commitments):
@@ -375,6 +489,7 @@ def apply_day_intake(
             ends is not None
             and item.commitment_kind == "class"
             and user_text is not None
+            and not semantically_reviewed
             and not _class_end_is_explicitly_supported(item, user_text)
         ):
             ends = None
@@ -411,7 +526,7 @@ def apply_day_intake(
     for index, item in enumerate(proposal.tasks):
         ref = _format_ref(TASK_REF_PREFIX, index + 1)
         source = (None if item.total_minutes is None else
-                  SourceKind.AI_ESTIMATED if item.duration_source == "ai_estimated" else
+                  SourceKind.AI_ESTIMATED if item.duration_source in ("ai_estimated", "semantic_estimate") else
                   SourceKind.AI_EXTRACTED_FROM_USER_TEXT)
         tasks.append(
             TaskProgress(
@@ -423,6 +538,15 @@ def apply_day_intake(
                 state=TaskState.ACTIVE,
                 is_splittable=item.is_splittable,
                 minimum_slice_minutes=item.minimum_slice_minutes,
+                predecessor_task_refs=tuple(dict.fromkeys(_format_ref(TASK_REF_PREFIX, parent)
+                    for parent in item.predecessor_task_indexes + item.departure_after_task_indexes)),
+                departure_after_task_refs=tuple(_format_ref(TASK_REF_PREFIX, parent)
+                    for parent in item.departure_after_task_indexes),
+                overlap_task_ref=_format_ref(TASK_REF_PREFIX, item.overlap_task_index) if item.overlap_task_index else None,
+                attention_mode=item.attention_mode,
+                launch_task_ref=_format_ref(TASK_REF_PREFIX, item.launch_task_index) if item.launch_task_index else None,
+                background_reason=item.background_reason,
+                user_reported_running=item.user_reported_running,
             )
         )
         new_task_refs.append(ref)
@@ -444,10 +568,117 @@ def apply_day_intake(
     return IntakeApplied(
         state=state,
         warnings=tuple(warnings),
-        questions=tuple(questions),
+        questions=tuple(dict.fromkeys(questions + list(
+            _required_intake_questions(state, proposal.questions, user_text)
+        ))),
         new_commitment_refs=tuple(new_commitment_refs),
         new_task_refs=tuple(new_task_refs),
     )
+
+
+def _required_intake_questions(state, questions, user_text):
+    """Publish questions only for an unresolved hard fact or event identity.
+
+    Task start times are allocation decisions; unknown estimates and soft
+    preferences have their own defaults/estimation path. A model's generic
+    conflict note is not evidence that one of these fields is required.
+    Spatial resolution still owns its independently validated questions.
+    """
+    if not state.tasks and not state.commitments:
+        return tuple(dict.fromkeys(questions))
+    source = user_text or ""
+    required = []
+    fixed = state.commitments
+    overlaps = any(
+        left.starts_at and left.ends_at and right.starts_at and right.ends_at
+        and left.ends_at > state.now and right.ends_at > state.now
+        and left.starts_at < right.ends_at and right.starts_at < left.ends_at
+        for index, left in enumerate(fixed) for right in fixed[index + 1:]
+    )
+    for question in questions:
+        # Identity ambiguity cannot be resolved from a valid duration/window.
+        if (re.search(r"指的是|指哪|同名|无法区分", question)
+                or (re.search(r"哪(?:一)?(?:份|项|门)", question)
+                    and not re.search(r"偏好|习惯|喜欢|优先|先做", question))):
+            required.append(question)
+            continue
+        temporal = bool(re.search(r"几点|时间|开始|结束|下课|多久|多长|时长|持续|冲突|重叠", question))
+        if temporal and overlaps:
+            required.append(question)
+            continue
+        for item in fixed:
+            if item.title not in question:
+                continue
+            asks_start = "开始" in question
+            asks_end = bool(re.search(r"结束|下课|多久|多长|时长|持续", question))
+            if temporal and (
+                (item.starts_at is None and (asks_start or not asks_end))
+                or (item.ends_at is None and (asks_end or not asks_start))
+            ):
+                required.append(question)
+                break
+            if (item.location_text is None and re.search(r"地点|哪里|在哪", question)
+                    and re.search(r"前往|去", source) and item.title in source):
+                required.append(question)
+                break
+        else:
+            # A fixed event with no start may have been omitted by the intake
+            # parser. Preserve its concrete time question, not optional task
+            # scheduling questions or an unbound "time relation" note.
+            unbound_question = question
+            for task in state.tasks:
+                unbound_question = unbound_question.replace(task.title, "")
+            if temporal and any(
+                marker in unbound_question and marker in source
+                and not any(marker in item.title or (
+                    marker in ("上课", "课程") and item.commitment_kind == "class"
+                ) for item in fixed)
+                for marker in ("上课", "课程", "组会", "开会", "会议", "预约", "约会")
+            ):
+                required.append(question)
+    return tuple(dict.fromkeys(required))
+
+
+def _preserve_explicit_task_durations(proposal, user_text):
+    """Keep proposal and applied facts aligned at the intake boundary.
+
+    Restore omitted explicit durations or their source, never overwrite an
+    existing numeric total, infer a task, or change its other semantics.
+    """
+    tasks = []
+    for item in proposal.tasks:
+        explicit = _explicit_task_duration_minutes(item.title, user_text)
+        if explicit is not None and item.total_minutes in (None, explicit):
+            item = replace(item, total_minutes=explicit, duration_source="user_explicit")
+        tasks.append(item)
+    return replace(proposal, tasks=tuple(tasks))
+
+
+def _explicit_task_duration_minutes(title, user_text):
+    """Read only an unambiguous numeric duration adjacent to the exact title.
+
+    The model still identifies the task. A number elsewhere in the input,
+    a progress amount, a bound or a conflicting mention is not evidence.
+    """
+    title = re.escape(title.strip())
+    number = r"(?<![\d.])(?P<number>\d+(?:\.\d+)?)\s*(?P<unit>分钟|小时)"
+    patterns = (
+        number + r"\s*的\s*" + title,
+        title + r"\s*(?:时长(?:为|是)?|需要|用时|大约|大概|预计|约|要|需|用)?\s*[:：]?\s*" + number,
+    )
+    durations = []
+    for clause in re.split(r"[，,。；;！？!?\n]", user_text or ""):
+        if re.search(r"不是|并非|不要|不用|无需|不需要|至少|最多|至多|不到|超过|已经|已做|做了|还剩|剩余|或者|或", clause):
+            continue
+        if re.search(r"(?:\d+(?:\.\d+)?\s*(?:到|至|[-~～—])\s*|[-−]\s*)\d+(?:\.\d+)?\s*(?:分钟|小时)", clause):
+            continue
+        for pattern in patterns:
+            for match in re.finditer(pattern, clause):
+                minutes = float(match.group("number")) * (60 if match.group("unit") == "小时" else 1)
+                durations.append(minutes)
+    if len(set(durations)) == 1 and durations[0] > 0 and durations[0].is_integer():
+        return int(durations[0])
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -497,24 +728,61 @@ def run_day_intake(
             materialize_day_intake,
             parse_event_semantic_graph,
             parse_raw_event_extraction,
+            BackgroundSemanticError,
         )
         raw_system, raw_user = build_raw_event_extractor_prompt(
             reference_datetime, user_text, campus_id=campus_id or (map_data.campus_id if map_data is not None else None)
         )
-        semantic_calls += 1
-        try:
-            raw_events = parse_raw_event_extraction(raw_event_caller(raw_system, raw_user))
-            linker_system, linker_user = build_semantic_linker_prompt(reference_datetime, user_text, raw_events)
+        failure = None
+        failed_response = None
+        background_failure = False
+        for attempt in range(2):
+            retry_user = raw_user
+            if attempt:
+                repair_used = True
+                retry_user += '\n上一轮事件/关系未通过正式校验：' + failure
+                retry_user += ('。重新检查完整原文中的事件是否遗漏或混合，使用同一事件契约修复；'
+                               '不要用不存在的事件、自己引用自己或把待做动作改为已执行来满足关系。')
+                retry_user += '\n上次事件抽取（待修订，不是可信事实）：\n' + (failed_response or '')
             semantic_calls += 1
-            semantic_graph = parse_event_semantic_graph(semantic_linker_caller(linker_system, linker_user), raw_events)
-            proposal = materialize_day_intake(raw_events, semantic_graph)
-        except (AgenticParseError, TypeError, ValueError):
+            try:
+                failed_response = raw_event_caller(raw_system, retry_user)
+                raw_events = parse_raw_event_extraction(failed_response)
+                linker_system, linker_user = build_semantic_linker_prompt(reference_datetime, user_text, raw_events)
+                semantic_calls += 1
+                semantic_graph = parse_event_semantic_graph(semantic_linker_caller(linker_system, linker_user), raw_events)
+                proposal = materialize_day_intake(raw_events, semantic_graph)
+                break
+            except (AgenticParseError, TypeError, ValueError) as exc:
+                failure = str(exc)
+                retryable = (isinstance(exc, BackgroundSemanticError) or
+                    (semantic_graph is not None and bool(semantic_graph.background_processes)))
+                background_failure = background_failure or retryable
+                semantic_graph = None
+                if not retryable:
+                    break
+        if proposal is None:
+            if background_failure:
+                # A recognized autonomy relation that failed its bounded
+                # repair must not silently become a different serial task.
+                return DayIntakeOutcome(applied=None, warnings=(WARNING_INTAKE_FAILED,),
+                    questions=(), call_count=semantic_calls, repair_used=repair_used)
             # The raw/linker pass is advisory semantic understanding.  A bad
             # model response never gets deterministically guessed into task
             # facts; the existing strict Day Intake path remains a safe
             # fallback and the auditor can still inspect its explicit facts.
-            raw_events = None
+            # A linker failure does not invalidate independently parsed raw
+            # facts. Keep them as evidence for the bounded semantic auditor.
             semantic_graph = None
+            if raw_events is not None:
+                # A rejected relationship graph does not invalidate parsed
+                # event identities, absolute boundaries or places. Hand those
+                # facts to the existing semantic audit without guessed edges.
+                from src.p4_event_semantics import EventSemanticGraph
+                try:
+                    proposal = materialize_day_intake(raw_events, EventSemanticGraph())
+                except (AgenticParseError, TypeError, ValueError):
+                    proposal = None
 
     if proposal is None:
         system, user = build_day_intake_prompt(reference_datetime, user_text, default_day_end)
@@ -522,17 +790,18 @@ def run_day_intake(
         semantic_calls += 1
         try:
             proposal = parse_day_intake(text)
-            repair_used = False
-        except AgenticParseError:
-            repair_system, repair_user = build_repair_prompt("day_intake", text, INTAKE_SCHEMA_VERSION)
-            repair_user += (
-                "\nDay Intake 的每个 task 可选字段为 activity_kind（generic|meal|null）和 "
-                "location_text（string|null）、duration_source（user_explicit|semantic_estimate|ai_estimated|null）。"
-                "commitment 的 ends_at、duration_minutes、relative_end_minutes 三者最多保留一个；"
-                "‘开始后多久结束/下课’使用 relative_end_minutes。"
-                "只保留原内容已经表达的语义；缺失时输出 null。"
-            )
-            repaired = repair_caller(repair_system, repair_user)
+        except AgenticParseError as exc:
+            # Same complete contract and user facts as the initial pass.
+            # A generic version-only repair lost time/location semantics and
+            # could not recover facts omitted from the malformed candidate.
+            repair_user = json.dumps({
+                "request_stage": "day_intake_repair",
+                "original_context": user,
+                "previous_response": text,
+                "validation_error": str(exc),
+                "instruction": "按同一正式契约修复失败字段，保留用户已经提供的起止时间、时长、地点和任务；只返回一个完整JSON对象。",
+            }, ensure_ascii=False)
+            repaired = repair_caller(system, repair_user)
             semantic_calls += 1
             try:
                 proposal = parse_day_intake(repaired)
@@ -548,6 +817,7 @@ def run_day_intake(
 
     semantic_audit_used = semantic_auditor_caller is not None
     semantic_repair_used = False
+    semantically_reviewed = False
     if semantic_auditor_caller is not None:
         from src.p4_intake_auditor import audit_initial_intake
         audit = audit_initial_intake(
@@ -558,10 +828,19 @@ def run_day_intake(
             campus_id=campus_id or (map_data.campus_id if map_data is not None else None),
             raw_events=raw_events,
             semantic_graph=semantic_graph,
+            map_data=map_data,
         )
         proposal = audit.proposal
         semantic_repair_used = audit.repaired
+        # A version-only approval of the legacy fallback is not a grounded
+        # extraction. Only the parsed event + semantic audit path replaces
+        # the older language-specific evidence check.
+        semantically_reviewed = raw_events is not None and not audit.audit_failed
 
+    # Enrichment consumes the proposal while allocation consumes applied
+    # state. Both must see the same preserved explicit duration/source.
+    if not semantically_reviewed:
+        proposal = _preserve_explicit_task_durations(proposal, user_text)
     applied = apply_day_intake(
         reference_datetime,
         proposal,
@@ -569,8 +848,16 @@ def run_day_intake(
         default_safety_buffer_minutes=default_safety_buffer_minutes,
         travel_minutes_by_commitment=travel_minutes_by_commitment,
         user_text=user_text,
+        semantically_reviewed=semantically_reviewed,
     )
-    total_calls = semantic_calls + (1 if semantic_audit_used else 0)
+    total_calls = semantic_calls + (audit.call_count if semantic_audit_used else 0)
+    if map_data is not None:
+        venue_questions = tuple(
+            "“{}”在哪个地点上课？".format(item.title)
+            for item in applied.state.commitments
+            if item.commitment_kind == "class" and not item.location_text
+        )
+        applied = replace(applied, questions=tuple(dict.fromkeys(applied.questions + venue_questions)))
     movement_blocks = ()
     movement_requests = ()
     current_location_text = None
@@ -641,7 +928,55 @@ def build_day_intake_prompt(
     return system, user
 
 
+EVENT_FACT_SEMANTICS = (
+    "事件边界：任务需要多少分钟是工作量，不是距现在多少分钟开始；剩余工作量不产生固定开始时刻。"
+    "只有用户给出固定开始/结束或真正的固定承诺才建 commitment。某时刻前交付是 task 的最晚完成边界，"
+    "不是该时刻才开始的 appointment；时长未知由后续估时，不追问交付任务的固定结束时刻。"
+    "独立任务与课程并列出现，不构成课前/课后硬关系，也不让任务继承课程时间作为截止。"
+    "课前/课后修饰哪项动作，就只绑定该动作，不能传播到相邻独立任务。"
+    "返回某处继续工作的地点属于对应任务，必须保留，不是只放进解释文字；"
+    "同名任务的不同片段按各自时长、地点及证据区分。标题只写事件主题，不拼接地点、钟点、时长；"
+    "这些事实使用各自正式字段，避免地点修改后标题仍显示旧地点。标题不得借用另一事件的主题。\n"
+)
+
+
+def process_field_contract() -> str:
+    """Shared optional process/departure declarations for intake and audit."""
+    return (
+        "departure_after_task_indexes（可省略int数组；仅用户要求前项完成后才出发/返回时填写；普通任务开始依赖不自动限制路上移动）、"
+        "overlap_task_index（可省略int，1-based；主动任务要在指定后台过程运行期间开始，不是等它完成后开始；不能同时把该过程列为predecessor）、"
+        "attention_mode（可省略，默认active；background仅自主运行过程）、"
+        "launch_task_index（只属于background过程，指向另一个active启动任务的1-based索引；不是并行搭档索引）、"
+        "background_reason（只属于background，说明无需持续人工操作的依据）、"
+        "user_reported_running（可省略bool，仅明确已启动事实）。active任务不携带launch_task_index/background_reason；"
+        "兼容前台任务保持active；用户要求在后台运行期间执行时填写overlap_task_index；取结果任务依赖background过程的索引，不仅依赖启动。"
+    )
+
+
+def day_intake_field_contract(include_process: bool = True) -> str:
+    """One field declaration shared by extraction and semantic repair."""
+    return (
+        "commitment 字段：title、starts_at（HH:MM|null）、ends_at（HH:MM|null）、"
+        "starts_in_minutes（int|null）、duration_minutes（int|null）、location_text（string|null）、"
+        "relative_end_minutes（int|null，只表示相对该安排开始后的结束分钟数）、"
+        "commitment_kind（class|meeting|appointment|other|null）、class_arrival_lead_minutes（int|null）。\n"
+        "明确上课/课程填 commitment_kind=class；只有用户明确说提前几分钟到楼时才填 class_arrival_lead_minutes，否则 null。\n"
+        "task 字段：title、total_minutes（int|null）、is_splittable（bool|null）、"
+        "minimum_slice_minutes（int|null）、preferred_chunk_minutes（int|null）、requires_single_session（bool|null）、"
+        "execution_profile_source（qwen_semantic|user_explicit|null）、location_text（string|null）、activity_kind（generic|meal|null）、"
+        "duration_source（user_explicit|semantic_estimate|ai_estimated|null）、"
+        "after_commitment_index（int|null，表示必须在本 proposal 第几个固定安排结束后执行）、"
+        "before_commitment_index（int|null，表示必须在指定固定安排开始前完成）、"
+        "earliest_start_time/latest_end_time（HH:MM|null，仅用户明确硬时间窗）、"
+        "predecessor_task_indexes（可省略的int数组，引用本proposal从1开始的task；仅真实因果前置，后项依赖前项产出；不把可更改的用户排序、叙述顺序或偏好变成因果依赖）、"
+        + (process_field_contract() if include_process else "") +
+        "meal_period（lunch|dinner|unspecified|null）、meal_before_commitment_index（int|null）、"
+        "meal_time（HH:MM|null）。meal temporal 字段只用于 activity_kind=meal。\n\n"
+    )
+
+
 def _intake_system_prompt(default_day_end: str) -> str:
+    from src.task_attention import BACKGROUND_SEMANTICS
     return (
         "你是 CampusFlow 的“首次全天计划抽取（day intake）”助手。\n"
         "你的任务：把用户第一次描述“今天安排 + 任务”的自然语言，转成结构化 JSON。\n\n"
@@ -665,6 +1000,7 @@ def _intake_system_prompt(default_day_end: str) -> str:
         "8. 固定安排的开始时间无法确定、或身份/时间有歧义时，把问题放进 questions，不要编造时间。\n"
         "9. 固定安排必须有开始时间（starts_at 或 starts_in_minutes）；结束时间三选一：明确结束时刻用 ends_at，"
         "明确持续时长用 duration_minutes；‘开始后多久结束/下课’用 relative_end_minutes。"
+        + commitment_end_contract() +
         "例如‘21点上课，一个半小时后下课’填 starts_at=21:00、relative_end_minutes=90，"
         "不要自行计算22:30。确实不知道则三者都为 null。\n"
         "10. 如果用户说‘上课/开会结束后，然后做X、Y’，把这些后续任务的 after_commitment_index 填为"
@@ -674,34 +1010,34 @@ def _intake_system_prompt(default_day_end: str) -> str:
         "用户明确说某顿饭在某个固定安排前/后时，分别填 meal_before_commitment_index 或 after_commitment_index；"
         "二者都是 commitments 数组从 1 开始的序号。用户明确给出吃饭时刻时填 meal_time=HH:MM。"
         "不要依据当前钟点猜测这一顿饭在课程前还是后。\n"
-        "12. 只输出 JSON，不要解释。\n\n"
+        "12. 每个 task 可填 earliest_start_time/latest_end_time（HH:MM|null），仅表示用户明确的"
+        "可执行时间窗或截止时刻；不是你安排的时间。时长与时间窗宽度不同。"
+        + TASK_TIME_BOUNDARY_SEMANTICS +
+        "‘课前完成/上课前做完/某固定承诺前完成/出发前完成’是硬截止：填该任务的"
+        "before_commitment_index，指向对应固定安排（从1开始）；含义是任务结束不晚于该安排开始。"
+        "出发若是独立固定安排则绑定出发；若是去上课等安排的移动则绑定该安排，程序预留移动。"
+        "不能把‘课前’填成 after_commitment_index，也不能仅按事件在原文中出现的先后推断前后。"
+        "‘最好/尽量/希望课前’只是偏好，不填硬截止；未要求承诺前完成的任务不加此字段。"
+        "有多个承诺时按明确指代绑定，歧义放 questions，不猜最近一项；程序按该承诺完整日期计算截止。"
+        "信息足够时 questions=[]，不要要求确认开始执行，也不要追问已给的地点或截止时间。"
+        "只输出 JSON，不要解释。\n\n"
         "输出对象：{\"schema_version\": \"...\", \"day_end\": \"HH:MM\"|null, "
         "\"commitments\": [...], \"tasks\": [...], \"questions\": [...], "
         "\"current_location\": string|null, \"transport_mode\": \"walk\"|\"bike\"|null}\n"
-        "commitment 字段：title、starts_at（HH:MM|null）、ends_at（HH:MM|null）、"
-        "starts_in_minutes（int|null）、duration_minutes（int|null）、location_text（string|null）、"
-        "relative_end_minutes（int|null，只表示相对该安排开始后的结束分钟数）、"
-        "commitment_kind（class|meeting|appointment|other|null）、class_arrival_lead_minutes（int|null）。\n"
-        "明确上课/课程填 commitment_kind=class；只有用户明确说提前几分钟到楼时才填 class_arrival_lead_minutes，否则 null。\n"
-        "task 字段：title、total_minutes（int|null）、is_splittable（bool|null）、"
-        "minimum_slice_minutes（int|null）、preferred_chunk_minutes（int|null）、requires_single_session（bool|null）、"
-        "execution_profile_source（qwen_semantic|user_explicit|null）、location_text（string|null）、activity_kind（generic|meal|null）、"
-        "duration_source（user_explicit|semantic_estimate|ai_estimated|null）、"
-        "after_commitment_index（int|null，表示必须在本 proposal 第几个固定安排结束后执行）、"
-        "meal_period（lunch|dinner|unspecified|null）、meal_before_commitment_index（int|null）、"
-        "meal_time（HH:MM|null）。meal temporal 字段只用于 activity_kind=meal。\n\n"
+        + LOCATION_ROLE_SEMANTICS + CLOCK_RANGE_SEMANTICS + EVENT_FACT_SEMANTICS + BACKGROUND_SEMANTICS +
+        day_intake_field_contract() +
         "示例1（地点 + 交通方式 + 任务时长）：用户说“我现在在9斋，下午3点去31教上课，我骑车。"
         "今天还要做实验。”输出："
-        '{"schema_version": "p2.day-intake.v1", "day_end": "22:00", '
-        '"commitments": [{"title": "上课", "starts_at": "15:00", "ends_at": "16:00", '
+        '{"schema_version": "p2.day-intake.v1", "day_end": null, '
+        '"commitments": [{"title": "上课", "starts_at": "15:00", "ends_at": null, '
         '"starts_in_minutes": null, "duration_minutes": null, "location_text": "31教"}], '
         '"tasks": [{"title": "实验", "total_minutes": null, "is_splittable": null, '
         '"minimum_slice_minutes": null, "preferred_chunk_minutes": null, "requires_single_session": null, '
         '"execution_profile_source": null, "location_text": null, "activity_kind": "generic"}], '
-        '"questions": [], "current_location": "9斋", "transport_mode": "bike"}\n'
+        '"questions": ["这节课大约几点结束？"], "current_location": "9斋", "transport_mode": "bike"}\n'
         "示例2（绝对时间 + 任务时长）：用户说“我现在在宿舍，10点到11点半上课，下午2点到3点有组会。"
         "今天要做计组实验、背30分钟单词、整理实验报告，实验大概要2小时。”输出："
-        '{"schema_version": "p2.day-intake.v1", "day_end": "22:00", '
+        '{"schema_version": "p2.day-intake.v1", "day_end": null, '
         '"commitments": [{"title": "上课", "starts_at": "10:00", "ends_at": "11:30", '
         '"starts_in_minutes": null, "duration_minutes": null, "location_text": null}, '
         '{"title": "组会", "starts_at": "14:00", "ends_at": "15:00", '
@@ -765,8 +1101,8 @@ def _class_end_is_explicitly_supported(item: IntakeCommitment, user_text: str) -
         # ``_resolve_end`` rather than being delegated to the model.
         return True
     if item.ends_at is not None:
-        hour = item.ends_at.split(":", 1)[0].lstrip("0") or "0"
-        return item.ends_at in text or (hour + "点") in text
+        from src.intake_time_evidence import supports_commitment_end
+        return supports_commitment_end(item.starts_at, item.ends_at, text)
     if item.duration_minutes is not None:
         minutes = str(item.duration_minutes)
         return minutes + "分钟" in text or (
@@ -796,6 +1132,8 @@ def _resolve_day_end(
 def _parse_hhmm(text: Optional[str], base: Optional[datetime]) -> Optional[datetime]:
     if text is None or base is None:
         return None
+    if text.strip() == "24:00":
+        return base.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
     match = _TIME_RE.match(text.strip())
     if match is None:
         return None
@@ -839,6 +1177,8 @@ def _optional_text(value, name: str, max_len: Optional[int] = None) -> Optional[
 def _optional_time(value, name: str) -> Optional[str]:
     if value is None:
         return None
+    if name == "day_end" and value == "24:00":
+        return value
     if not isinstance(value, str) or _TIME_RE.match(value.strip()) is None:
         raise AgenticParseError("{} 必须是 HH:MM 时间".format(name))
     return value.strip()
@@ -900,6 +1240,8 @@ def _require_text(name: str, value) -> None:
 
 
 def _require_time(name: str, value) -> None:
+    if name == "day_end" and value == "24:00":
+        return
     if not isinstance(value, str) or _TIME_RE.match(value.strip()) is None:
         raise ValueError("{} 必须是 HH:MM 时间".format(name))
 

@@ -235,7 +235,8 @@ def test_stale_preview_rejected_by_actual_apply_button():
     caller, page = start()
     page.render(caller, feedback=REQUEST)
     assert load_what_if_preview(page.session_state).status == "ready"
-    page.render(caller, clicked="p2_live_refresh")
+    from tests.test_p2_live_main import _refresh_existing_page
+    _refresh_existing_page(page)
     reliable = load_live_final_turn(page.session_state)
     calls = caller.count
     page.render(caller, clicked="p5_apply_what_if")

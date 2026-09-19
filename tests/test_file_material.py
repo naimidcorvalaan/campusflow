@@ -9,7 +9,7 @@ from PIL import Image
 
 from tests.document_fixtures import docx_bytes, pdf_bytes, TASK_TEXT, TASK_TWO
 from src.file_material import (read_file_material, parse_page_range, FileMaterialError,
-    DOCX_MIME, PDF_MIME, MAX_RENDER_EDGE, MAX_DOCX_BYTES)
+    DOCX_MIME, PDF_MIME, MAX_RENDER_EDGE, MAX_DOCX_BYTES, MAX_TEXT_CHARS)
 from src.material_inbox import (MaterialInbox, update_file_source, extract_material,
     MaterialError, edited, apply_notice_date, resolved_time, MATERIAL_INBOX_KEY)
 from src.material_ui import handle_material_action, save_material_edit
@@ -101,7 +101,7 @@ def test_limits_require_selection_not_silent_truncation():
     with pytest.raises(FileMaterialError):
         source(text=' '.join('unique{}'.format(i) for i in range(2400)))
     with pytest.raises(FileMaterialError):
-        source('pdf',pages=('A task requirement ' * 800,))
+        source('pdf',pages=('A task requirement ' * (MAX_TEXT_CHARS // 19 + 1),))
 
 
 def test_text_document_model_once_draft_no_fulltext_and_metadata_not_reference():

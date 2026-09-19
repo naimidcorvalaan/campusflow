@@ -9,6 +9,12 @@ CLASS_BUILDING_PREP_DISPLAY = "进楼 / 找教室"
 CLASS_CLASSROOM_PREP_DISPLAY = "到教室后签到 / 课前准备"
 CLASSROOM_LEAD_MINUTES = 5
 
+CLASS_ARRIVAL_FEEDBACK_SEMANTICS = (
+    "class_arrival_lead_minutes 表示课程开始前必须预留的分钟数，不是当前时刻的分钟部分，"
+    "也不是用户实际提前到达的时差。用户报告已经到某地点只更新当前位置；"
+    "除非明确要求改变课程的提前到达规则，否则不生成该字段的更新，保留台账原有规则。"
+)
+
 
 def is_class_commitment(commitment):
     """Minimal fallback until the intake schema carries an explicit kind."""

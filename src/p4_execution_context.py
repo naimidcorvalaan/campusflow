@@ -49,6 +49,8 @@ class CurrentLocationSource(str, Enum):
 class ExecutionConfirmationKind(str, Enum):
     MEAL_LOCATION_CONTEXT_REQUIRED = "meal_location_context_required"
     CURRENT_LOCATION_ASSUMED = "current_location_assumed"
+    CURRENT_LOCATION_REQUIRED = "current_location_required"
+    TASK_LOCATION_REQUIRED = "task_location_required"
 
 
 @dataclass(frozen=True)
@@ -78,7 +80,7 @@ class ExecutableTaskBinding:
     not_before_commitment_ref: Optional[str] = None
     # Meal temporal facts are deliberately separate from the generic
     # ``not_before`` relation.  A meal can be after one commitment and before
-    # another, while ordinary tasks only need the former today.
+    # another. Generic task finish relations use before_commitment_ref below.
     meal_period: Optional[str] = None
     meal_before_commitment_ref: Optional[str] = None
     meal_explicit_time: Optional[str] = None
@@ -93,8 +95,18 @@ class ExecutableTaskBinding:
     # Material-confirmed absolute deadline. Do not turn a future deadline into
     # a same-day clock boundary on restore/replanning.
     deadline_at: Optional[object] = None
+    earliest_start_time: Optional[str] = None
+    before_commitment_ref: Optional[str] = None
+    raw_location_text: Optional[str] = None
 
     def __post_init__(self):
+        if self.before_commitment_ref is not None:
+            if not isinstance(self.before_commitment_ref, str) or not self.before_commitment_ref.strip():
+                raise ValueError("before_commitment_ref 必须非空或 None")
+            if self.before_commitment_ref == self.not_before_commitment_ref:
+                raise ValueError("task 不能同时位于同一固定安排之前和之后")
+            if self.meal_before_commitment_ref not in (None, self.before_commitment_ref):
+                raise ValueError("before commitment 字段不能指向不同固定安排")
         if self.deadline_at is not None:
             from datetime import datetime
             if not isinstance(self.deadline_at, datetime) or self.deadline_at.tzinfo is not None:
@@ -119,16 +131,19 @@ class ExecutableTaskBinding:
         if self.meal_before_commitment_ref is not None and self.meal_before_commitment_ref == self.not_before_commitment_ref: raise ValueError("meal 不能同时位于同一固定安排之前和之后")
         if (self.meal_window_start_minutes is None) != (self.meal_window_end_minutes is None): raise ValueError("meal window 必须同时存在或为空")
         if self.meal_window_start_minutes is not None and not (0 <= self.meal_window_start_minutes < self.meal_window_end_minutes <= 24 * 60): raise ValueError("meal window 无效")
-        for name in ("scope_summary", "completion_criteria"):
+        for name in ("scope_summary", "completion_criteria", "raw_location_text"):
             value = getattr(self, name)
             if value is not None and (not isinstance(value, str) or not value.strip()):
                 raise ValueError("{} 必须非空或 None".format(name))
-        if self.latest_end_time is not None:
+        for field_name in ("earliest_start_time", "latest_end_time"):
+            value = getattr(self, field_name)
+            if value is None:
+                continue
             import re
-            if not isinstance(self.latest_end_time, str) or re.match(
-                r"^([01]?\d|2[0-3]):[0-5]\d$", self.latest_end_time
+            if not isinstance(value, str) or re.match(
+                r"^([01]?\d|2[0-3]):[0-5]\d$", value
             ) is None:
-                raise ValueError("latest_end_time 必须为 HH:MM 或 None")
+                raise ValueError("{} 必须为 HH:MM 或 None".format(field_name))
 
 
 @dataclass(frozen=True)
@@ -185,8 +200,11 @@ class ExecutionPlanContext:
         return next((item for item in self.bindings if item.task_ref == task_ref), None)
 
     def upsert(self, binding):
-        kept = tuple(item for item in self.bindings if item.task_ref != binding.task_ref)
-        return ExecutionPlanContext(kept + (binding,), self.current_location, self.confirmations, self.transport_mode, self.concurrency_authorizations)
+        exists = any(item.task_ref == binding.task_ref for item in self.bindings)
+        bindings = tuple(binding if item.task_ref == binding.task_ref else item for item in self.bindings)
+        if not exists:
+            bindings += (binding,)
+        return ExecutionPlanContext(bindings, self.current_location, self.confirmations, self.transport_mode, self.concurrency_authorizations)
 
     def with_current_location(self, current_location):
         return ExecutionPlanContext(self.bindings, current_location, self.confirmations, self.transport_mode, self.concurrency_authorizations)

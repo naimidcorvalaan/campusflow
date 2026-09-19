@@ -32,6 +32,42 @@ _INTENT_TYPES = (
 )
 _PRIORITY_DIRECTIONS = ("raise", "lower")
 
+# FeedbackDecision only owns ref-bound lifecycle/order semantics. These
+# mutations require the existing unified interpreter, selected by mixed.
+COMPATIBILITY_FEEDBACK_SEMANTICS = (
+    "新增尚不在台账中的任务、修改固定安排、报告部分进度或剩余工作量，均需intent_type=mixed交给统一反馈解释器处理。"
+    "不要为新任务编造task_ref，也不要仅因它尚无ref就clarify或忽略新增要求。"
+    "部分完成不是complete；complete只表示整个任务已做完。具体已做/剩余分钟不能用优先级、顺序或complete代替。"
+    "mixed是阶段转交决定，不是更新后的任务对象；本schema没有已做/剩余分钟或新任务详情字段。"
+    "这些事实会由下一阶段从原始反馈提取，不能因为mixed决定没有重复它们就判漏信息或reject。"
+    "仅新增任务的转交可以target_task_refs=[]且全部ref操作数组为空；这是完整合法的mixed决定，"
+    "不是漏掉新增任务。Critic只审核转交类别与已有ref操作，不能要求本阶段创建尚不存在的身份或任务详情。"
+    "用户明确报告的实际进度和剩余工作量可以不同于旧预估；旧台账不是否定新事实的依据。"
+    "这些反馈同时包含排序或地点变化时仍保留mixed以及已有ref的其他明确变化。"
+    "仅修改固定安排时间或地点也用mixed，target_task_refs=[]及其他任务操作数组为空完全合法；"
+    "commitment_ref不能塞进task_ref字段。location_correction只表示用户当前所在位置，"
+    "不是固定安排字段更新。已绑定问题的时间/地点回答必须按目标commitment转交，不能因任务数组为空而reject。"
+)
+
+
+# One declaration for interpreter output and reviewer repaired_decision.
+FEEDBACK_DECISION_CONTRACT = (
+    '{"schema_version":"p4.feedback-decision.v1","intent_type":'
+    '"no_change|prioritize_now|reorder|cancel|postpone|complete|restore|location_correction|concurrency|what_if|mixed|clarify",'
+    '"target_task_refs":[string],"preferred_next_task_ref":string|null,'
+    '"priority_changes":[{"task_ref":string,"direction":"raise|lower"}],'
+    '"ordering_constraints":[{"before_task_ref":string,"after_task_ref":string}],'
+    '"cancelled_task_refs":[string],"postponed_task_refs":[string],'
+    '"completed_task_refs":[string],"restored_task_refs":[string],'
+    '"concurrency_changes":[{"action":"authorize|revoke","task_ref":string,'
+    '"commitment_ref":string,"requested_minutes":int|null,'
+    '"placement":"earliest|start|end|offset","start_offset_minutes":int|null,'
+    '"source":"explicit_user_request"}],'
+    '"location_correction":string|null,"explicit_user_preference":bool,'
+    '"confidence":number,"clarification_needed":bool,'
+    '"clarification_question":string|null,"day_preference_candidate":bool}.\n'
+)
+
 
 @dataclass(frozen=True)
 class TaskOrderingConstraint:
@@ -210,7 +246,11 @@ def decide_feedback(
     # dedicated What-if Interpreter against a cloned canonical state.  Running
     # the ordinary feedback critic as well would ask two passes to solve the
     # same semantic job before the preview pipeline even begins.
-    if decision.intent_type == "what_if":
+    if decision.intent_type in ("what_if", "mixed"):
+        # Mixed transfers the original utterance to the unified operation
+        # interpreter. A routing-only schema cannot represent additions or
+        # progress, so judging their completeness here creates false rejection.
+        # Ref validation above and post-transaction compliance remain strict.
         return FeedbackDecisionOutcome(decision, a_calls, 0, False)
 
     critic_system, critic_user = build_feedback_critic_prompt(
@@ -274,30 +314,22 @@ def build_feedback_interpreter_prompt(
         "你是 CampusFlow 的 Feedback Interpreter（p4.feedback-decision）。"
         "只判断用户最新反馈想改变什么，不规划时间、不计算路线。所有任务目标必须使用台账中的 task_ref。"
         "不要把‘现在就想做X’降级成 generic replan。\n"
+        "用户仅要求按剩余任务继续且没有新选择时，用 no_change；这不是必须询问优先级的歧义。"
+        "若反馈所指任务不在任务台账中，不得把进度套用到唯一剩下的另一项任务；应 clarify。"
         "输出 JSON schema："
-        '{"schema_version":"p4.feedback-decision.v1","intent_type":'
-        '"no_change|prioritize_now|reorder|cancel|postpone|complete|restore|location_correction|concurrency|what_if|mixed|clarify",'
-        '"target_task_refs":[string],"preferred_next_task_ref":string|null,'
-        '"priority_changes":[{"task_ref":string,"direction":"raise|lower"}],'
-        '"ordering_constraints":[{"before_task_ref":string,"after_task_ref":string}],'
-        '"cancelled_task_refs":[string],"postponed_task_refs":[string],'
-        '"completed_task_refs":[string],"restored_task_refs":[string],'
-        '"concurrency_changes":[{"action":"authorize|revoke","task_ref":string,'
-        '"commitment_ref":string,"requested_minutes":int|null,'
-        '"placement":"earliest|start|end|offset","start_offset_minutes":int|null,'
-        '"source":"explicit_user_request"}],'
-        '"location_correction":string|null,"explicit_user_preference":bool,'
-        '"confidence":number,"clarification_needed":bool,'
-        '"clarification_question":string|null,"day_preference_candidate":bool}.\n'
-        "‘洗衣服放前面/现在就想洗衣服’应绑定对应 ref 并设置 preferred_next；"
+        + FEEDBACK_DECISION_CONTRACT
+        + "‘洗衣服放前面/现在就想洗衣服’应绑定对应 ref 并设置 preferred_next；"
         "‘先A再B’写 ordering；‘晚上再做/今天先别做’是 postpone，不是 cancel；"
-        "‘已经做完’是 complete；位置纠正只填 location_correction。"
+        "‘已经做完’是 complete；仅用户当前所在位置纠正填 location_correction。"
+        "课程/会议等固定安排的地点补充或纠正用 mixed 交给固定安排更新链，"
+        "location_correction 必须为 null，不能将目的地当成用户当前位置。"
         "只有用户明确说某任务与某固定安排同时进行才输出 authorize；‘上课前/下课后’不是并行。"
         "用户以‘如果……呢/假如……’询问方案影响而没有明确要求立即执行时，intent_type=what_if，"
         "只绑定相关 ref，不把假设直接写入正式 state。"
         "只有‘今天别排太满/少切换/早点吃饭’这类当天持续偏好才将 day_preference_candidate=true；"
         "单次 preferred-next、位置纠正、完成或取消指令应为 false。"
         "‘算了，这节课认真听’若语义是在撤销已存在的并行，只 revoke pair，不取消任务。只输出 JSON。"
+        + COMPATIBILITY_FEEDBACK_SEMANTICS
     )
     current_location = getattr(execution_context, "current_location", None)
     location = getattr(current_location, "location", None)
@@ -330,9 +362,13 @@ def build_feedback_critic_prompt(state, user_text, decision, execution_context=N
         '{"schema_version":"p4.feedback-decision-review.v1","decision":"approve|repair|reject",'
         '"reason":string|null,"repaired_decision":object|null}。'
         "repair 时 repaired_decision 必须完整符合 p4.feedback-decision.v1；approve/reject 时为 null。只输出 JSON。"
+        "你审核的是路由决定，原始用户反馈会完整转交下一阶段；此处并非进度修改执行结果。"
+        "被审核对象及 repaired_decision 的完整契约如下："
+        + FEEDBACK_DECISION_CONTRACT
+        + COMPATIBILITY_FEEDBACK_SEMANTICS
     )
-    user = "任务台账：\n{}\n\n用户反馈：{}\n\n解释器决定：{}".format(
-        _task_facts(state, execution_context), user_text,
+    user = "任务台账：\n{}\n\n固定安排：\n{}\n\n用户反馈：{}\n\n解释器决定：{}".format(
+        _task_facts(state, execution_context), _commitment_facts(state), user_text,
         json.dumps(_decision_payload(decision), ensure_ascii=False)
     )
     return system, user
@@ -755,9 +791,12 @@ def _task_facts(state, execution_context=None):
         location = getattr(binding, "execution_location", None)
         return getattr(location, "display_name", None) or "none"
     return "\n".join(
-        "- {ref} | {title} | status={status} | duration={duration} | location={location}".format(
+        "- {ref} | {title} | status={status} | total_minutes={total} | "
+        "completed_minutes={completed} | remaining_minutes={remaining} | location={location}".format(
             ref=item.task_ref, title=item.title, status=item.state.value,
-            duration=item.remaining_minutes if item.remaining_minutes is not None else "unknown",
+            total=item.total_minutes if item.total_minutes is not None else "unknown",
+            completed=item.completed_minutes,
+            remaining=item.remaining_minutes if item.remaining_minutes is not None else "unknown",
             location=location_for(item),
         )
         for item in state.tasks
@@ -766,10 +805,11 @@ def _task_facts(state, execution_context=None):
 
 def _commitment_facts(state):
     return "\n".join(
-        "- {} | {} | {}–{}".format(
+        "- {} | {} | {}–{} | location={}".format(
             item.commitment_ref, item.title,
             item.starts_at.strftime("%H:%M") if item.starts_at else "unknown",
             item.ends_at.strftime("%H:%M") if item.ends_at else "unknown",
+            item.location_text or "unknown",
         )
         for item in state.commitments
     ) or "（无固定安排）"

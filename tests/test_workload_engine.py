@@ -146,12 +146,13 @@ def test_invalid_estimate_numbers_never_cross_the_calculation_boundary():
         assert result[0][1]==rough_estimate(work)
 
 
-def test_workload_call_has_separate_small_output_and_timeout_budget():
+def test_workload_call_has_capacity_for_complete_ledger_and_bounded_timeout():
     from src.p2_tju_live_adapter import TJUP2CallAdapter
     calls=[]
     adapter=TJUP2CallAdapter(call_function=lambda user,**kw:calls.append((user,kw)) or '{}')
     adapter.workload_estimation_caller('system','{"supplemental_context":"填表"}')
-    assert len(calls)==1 and calls[0][1]['max_tokens']==768 and calls[0][1]['timeout']==30
+    from src.p2_tju_live_adapter import MAX_WORKLOAD_OUTPUT_TOKENS
+    assert len(calls)==1 and calls[0][1]['max_tokens']==MAX_WORKLOAD_OUTPUT_TOKENS==2048 and calls[0][1]['timeout']==30
 
 
 def test_fixed_arrangement_cannot_cancel_recognized_filling_work():
@@ -175,8 +176,12 @@ def test_short_call_compacts_evidence_without_losing_work_counts():
     requests=[]
     result,_=estimate_workloads((work,),lambda system,user:requests.append(user) or '{}','填表')
     payload=json.loads(requests[0]);features=payload['workloads'][0]['features']
-    assert len(requests[0])<1500 and len(features)==1
-    assert features[0]['units']==64 and features[0]['total_words']==19200
+    # The existing workload summary remains compact; the newly required
+    # verified-reference catalog intentionally has no old whole-prompt cap.
+    assert len(features)==1
+    assert len(payload['verified_evidence_refs'])==33  # 32 facts plus user supplement
+    assert len({r['provenance_ref'] for r in payload['verified_evidence_refs']})==33
+    assert features[0]['action_count']==64 and features[0]['total_words']==19200
     assert result[0][1]==rough_estimate(work)
 
 

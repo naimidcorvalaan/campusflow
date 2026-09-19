@@ -170,10 +170,7 @@ def run_agent_intelligence(
     # What-if expression is prepared while its candidate is still isolated.
     # Adoption can then publish that exact checked copy with zero model calls
     # and without re-running strategy selection or allocation.
-    if (
-        expression_context.unresolved_confirmations
-        or situation.clarification_value in ("medium", "high")
-    ):
+    if expression_context.unresolved_confirmations:
         clarification, trace = choose_smart_clarification(
             expression_context, situation, caller, repair_caller, trace
         )
@@ -193,6 +190,7 @@ def run_agent_intelligence(
         approved_suggestion=(
             suggestion.text if suggestion.should_show else None
         ),
+        actual_tasks=getattr(getattr(selected.result, "updated_state", None), "tasks", ()),
     )
     return AgentIntelligenceResult(
         expression_context, situation, tuple(strategies), tuple(generated.candidates),

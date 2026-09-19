@@ -56,9 +56,28 @@ class TaskProgress:
     state: TaskState
     is_splittable: Optional[bool]
     minimum_slice_minutes: Optional[int]
+    # Causal/user-required completion edges, never inferred from list order.
+    predecessor_task_refs: Tuple[str, ...] = ()
+    attention_mode: str = 'active'
+    launch_task_ref: Optional[str] = None
+    background_reason: Optional[str] = None
+    user_reported_running: bool = False
+    departure_after_task_refs: Tuple[str, ...] = ()
+    overlap_task_ref: Optional[str] = None
 
     def __post_init__(self):
         _require_non_empty_text("task_ref", self.task_ref)
+        from src.task_attention import validate_attention
+        validate_attention(self)
+        if (not isinstance(self.departure_after_task_refs, tuple)
+                or any(ref not in self.predecessor_task_refs for ref in self.departure_after_task_refs)
+                or len(set(self.departure_after_task_refs)) != len(self.departure_after_task_refs)):
+            raise ValueError('departure dependencies must be a unique subset of task predecessors')
+        if (not isinstance(self.predecessor_task_refs, tuple)
+                or any(not isinstance(ref, str) or not ref.strip() for ref in self.predecessor_task_refs)
+                or self.task_ref in self.predecessor_task_refs
+                or len(set(self.predecessor_task_refs)) != len(self.predecessor_task_refs)):
+            raise ValueError("invalid predecessor task refs")
         _require_non_empty_text("title", self.title)
         _require_minutes("completed_minutes", self.completed_minutes, minimum=0)
         if self.total_minutes is not None:

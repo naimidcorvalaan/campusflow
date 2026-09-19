@@ -13,6 +13,7 @@ from src.material_planning import plan_fingerprint, matching_context, build_mate
 from src.personal_settings import load_personal_settings
 from src.file_material import (read_file_material, FileMaterialError, FILE_SOURCE_TYPES,
     MAX_DOCX_BYTES, MAX_PDF_BYTES)
+from src import file_material as file_capacity
 from src.task_estimation import MAX_IMAGE_BYTES
 from src.material_estimate_recovery import (confirm_minimal_task, reestimate_only,
     minimal_confirmation_mode, adoption_next_step)
@@ -23,7 +24,9 @@ def _display_fact(value):
     return value.strftime('%Y-%m-%d %H:%M') if hasattr(value,'strftime') else str(value)
 
 
-def _render_estimate_card(st, draft, value, waiting='', show_coverage=True, rough=False):
+def _render_estimate_card(st, draft, value, waiting='', show_coverage=True, rough=False, facts_note='', effort_ledger=None):
+    from src.material_effort_presentation import present_effort
+    value,ledger_note=present_effort(value,effort_ledger)
     partial = draft.estimate_coverage != 'whole'
     label = '专注用时' if partial else '预计专注用时'
     if rough:
@@ -41,9 +44,10 @@ def _render_estimate_card(st, draft, value, waiting='', show_coverage=True, roug
         '<div class="cf-estimate-metric">{}<strong>{}–{} <small>分钟</small></strong></div>'
         '<div class="cf-estimate-metric">{}<strong>{} <small>分钟</small></strong></div>'
         '</div></div><details class="cf-estimate-details"><summary>估时依据</summary>'
-        '<div class="cf-material-basis">{}</div>{}</details>{}{}</section>'.format(
+        '<div class="cf-material-basis">{}</div>{}{}</details>{}{}</section>'.format(
             esc(value['task_name']),esc(value['short_scope']),label,value['focused_minutes_min'],
-            value['focused_minutes_max'],recommendation,value['recommended_minutes'],esc(value['rationale']),
+            value['focused_minutes_max'],recommendation,value['recommended_minutes'],esc(value['rationale'])+('<br>'+esc(ledger_note) if ledger_note else ''),
+            '<div class="cf-material-source-facts">材料要求：{}</div>'.format(esc(facts_note)) if facts_note else '',
             '<div class="cf-material-assumptions">前提：{}</div>'.format(esc(assumptions)) if assumptions else '',
             waiting_html,
             '<div class="cf-material-coverage">{}</div>'.format(esc(note)) if partial and show_coverage else ''),
@@ -77,7 +81,11 @@ def save_material_edit(st, inbox, reference):
         return True
     before = live._business_snapshot(st.session_state)
     st.session_state[MATERIAL_INBOX_KEY] = inbox
-    return live._persist_after_mutation(st,before,reference=reference)
+    try:
+        return live._persist_after_mutation(st,before,reference=reference)
+    except Exception:
+        live._restore_business_snapshot(st.session_state,before)
+        raise
 
 
 def handle_material_action(st, session, adapter, action, reference, item_id=None,
@@ -104,14 +112,43 @@ def handle_material_action(st, session, adapter, action, reference, item_id=None
                 file_source=file_source, images_caller=getattr(adapter,'material_images_caller',None),
                 workload_caller=getattr(adapter,'workload_estimation_caller',None),
             )
-            if (source_draft is not None and inbox.draft
-                    and (inbox.draft.estimate_fallbacks or any(item.minutes for item in inbox.draft.items))
-                    and (not (updated.estimate_fallbacks or any(item.minutes for item in updated.items))
-                        or (updated.diagnostics.get('estimate_origins')==['local_workload']
-                            and inbox.draft.diagnostics.get('estimate_origins')!=['local_workload']))):
+            from src.material_estimate_diagnostics import record,record_formal_failure
+            from src.material_estimate_contract import validate_final_estimate
+            from src.material_formal_validation import FormalValidationError
+            if source_draft is not None and inbox.draft and not (
+                    updated.estimate_fallbacks or any(item.minutes for item in updated.items)):
+                record('material_publication','draft_replacement','no_usable_estimate',valid=False)
                 raise MaterialError('估时未更新 · 原估算和补充已保留，请重试。')
+            for candidate in updated.estimate_fallbacks:
+                fallback=candidate.get('origin')=='local_workload'
+                try:
+                    errors=candidate.get('final_validation_errors')
+                    if errors:
+                        issue=errors[0]
+                        error=FormalValidationError(issue['code'],issue['field_path'],
+                            issue.get('expected','valid final estimate'))
+                        error.feedback.update(issue)  # preserve safe invariant diagnostics
+                        raise error
+                    validate_final_estimate(candidate)
+                except (ValueError,TypeError,KeyError) as exc:
+                    record_formal_failure(exc,'material_fallback' if fallback else 'material_publication','final_validation')
+                    record('material_fallback' if fallback else 'material_publication','final_validation',
+                        'fallback_failed' if fallback else 'final_validation_failed',valid=False)
+                    raise MaterialError('估时未更新 · 原估算和补充已保留，请重试。') from exc
+                if fallback:record('material_fallback','final_validation','fallback_validated',valid=True)
             logging.getLogger(__name__).info('material_result %s',json.dumps(updated.diagnostics,sort_keys=True))
-            return save_material_edit(st,replace(inbox,draft=updated),reference)
+            record('material_publication','draft_replacement','draft_replacement_attempted')
+            try:saved=save_material_edit(st,replace(inbox,draft=updated),reference)
+            except Exception:
+                record('material_publication','draft_replacement','draft_replacement_failed',valid=False)
+                if any(e.get('origin')=='local_workload' for e in updated.estimate_fallbacks):
+                    record('material_fallback','publication','fallback_failed',valid=False,fallback_reason='persistence_failed')
+                raise
+            record('material_publication','draft_replacement','draft_replaced' if saved else 'draft_replacement_failed',valid=saved)
+            if any(e.get('origin')=='local_workload' for e in updated.estimate_fallbacks):
+                record('material_fallback','publication','fallback_published' if saved else 'fallback_failed',valid=saved,
+                    fallback_reason=None if saved else 'persistence_failed')
+            return saved
         if action == 'reference_date':
             return save_material_edit(st,apply_notice_date(inbox,item_id),reference)
         if action == 'prepare_estimate':
@@ -160,7 +197,7 @@ def handle_material_action(st, session, adapter, action, reference, item_id=None
             flow = st.session_state.get('cf_material_flow')
             if isinstance(flow, dict):
                 flow['message'] = '图片识别暂不可用 · 材料已保留，请重试。'
-        if action == 'extract' and source_draft is None:
+        if action == 'extract' and source_draft is None and not (inbox.draft and inbox.draft.status=='ready'):
             save_material_edit(st,replace(inbox,draft=replace(draft,status='failed',message=str(exc),
                 diagnostics=dict(source_type=draft.source_type,parse_status='request_failed',
                     result_level='needs_input',repair_used=False,estimate_available=False,
@@ -225,6 +262,9 @@ def _render_material_surface(st, session, adapter, missing, reference):
         page_range = ''
         if callable(getattr(st,'file_uploader',None)):
             uploaded = st.file_uploader('上传任务材料',type=('jpg','jpeg','png','docx','pdf','doc'),key='cf_material_image',disabled=processing)
+            if not compact:
+                st.caption('Word/PDF提取文字与材料补充合计最多{:,}字符；PDF最多{}页。超限会明确提示，不截断。'.format(
+                    file_capacity.MAX_TEXT_CHARS,file_capacity.MAX_PDF_PAGES))
         is_document = uploaded is not None and uploaded.name.lower().endswith(('.docx','.pdf','.doc'))
         text = draft.original_text if draft else ''
         with st.container():
@@ -241,7 +281,7 @@ def _render_material_surface(st, session, adapter, missing, reference):
                         placeholder='1-3, 7',disabled=processing)
             elif not (draft and draft.source_type != 'text'):
                 st.session_state.setdefault('cf_material_text',text)
-                text = st.text_area('任务、通知或说明',
+                text = st.text_area('或用文字描述你的任务',
                     key='cf_material_text',height=100,disabled=processing,
                     placeholder='完成高数第三章作业，或把老师发来的原通知粘贴在这里')
         # Allocate the result above its single optional-input footer. Widgets
@@ -362,7 +402,10 @@ def _render_material_surface(st, session, adapter, missing, reference):
                 for index,entry in enumerate(draft.estimate_fallbacks):
                     value = entry['estimate']
                     key = 'cf_material_estimate_only_' + entry['item_id']
+                    from src.material_output_schema import render_source_facts
+                    facts=entry.get('final_contract',{})
                     _render_estimate_card(st,draft,value,entry.get('waiting_note',''),show_coverage=index==0,
+                        effort_ledger=entry.get('effort_ledger'),facts_note=render_source_facts(facts.get('material_facts',{}),facts.get('material_requirements',[])),
                         rough=entry.get('origin')=='local_workload')
                     minutes = st.number_input('采用分钟',min_value=1,max_value=1440,
                         value=min(1440,entry.get('adopted_minutes',value['recommended_minutes'])),
@@ -389,7 +432,9 @@ def _render_material_surface(st, session, adapter, missing, reference):
                         return False
                     inbox, draft = updated, updated.draft
                     if mode != 'blocked':
-                        single = len(draft.estimate_fallbacks)==1 and not draft.items
+                        from src.material_estimate_recovery import matching_unestimated_item
+                        bound=matching_unestimated_item(entry,draft.items)
+                        single = len(draft.estimate_fallbacks)==1 and (not draft.items or (bound is not None and bound.item_id==entry['item_id']))
                         label = '按 {} 分钟加入计划'.format(minutes) if single else '按 {} 分钟核对任务'.format(minutes)
                         if st.button(label,key=key+'_prepare',type='primary'):
                             if missing:
@@ -405,7 +450,11 @@ def _render_material_surface(st, session, adapter, missing, reference):
                                 # Failed publication retains the prepared, editable draft for retry.
                                 live._rerun(st)
                                 return True
-            if draft.status != 'ready' or not draft.items:
+            from src.material_estimate_recovery import matching_unestimated_item
+            bound=(matching_unestimated_item(draft.estimate_fallbacks[0],draft.items)
+                if len(draft.estimate_fallbacks)==1 else None)
+            bound=(bound is not None and bound.item_id==draft.estimate_fallbacks[0]['item_id'])
+            if draft.status != 'ready' or not draft.items or bound:
                 return False
             review_key = 'cf_material_review_' + draft.source_fingerprint
             if not st.session_state.get(review_key,False):

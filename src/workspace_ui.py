@@ -1,6 +1,7 @@
 """Presentation navigation and stable mounted regions; no business state."""
 from contextlib import contextmanager, nullcontext
 import html
+import re
 
 VIEWS = ('今天', '时间线', '材料估时')
 VIEW_KEY = 'cf_workspace_view'
@@ -8,7 +9,22 @@ VIEW_KEY = 'cf_workspace_view'
 
 def view_label(view):
     # Keep the existing navigation ID and native button key on hot reload.
-    return '任务估时' if view == '材料估时' else view
+    return {'今天': '制定计划', '时间线': '今日计划表', '材料估时': '任务估时'}.get(view, view)
+
+
+def place_display_name(campus_id, node_id, name):
+    """UI label only; stored names, aliases and route identities stay intact."""
+    if campus_id == 'beiyangyuan' and node_id == 'building_31':
+        return '天津大学北洋园校区31教学楼'
+    return name
+
+
+def place_display_text(text, campus_id):
+    """Display a known campus label in final copy without rewriting its source."""
+    if campus_id != 'beiyangyuan':
+        return text
+    return re.sub(r'(?<!\d)(?:天津大学北洋园校区)?31教(?!学楼|\d)',
+                  place_display_name(campus_id, 'building_31', '31教'), text)
 
 
 class _DrawerRerun(BaseException):
@@ -91,6 +107,19 @@ def quiet_button(st, label, **kwargs):
         return st.button(label, **kwargs)
 
 
+def stable_slot(st, name):
+    """Keep an out-of-order render slot in Streamlit's tree even when empty.
+
+    Empty native containers are pruned after a run. Reinserting them before a
+    slow call shifts later children and leaves stale copies visible until the
+    run finishes. An inert anchor preserves the delta path, not a duplicate UI.
+    """
+    slot = st.container() if callable(getattr(st, 'container', None)) else nullcontext()
+    with slot:
+        st.markdown('<span class="cf-slot-anchor" data-slot="{}" hidden></span>'.format(name), unsafe_allow_html=True)
+    return slot
+
+
 @contextmanager
 def setting_row(st, label):
     columns = st.columns((1, 1.25))
@@ -118,18 +147,6 @@ def render_navigation(st, brand, settings_key):
                 st.session_state[settings_key] = True
             if sidebar is not None:
                 campus=st.session_state.get('p2_live_campus_select','北洋园校区')
-                from src.p3_campus_registry import DEFAULT_CAMPUS_REGISTRY
-                from src.spacetime_ui import campus_texture_html
-                registration = next((item for item in DEFAULT_CAMPUS_REGISTRY.list_campuses() if item.display_name == campus), None)
-                if registration is not None:
-                    # Decorative geometry must not block first-run setup or navigation.
-                    # The existing live page still owns map availability errors.
-                    try:
-                        texture = campus_texture_html(DEFAULT_CAMPUS_REGISTRY.get_campus_map(registration.campus_id))
-                    except (OSError, ValueError):
-                        texture = ''
-                    if texture:
-                        st.markdown(texture, unsafe_allow_html=True)
                 st.markdown('<div class="cf-nav-environment">天津大学 · {}</div>'.format(html.escape(str(campus))),unsafe_allow_html=True)
 
 
@@ -146,14 +163,3 @@ def render_profile_status(st, identity, status):
         label = '个人档案已启用'
     with sidebar:
         st.markdown('<div class="cf-nav-profile">{}</div>'.format(label), unsafe_allow_html=True)
-
-
-def render_today_texture(st, map_data, view):
-    """Reuse the sidebar's real campus geometry as a noninteractive material."""
-    if view != VIEWS[0] or map_data is None:
-        return
-    from src.spacetime_ui import campus_texture_html
-    texture = campus_texture_html(map_data)
-    if texture:
-        st.markdown(texture.replace('class="cf-campus-imprint"', 'class="cf-today-texture"'),
-            unsafe_allow_html=True)

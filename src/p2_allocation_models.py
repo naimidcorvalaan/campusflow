@@ -12,6 +12,7 @@ completed_minutes 只能由 P2a 的 progress report 更新。
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Dict, Optional, Tuple
 
 ALLOCATION_REF_PREFIX = "allocation_"
@@ -24,18 +25,29 @@ class TaskAllocation:
     allocation_ref: str
     task_ref: str
     task_title: str
-    window_ref: str
+    window_ref: Optional[str]
     planned_minutes: int
     sequence_index: int
     is_partial: bool
     remaining_before: int
     remaining_after: int
+    # None preserves the historical sequential-window representation.
+    starts_at: Optional[datetime] = None
+    occupies_attention: bool = True
 
     def __post_init__(self):
+        if not isinstance(self.occupies_attention, bool):
+            raise ValueError('occupies_attention must be bool')
+        if self.starts_at is not None and not isinstance(self.starts_at, datetime):
+            raise ValueError('allocation starts_at must be datetime or None')
         _require_non_empty("allocation_ref", self.allocation_ref)
         _require_non_empty("task_ref", self.task_ref)
         _require_non_empty("task_title", self.task_title)
-        _require_non_empty("window_ref", self.window_ref)
+        if self.window_ref is None:
+            if self.occupies_attention or self.starts_at is None:
+                raise ValueError('only explicit-time background intervals can omit a person window')
+        else:
+            _require_non_empty("window_ref", self.window_ref)
         _require_int_min("planned_minutes", self.planned_minutes, minimum=1)
         _require_int_min("sequence_index", self.sequence_index, minimum=0)
         if not isinstance(self.is_partial, bool):
@@ -121,6 +133,8 @@ class DayAllocationPlan:
     def planned_minutes_by_window(self) -> Dict[str, int]:
         result = {}
         for allocation in self.allocations:
+            if not allocation.occupies_attention:
+                continue
             result[allocation.window_ref] = result.get(allocation.window_ref, 0) + allocation.planned_minutes
         return result
 

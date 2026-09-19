@@ -19,7 +19,7 @@ skip_reconciliation=True 时跳过任务 reconciliation（用于首次全天计�
 """
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Callable, Optional, Sequence, Tuple
 
 from src.p1_models import SourceKind
@@ -161,6 +161,9 @@ def run_p2_agentic_day_planning(
             warnings.append(plan_warning)
             intent = None
 
+    # Keep the pre-estimate ledger: a same-round semantic correction may
+    # replace tentative AI effort, never a user/adopted or prior-round fact.
+    before_estimates = planning_state
     # 3) 程序应用 AI 暂估（防覆盖）
     planning_state, estimate_warnings = _apply_estimates(planning_state, intent)
     warnings.extend(estimate_warnings)
@@ -186,7 +189,11 @@ def run_p2_agentic_day_planning(
     revision_used = False
     review_result = None
     review_warning = None
-    if not skip_legacy_review:
+    has_new_estimate = bool(intent and any(
+        item.total_minutes is None and item.task_ref in {e.task_ref for e in intent.task_estimates}
+        for item in before_estimates.tasks
+    ))
+    if not skip_legacy_review or has_new_estimate:
         review_result, review_warning = _run_review(
             planning_state, user_text, intent, allocation_plan, call,
             review_caller, repair_caller,
@@ -195,7 +202,7 @@ def run_p2_agentic_day_planning(
         warnings.append(review_warning)
     elif review_result is not None and review_result.decision == "revise":
         revised_intent, revision_warning = _run_revision(
-            planning_state,
+            _restore_round_estimate_slots(planning_state, before_estimates),
             user_text,
             intent,
             allocation_plan,
@@ -210,7 +217,12 @@ def run_p2_agentic_day_planning(
             and _validate_intent(revised_intent, planning_state) is None
         ):
             intent = revised_intent
-            planning_state, extra_warnings = _apply_estimates(planning_state, revised_intent)
+            # Revisions of a tentative estimate use its original unknown
+            # slot. Applying onto the already-filled ledger made every AI
+            # estimate immutable before any reviewer could correct it.
+            estimation_base = _restore_round_estimate_slots(planning_state, before_estimates,
+                {estimate.task_ref for estimate in revised_intent.task_estimates})
+            planning_state, extra_warnings = _apply_estimates(estimation_base, revised_intent)
             warnings.extend(extra_warnings)
             allocation_plan = allocate_tasks_across_windows(
                 planning_state,
@@ -449,6 +461,8 @@ def _parse_splittability_review(text: Optional[str]) -> Optional[SplittabilityRe
 
 
 def _apply_reviewed_splittability(task: TaskProgress, slice_value: Optional[int]) -> TaskProgress:
+    if task.attention_mode == 'background':
+        return task  # elapsed process is continuous; attention is reviewed upstream
     return TaskProgress(
         task_ref=task.task_ref,
         title=task.title,
@@ -458,6 +472,11 @@ def _apply_reviewed_splittability(task: TaskProgress, slice_value: Optional[int]
         state=task.state,
         is_splittable=True,
         minimum_slice_minutes=slice_value if slice_value is not None else task.minimum_slice_minutes,
+        predecessor_task_refs=task.predecessor_task_refs,
+        departure_after_task_refs=task.departure_after_task_refs,
+        overlap_task_ref=task.overlap_task_ref,
+        attention_mode=task.attention_mode, launch_task_ref=task.launch_task_ref,
+        background_reason=task.background_reason, user_reported_running=task.user_reported_running,
     )
 
 
@@ -506,6 +525,19 @@ def _run_revision(
     if revised is not None:
         return revised, None
     return None, WARNING_REVISION_FAILED
+
+
+def _restore_round_estimate_slots(current, original, refs=None):
+    """Reopen only fields that were unknown at entry to this transaction."""
+    before = {task.task_ref: task for task in original.tasks}
+    tasks = []
+    for task in current.tasks:
+        old = before.get(task.task_ref)
+        if old is not None and old.total_minutes is None and (refs is None or task.task_ref in refs):
+            task = replace(task, total_minutes=None, total_source=old.total_source,
+                is_splittable=old.is_splittable, minimum_slice_minutes=old.minimum_slice_minutes)
+        tasks.append(task)
+    return _rebuild_state(current, tasks=tuple(tasks))
 
 
 def _apply_estimates(
@@ -563,6 +595,11 @@ def _apply_estimate_fields(task: TaskProgress, estimate: TaskEstimate) -> TaskPr
         state=task.state,
         is_splittable=is_splittable,
         minimum_slice_minutes=minimum_slice,
+        predecessor_task_refs=task.predecessor_task_refs,
+        departure_after_task_refs=task.departure_after_task_refs,
+        overlap_task_ref=task.overlap_task_ref,
+        attention_mode=task.attention_mode, launch_task_ref=task.launch_task_ref,
+        background_reason=task.background_reason, user_reported_running=task.user_reported_running,
     )
 
 

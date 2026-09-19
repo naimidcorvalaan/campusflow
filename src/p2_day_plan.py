@@ -65,7 +65,7 @@ def compact_plan_lines(
     task_by_ref = {task.task_ref: task for task in state.tasks}
     commitment_by_ref = {commitment.commitment_ref: commitment for commitment in state.commitments}
     for allocation in plan.allocations:
-        if allocation.window_ref not in window_by_ref:
+        if allocation.window_ref not in window_by_ref and (allocation.occupies_attention or allocation.window_ref is not None):
             raise ValueError("allocation references unknown window: {}".format(allocation.window_ref))
     for ref in plan.unallocated_task_refs:
         if ref not in task_by_ref:
@@ -168,55 +168,53 @@ def _build_segments(
 ):
     segments = []
     seen_task_refs = set()
-    for window in state.windows:
-        allocations = sorted(
-            (allocation for allocation in plan.allocations
-             if allocation.window_ref == window.window_ref),
-            key=lambda allocation: (allocation.sequence_index, allocation.allocation_ref),
+    from src.task_attention import allocation_spans
+    for allocation, cursor, segment_end in allocation_spans(state, plan):
+        task = task_by_ref.get(allocation.task_ref)
+        suffix = ""
+        binding = (
+            execution_context.binding_for(allocation.task_ref)
+            if execution_context is not None
+            and hasattr(execution_context, "binding_for")
+            else None
         )
-        cursor = window.starts_at
-        for allocation in allocations:
-            segment_end = cursor + timedelta(minutes=allocation.planned_minutes)
-            task = task_by_ref.get(allocation.task_ref)
-            suffix = ""
-            binding = (
-                execution_context.binding_for(allocation.task_ref)
-                if execution_context is not None
-                and hasattr(execution_context, "binding_for")
-                else None
+        # P4's meal_default/user-explicit execution duration is a program
+        # fact for this plan round.  It must not inherit an older generic
+        # task-workload estimate label from TaskProgress.
+        execution_duration_is_fact = bool(
+            binding is not None
+            and getattr(binding, "effective_duration_minutes", None) is not None
+            and getattr(binding, "duration_source", None)
+            in ("meal_default", "user_explicit", "semantic_estimate")
+        )
+        is_continuation = allocation.task_ref in seen_task_refs
+        if (
+            task is not None
+            and task.total_source == SourceKind.AI_ESTIMATED
+            and not execution_duration_is_fact
+            and not is_continuation
+        ):
+            suffix = "（AI暂估）"
+        # A later planned slice is not evidence that work has started.
+        # Reserve "continue" for real progress; otherwise describe a
+        # future additional slice without changing task state.
+        prefix = "继续" if task is not None and task.completed_minutes > 0 else "再做"
+        title = prefix + allocation.task_title if is_continuation else allocation.task_title
+        display = "{} {} 分钟{}".format(title, allocation.planned_minutes, suffix)
+        if task is not None and task.attention_mode == 'background':
+            display += '（后台运行）'
+        segments.append(
+            _PlanSegment(
+                start=cursor,
+                end=segment_end,
+                title=title,
+                display=display,
+                kind="background" if task is not None and task.attention_mode == 'background' else "task",
+                alloc_ref=allocation.allocation_ref,
+                source_label=suffix,
             )
-            # P4's meal_default/user-explicit execution duration is a program
-            # fact for this plan round.  It must not inherit an older generic
-            # task-workload estimate label from TaskProgress.
-            execution_duration_is_fact = bool(
-                binding is not None
-                and getattr(binding, "effective_duration_minutes", None) is not None
-                and getattr(binding, "duration_source", None)
-                in ("meal_default", "user_explicit", "semantic_estimate")
-            )
-            is_continuation = allocation.task_ref in seen_task_refs
-            if (
-                task is not None
-                and task.total_source == SourceKind.AI_ESTIMATED
-                and not execution_duration_is_fact
-                and not is_continuation
-            ):
-                suffix = "（AI暂估）"
-            title = "继续{}".format(allocation.task_title) if is_continuation else allocation.task_title
-            display = "{} {} 分钟{}".format(title, allocation.planned_minutes, suffix)
-            segments.append(
-                _PlanSegment(
-                    start=cursor,
-                    end=segment_end,
-                    title=title,
-                    display=display,
-                    kind="task",
-                    alloc_ref=allocation.allocation_ref,
-                    source_label=suffix,
-                )
-            )
-            seen_task_refs.add(allocation.task_ref)
-            cursor = segment_end
+        )
+        seen_task_refs.add(allocation.task_ref)
     for commitment in state.commitments:
         for prep_start, prep_end, prep_display in class_prep_display_segments(commitment):
             segments.append(_PlanSegment(
@@ -288,7 +286,7 @@ def summarize_day_plan(plan: DayAllocationPlan, state: DayPlanningState) -> DayP
     window_by_ref = {window.window_ref: window for window in state.windows}
     task_by_ref = {task.task_ref: task for task in state.tasks}
     for allocation in plan.allocations:
-        if allocation.window_ref not in window_by_ref:
+        if allocation.window_ref not in window_by_ref and (allocation.occupies_attention or allocation.window_ref is not None):
             raise ValueError("allocation references unknown window: {}".format(allocation.window_ref))
     for ref in plan.unallocated_task_refs:
         if ref not in task_by_ref:
@@ -315,6 +313,12 @@ def summarize_day_plan(plan: DayAllocationPlan, state: DayPlanningState) -> DayP
             )
 
     unallocated_lines = []
+    for allocation in plan.allocations:
+        if allocation.window_ref is None:
+            later_lines.append("{}–{}：{} {} 分钟（后台运行）".format(
+                allocation.starts_at.strftime("%H:%M"),
+                (allocation.starts_at + timedelta(minutes=allocation.planned_minutes)).strftime("%H:%M"),
+                allocation.task_title, allocation.planned_minutes))
     for ref in plan.unallocated_task_refs:
         unallocated_lines.append("今天暂未安排：{}".format(task_by_ref[ref].title))
 

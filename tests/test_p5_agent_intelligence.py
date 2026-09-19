@@ -118,6 +118,84 @@ def _analysis_json():
     }, ensure_ascii=False)
 
 
+def test_false_progress_correction_preserves_other_valid_explanation_fields():
+    from src.p5_copy_guard import _deterministic_copy_guard
+    copy = GroundedNarrative(
+        '先写作业。', '写作业先安排30分钟。', '正在写作业。',
+        risk_note='写作业还有30分钟尚未安排。')
+    guarded = _deterministic_copy_guard(_context(), _summary(), copy)
+    assert '正在' not in guarded.closing
+    assert guarded.risk_note == copy.risk_note
+    assert guarded.opening == copy.opening
+    assert not guarded.generated
+
+
+def test_material_risk_reaches_visible_companion_summary():
+    from types import SimpleNamespace
+    from src.p2_session import P2SessionController
+    narrative = GroundedNarrative('先去交材料。', None, '注意时间。',
+        risk_note='笔记改到交材料后，未满足先看笔记的顺序。')
+    intelligence = SimpleNamespace(narrative=narrative, context=_context())
+    copy = P2SessionController._companion_from_intelligence(None, intelligence)
+    assert narrative.risk_note in copy.opening
+    assert copy.opening.count(narrative.risk_note) == 1
+
+
+def test_validated_tradeoff_replaces_closing_instead_of_hidden_lifestyle_panel():
+    from types import SimpleNamespace
+    from src.p2_session import P2SessionController
+    narrative = GroundedNarrative('先去交材料。',
+        '为保住截止时间，笔记顺延到交材料后。', '祝你顺利。')
+    copy = P2SessionController._companion_from_intelligence(None,
+        SimpleNamespace(narrative=narrative, context=_context()))
+    assert copy.closing == narrative.why_this_plan
+    assert copy.opening == narrative.opening
+
+
+def test_grounded_reason_does_not_require_verbatim_task_title():
+    from src.p5_copy_guard import _deterministic_copy_guard
+    explanation = '先推进书面练习，再利用剩余时间记词。'
+    narrative = GroundedNarrative('先写作业。', explanation, '按时间线执行。')
+    assert _deterministic_copy_guard(_context(), _summary(), narrative).why_this_plan == explanation
+
+
+def test_copy_quantities_name_planned_and_unallocated_not_actual_completion():
+    from src.p5_copy_guard import _candidate_payload
+    candidate = _summary()
+    payload = _candidate_payload(candidate)
+    assert payload['planned_minutes_by_task'] == list(candidate.task_completion)
+    assert payload['unallocated_minutes_after_entire_plan'] == list(candidate.remaining_work)
+    assert 'task_completion' not in payload and 'remaining_work' not in payload
+
+
+@pytest.mark.parametrize('state', ['abandoned', 'skipped_today'])
+def test_terminal_task_copy_facts_do_not_become_outstanding_work(state):
+    from src.p5_copy_semantics import copy_semantic_facts
+    context = _context()
+    terminal = replace(context.active_tasks[1], state=state)
+    facts = copy_semantic_facts(context, (terminal,))
+    task = next(t for t in facts['tasks'] if t['task_ref'] == terminal.task_ref)
+    assert task['state'] == task['progress_status'] == state
+    assert task['remaining_minutes'] == 30  # Historical work is not silently erased.
+    assert not task['eligible_today'] and not task['reported_in_progress']
+
+
+def test_copy_stages_separate_current_facts_from_superseded_request():
+    from src.p5_copy_guard import _copy_context, build_copy_check_prompt, build_grounded_narrator_prompt
+    context = replace(_context(), latest_user_text='Original venue A',
+                      latest_feedback_text='Use venue B instead')
+    payload = json.loads(_copy_context(context))
+    assert 'latest_user_text' not in payload['current_facts']
+    assert payload['intent_history'] == dict(initial_request='Original venue A',
+                                            latest_update='Use venue B instead')
+    assert payload['current_facts']['fixed_commitments'] == json.loads(context.to_json())['fixed_commitments']
+    for system, user in (build_copy_check_prompt(context, _summary(),
+            GroundedNarrative('先写作业。', None, '继续按计划。')),
+            build_grounded_narrator_prompt(context, _summary(), context.latest_feedback_text)):
+        assert 'current_facts' in system and 'intent_history' in system
+        assert 'Use venue B instead' in user
+
+
 def _strategies_json():
     return json.dumps({
         "schema_version": "p5.plan-strategies.v1",
@@ -296,6 +374,37 @@ def test_agent_pipeline_has_a_global_bounded_repair_budget():
     assert result.trace.call_count == 9
     assert caller.calls == 9
     assert result.trace.fallback_count >= 1
+    assert sum(record.repair for record in result.trace.records) <= 2
+
+
+def test_repair_preserves_full_stage_contract_and_failed_answer():
+    from src.p5_agent_runtime import call_structured_stage
+    calls = []
+    def caller(system, user):
+        calls.append((system, user))
+        return 'broken-output' if len(calls) == 1 else _analysis_json()
+    from src.p5_situation_analyst import parse_situation_analysis
+    value, trace = call_structured_stage(
+        caller, caller, 'complete schema fields', 'original context',
+        lambda raw: parse_situation_analysis(raw, _context()), 'situation_analyst', 'test',
+        repair_system_prompt='repair instruction',
+    )
+    assert value is not None and trace.call_count == 2
+    assert 'complete schema fields' in calls[1][0]
+    assert 'original context' in calls[1][1] and 'broken-output' in calls[1][1]
+    assert trace.records[0].failure_kind == 'invalid_json'
+
+
+@pytest.mark.parametrize('closing', [
+    '（注：若位置未知，应改为当前计划；鉴于facts中current_location_source为unknown。）',
+    '14:30 后接着写作业。',
+    '14:10 完成写作业。',
+])
+def test_final_copy_rejects_internal_notes_and_contradictory_task_times(closing):
+    from src.p5_copy_guard import _deterministic_copy_guard
+    value = _deterministic_copy_guard(_context(), _summary(), GroundedNarrative('先写作业。', None, closing))
+    assert not value.generated
+    assert value.closing != closing
 
 
 def test_reviewer_repair_candidate_is_deterministically_rechecked():

@@ -557,8 +557,12 @@ def reserve_timed_movement_intervals(state: DayPlanningState, intervals):
     """
     if not isinstance(state, DayPlanningState):
         raise TypeError("state must be a DayPlanningState")
+    intervals = tuple(intervals or ())
     prepared = []
-    for index, item in enumerate(tuple(intervals or ())):
+    pieces = []
+    piece_groups = []
+    crosses_boundary = False
+    for index, item in enumerate(intervals):
         if not isinstance(item, tuple) or len(item) != 3:
             raise TypeError("intervals 必须为 (movement_start, minutes, transition) 元组")
         movement_start, estimated_minutes, transition_minutes = item
@@ -576,8 +580,39 @@ def reserve_timed_movement_intervals(state: DayPlanningState, intervals):
             None,
         )
         if target is None:
-            return state, ()
+            # An earliest-start split is not a physical obstruction. Reserve
+            # the entire occupied interval across contiguous free windows,
+            # retaining every original boundary and never crossing a gap or
+            # a protected commitment/preparation interval.
+            cursor = occupied_start
+            group = []
+            for window in sorted(state.windows, key=lambda value: value.starts_at):
+                limit = _movement_end_limit(window, state)
+                if window.starts_at <= cursor < limit:
+                    end = min(limit, occupied_end)
+                    group.append(len(pieces))
+                    pieces.append((cursor, int((end - cursor).total_seconds() // 60), 0))
+                    cursor = end
+                    if cursor == occupied_end:
+                        break
+            if cursor != occupied_end:
+                return state, ()
+            piece_groups.append(group)
+            crosses_boundary = True
+            continue
+        piece_groups.append([len(pieces)])
+        pieces.append(item)
         prepared.append((index, target, occupied_start, occupied_end, movement_start))
+    if crosses_boundary:
+        ordered = sorted((start - timedelta(minutes=transition),
+                          start + timedelta(minutes=minutes))
+                         for start, minutes, transition in intervals)
+        if any(right[0] < left[1] for left, right in zip(ordered, ordered[1:])):
+            return state, ()
+        adjusted, piece_refs = reserve_timed_movement_intervals(state, tuple(pieces))
+        if len(piece_refs) != len(pieces):
+            return state, ()
+        return adjusted, tuple(piece_refs[group[-1]] for group in piece_groups)
     by_window = {}
     for item in prepared:
         by_window.setdefault(item[1].window_ref, []).append(item)
@@ -668,9 +703,12 @@ def final_plan_overlap_errors(
         raise TypeError("state must be a DayPlanningState")
     intervals = []
     windows = {window.window_ref: window for window in state.windows}
+    background_refs = {task.task_ref for task in state.tasks if task.attention_mode == 'background'}
     unknown_refs = [
         item for item in getattr(allocation_plan, "allocations", ())
         if getattr(item, "window_ref", None) not in windows
+        and not (item.window_ref is None and item.task_ref in background_refs
+                 and not item.occupies_attention and item.starts_at is not None)
     ]
     errors = ["task references an unknown window" for _ in unknown_refs]
     for window in state.windows:
@@ -680,8 +718,11 @@ def final_plan_overlap_errors(
              if item.window_ref == window.window_ref),
             key=lambda item: (item.sequence_index, item.allocation_ref),
         ):
+            cursor = allocation.starts_at or cursor
             end = cursor + timedelta(minutes=allocation.planned_minutes)
-            intervals.append((cursor, end, "task"))
+            task = next((t for t in state.tasks if t.task_ref == allocation.task_ref), None)
+            if task is None or task.attention_mode != 'background':
+                intervals.append((cursor, end, "task"))
             cursor = end
     for commitment in state.commitments:
         prep = class_prep_interval(commitment)

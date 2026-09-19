@@ -57,6 +57,7 @@ def call_tju_llm_messages(
     timeout: int = 30,
     max_tokens: int = 256,
     temperature: Optional[float] = 0.2,
+    recognition_function=None,
 ) -> str:
     """Send validated OpenAI-compatible messages without logging their content."""
     messages = _validated_messages(messages)
@@ -75,6 +76,11 @@ def call_tju_llm_messages(
         "temperature": temperature if temperature is not None else 0.2,
         "max_tokens": max_tokens,
     }
+    if recognition_function is not None:
+        from src.material_function_transport import NAME
+        if recognition_function.get('name')!=NAME:
+            raise TJUClientError('无效的材料识别函数契约。')
+        payload.update(tools=[dict(type='function',function=recognition_function)],tool_choice='auto')
 
     try:
         response = requests.post(url, headers=headers, json=payload, timeout=timeout)
@@ -108,6 +114,9 @@ def call_tju_llm_messages(
             raise TJUClientError("TJU LLM 返回了非 JSON 响应。") from exc
 
         try:
+            if recognition_function is not None:
+                from src.material_function_transport import extract_arguments
+                return extract_arguments(data)
             choices = data["choices"]
             if not isinstance(choices, list) or not choices:
                 raise ValueError("响应缺少 choices。")

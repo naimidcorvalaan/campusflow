@@ -5,14 +5,35 @@ import re
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime
 from typing import Optional
+from types import SimpleNamespace
 
 from src.p2_agentic_parser import AgenticParseError, extract_json_object
 from src.p5_agent_context import AgentDecisionContext
 from src.p5_agent_runtime import call_structured_stage
 from src.p5_plan_judge import CandidateSummary
+from src.p5_copy_semantics import (
+    COPY_SEMANTICS_RULES, copy_semantic_facts, has_invalid_progress_or_completion,
+    opening_states_known_progress,
+)
 
 NARRATOR_SCHEMA_VERSION = "p5.grounded-narrator.v1"
 COPY_CHECK_SCHEMA_VERSION = "p5.copy-fact-check.v1"
+
+COPY_FACT_AUTHORITY = (
+    "current_facts 是已应用本轮反馈并通过校验的正式状态，所有地点、时间、身份和取消状态以它为准。"
+    "intent_history 仅帮助理解用户意图：initial_request是历史初始请求，latest_update是后续更新；"
+    "不能拿初始请求中已被更新的事实否定current_facts，更不能在改文案时把旧事实恢复。"
+    "计划未满足的意图可以如实说明，但不能通过文案改动正式状态。"
+)
+
+
+def _copy_context(context):
+    """Separate historical language from the current authoritative snapshot."""
+    current = context.to_payload()
+    initial = current.pop("latest_user_text", None)
+    update = current.pop("latest_feedback_text", None)
+    return json.dumps(dict(current_facts=current,
+        intent_history=dict(initial_request=initial, latest_update=update)), ensure_ascii=False)
 
 
 @dataclass(frozen=True)
@@ -51,11 +72,12 @@ class CopyFactCheck:
 def generate_grounded_narrative(
     context, candidate, latest_user_text, caller, repair_caller=None, trace=None,
     approved_suggestion=None,
+    actual_tasks=(),
 ):
     if not isinstance(context, AgentDecisionContext) or not isinstance(candidate, CandidateSummary):
         raise TypeError("context/candidate invalid")
     system, user = build_grounded_narrator_prompt(
-        context, candidate, latest_user_text, approved_suggestion
+        context, candidate, latest_user_text, approved_suggestion, actual_tasks
     )
     parser = parse_grounded_narrative
     narrative, updated = call_structured_stage(
@@ -72,17 +94,22 @@ def generate_grounded_narrative(
         narrative,
         proactive_suggestion=(approved_suggestion or None),
     )
-    check_system, check_user = build_copy_check_prompt(context, candidate, narrative)
+    check_system, check_user = build_copy_check_prompt(context, candidate, narrative, actual_tasks)
     checker = lambda text: parse_copy_fact_check(text)
     check, updated = call_structured_stage(
         caller, repair_caller, check_system, check_user, checker,
         "copy_fact_checker", "verify action-location-time grounding", updated,
         repair_system_prompt="只输出符合 {} 的 JSON。".format(COPY_CHECK_SCHEMA_VERSION),
     )
+    def finish(copy):
+        from src.p5_clock_claims import bind_clock_claims
+        guarded = _deterministic_copy_guard(context, candidate, copy, actual_tasks)
+        return bind_clock_claims(context, guarded, grounded_copy_fallback(context, candidate),
+                                caller, updated, actual_tasks)
     if check is None:
-        return _deterministic_copy_guard(context, candidate, narrative), updated
+        return finish(narrative)
     if check.safe:
-        return _deterministic_copy_guard(context, candidate, narrative), updated
+        return finish(narrative)
     if check.corrected_copy is not None:
         # The checker may correct wording, but it cannot introduce, remove or
         # replace the one suggestion that passed the independent deterministic
@@ -91,14 +118,12 @@ def generate_grounded_narrative(
             check.corrected_copy,
             proactive_suggestion=(approved_suggestion or None),
         )
-        corrected = _deterministic_copy_guard(context, candidate, checked_copy)
-        if corrected.generated:
-            return corrected, updated
+        return finish(checked_copy)
     return grounded_copy_fallback(context, candidate), updated
 
 
 def build_grounded_narrator_prompt(
-    context, candidate, latest_user_text, approved_suggestion=None
+    context, candidate, latest_user_text, approved_suggestion=None, actual_tasks=()
 ):
     system = (
         "你是 CampusFlow Grounded Narrator。只能根据最终通过硬校验的 timeline 和 remaining facts 写文案。"
@@ -109,34 +134,46 @@ def build_grounded_narrator_prompt(
         "到教学楼时间不等于到教室时间；不得把已安排完成的 meal 说成时间紧或饭后缺少缓冲。"
         "描述事件前后关系时必须沿最终 timeline 的时间顺序，不能把较晚事件写在‘随后/然后’之前。"
         "opening 只说明本次实际调整或最终时间线中可见的首要安排；总空闲较多不等于连续任务之间已经休息，"
+        "若最终安排没有满足用户明确表达的顺序或偏好，opening须简短说明实际取舍及正式时间/路线依据；"
+        "不能默默倒置顺序，也不能声称仍满足原顺序。若依据不足，只坦诚说明未满足，不编造冲突理由。"
+        "risk_note用于用户执行前必须知道的未满足要求或取舍；有这种差异时用一句话说清原要求与实际安排，"
+        "不要只放在why_this_plan中。没有真实差异或风险则null。"
         "没有程序提供的偏好达成事实时，不得笼统宣称已经充分满足‘余量/缓冲/休息’偏好。"
-        "why_this_plan 应描述最终方案中可观察的任务连续性、余量分布或取舍；没有依据时输出 null，"
-        "不得只复述某个固定安排未变化。"
+        "why_this_plan 只解释定性原因或取舍，不重复分钟、数量和钟点；这些由正式时间线呈现。"
+        "closing也不用数字或钟点重新布置行动。没有可补充的原因时why_this_plan为null。"
         "开场简短，why最多两句，结尾一句。只输出 JSON："
         "{{schema_version:'{}',opening:string,why_this_plan:string|null,closing:string,"
         "proactive_suggestion:string|null,risk_note:string|null}}。"
     ).format(NARRATOR_SCHEMA_VERSION)
-    return system, "latest={}\napproved_suggestion={}\ncontext={}\nselected_final_candidate={}".format(
+    system += "用户可见字段只放最终文案，不得包含注释、写作建议、反事实改写、内部字段名或推理。结尾无需重复具体时间。"
+    system += COPY_SEMANTICS_RULES + COPY_FACT_AUTHORITY
+    return system, "latest={}\napproved_suggestion={}\ncontext={}\nselected_final_candidate={}\ncopy_semantics={}".format(
         latest_user_text or "",
         json.dumps(approved_suggestion, ensure_ascii=False),
-        context.to_json(),
+        _copy_context(context),
         json.dumps(_candidate_payload(candidate), ensure_ascii=False, sort_keys=True),
+        json.dumps(copy_semantic_facts(context, actual_tasks), ensure_ascii=False),
     )
 
 
-def build_copy_check_prompt(context, candidate, narrative):
+def build_copy_check_prompt(context, candidate, narrative, actual_tasks=()):
     system = (
         "你是 CampusFlow Copy Fact Checker。逐项检查地点—动作、计划/完成、meal/study、"
         "movement destination、before/after、concurrency、duration 和最新意图。逐项比较 copy 中的时间与"
         "最终 timeline，并区分到教学楼、到教室和课程开始。不能修改结构化计划。"
         "凡使用先后连接关系的两项活动，必须核对它们在最终 timeline 中的实际顺序。"
-        "还要检查 opening 是否只是无依据的偏好达成评价：总空闲不能证明连续学习中已经安排休息。"
+        "只核对事实是否成立，不因文风或重述已确认事实而修订正确文案。"
+        "why_this_plan和closing只表达定性原因或收尾，不重复正式时间线的数字和钟点。"
+        "用户可见开场应如实说明未满足的明确偏好；不要删掉有最终时间线依据的取舍说明。"
         "输出 JSON：{{schema_version:'{}',safe:bool,reason:string|null,corrected_copy:object|null}}。"
         "safe=true 时 corrected_copy=null；否则可给完整 p5.grounded-narrator.v1 文案。"
     ).format(COPY_CHECK_SCHEMA_VERSION)
-    return system, "facts={}\ncandidate={}\ncopy={}".format(
-        context.to_json(), json.dumps(_candidate_payload(candidate), ensure_ascii=False, sort_keys=True),
+    system += "corrected_copy 的每个字段都直接展示给用户，禁止夹带‘注：若…应改为…’等审核意见和内部字段。信息充足时不得追加确认开始时间或已知截止时间的追问。"
+    system += COPY_SEMANTICS_RULES + COPY_FACT_AUTHORITY
+    return system, "facts={}\ncandidate={}\ncopy={}\ncopy_semantics={}".format(
+        _copy_context(context), json.dumps(_candidate_payload(candidate), ensure_ascii=False, sort_keys=True),
         json.dumps(_narrative_payload(narrative), ensure_ascii=False, sort_keys=True),
+        json.dumps(copy_semantic_facts(context, actual_tasks), ensure_ascii=False),
     )
 
 
@@ -191,7 +228,7 @@ def grounded_copy_fallback(context, candidate):
     return GroundedNarrative(opening, why, closing, generated=False)
 
 
-def _deterministic_copy_guard(context, candidate, narrative):
+def _deterministic_copy_guard(context, candidate, narrative, actual_tasks=()):
     allowed_locations = {
         item.execution_location.display_name
         for item in context.active_tasks if item.execution_location is not None
@@ -204,21 +241,30 @@ def _deterministic_copy_guard(context, candidate, narrative):
             narrative.proactive_suggestion, narrative.risk_note,
         ) if value
     )
-    if not _opening_points_to_final_facts(context, narrative.opening):
+    if re.search(r"schema_version|task_ref|current_location_source|selected_final_candidate|"
+                 r"(?:内部|模型的|我的)推理|(?:注[：:]|鉴于facts|应改为|作为.{0,8}审[核查])|<think>", text, re.I):
+        return grounded_copy_fallback(context, candidate)
+    if has_invalid_progress_or_completion(context, candidate, narrative, actual_tasks):
+        # A checker can introduce a false progress claim into one field of an
+        # otherwise faithful explanation. Replace only that field, then run all
+        # remaining guards on the resulting copy. No model fact is accepted
+        # merely because another field passed.
+        fallback = grounded_copy_fallback(context, candidate)
+        fields = ("opening", "why_this_plan", "closing", "proactive_suggestion", "risk_note")
+        changes = {}
+        for field in fields:
+            isolated = SimpleNamespace(**{name: getattr(narrative, name) if name == field else None
+                                          for name in fields})
+            if has_invalid_progress_or_completion(context, candidate, isolated, actual_tasks):
+                changes[field] = getattr(fallback, field)
+        narrative = replace(narrative, generated=False, **changes)
+        if has_invalid_progress_or_completion(context, candidate, narrative, actual_tasks):
+            return fallback
+        text = " ".join(getattr(narrative, field) for field in fields if getattr(narrative, field))
+    if (not _opening_points_to_final_facts(context, narrative.opening)
+            and not opening_states_known_progress(context, narrative.opening, actual_tasks)):
         narrative = replace(
             narrative, opening=observable_plan_opening(context)
-        )
-        text = " ".join(
-            value for value in (
-                narrative.opening, narrative.why_this_plan, narrative.closing,
-                narrative.proactive_suggestion, narrative.risk_note,
-            ) if value
-        )
-    if narrative.why_this_plan and not _is_specific_plan_observation(
-        context, narrative.why_this_plan
-    ):
-        narrative = replace(
-            narrative, why_this_plan=observable_plan_note(context)
         )
         text = " ".join(
             value for value in (
@@ -240,15 +286,6 @@ def _deterministic_copy_guard(context, candidate, narrative):
         return grounded_copy_fallback(context, candidate)
     if _has_invalid_final_time_claim(context, text):
         return grounded_copy_fallback(context, candidate)
-    # A task with remaining work must not be described as fully completed.
-    remaining = {
-        ref: minutes for ref, minutes in candidate.remaining_work if minutes > 0
-    }
-    task_by_ref = {item.task_ref: item for item in context.active_tasks}
-    for ref in remaining:
-        title = task_by_ref.get(ref).title if ref in task_by_ref else None
-        if title and any(phrase in text for phrase in ("写完" + title, "完成" + title, title + "已经完成")):
-            return grounded_copy_fallback(context, candidate)
     foreign_campus = "北洋园" if context.selected_campus_id == "weijinlu" else "卫津路"
     if foreign_campus in text:
         return grounded_copy_fallback(context, candidate)
@@ -344,7 +381,7 @@ def observable_plan_opening(context):
         return "先按时间线衔接{}，其余安排继续顺着可行窗口推进。".format(
             commitment.title
         )
-    return "我按最终确认的时间线把当前方案整理好了。"
+    return "这是根据目前信息整理的安排。"
 
 
 def _opening_points_to_final_facts(context, text):
@@ -369,20 +406,11 @@ def _opening_points_to_final_facts(context, text):
     return any(value in text for value in final_times)
 
 
-def _is_specific_plan_observation(context, text):
-    """A side-card explanation must point to a concrete flexible activity."""
-    if not isinstance(text, str) or not text.strip():
-        return False
-    return any(
-        item.title in text
-        for item in context.active_tasks
-        if item.state == "active"
-    )
-
-
 def _has_invalid_final_time_claim(context, text):
     """Reject only machine-checkable time claims contradicted by final facts."""
     if _has_reversed_final_sequence_claim(context, text):
+        return True
+    if _has_invalid_task_clock_claim(context, text):
         return True
     for match in _ARRIVAL_CLAIM_RE.finditer(text):
         claimed = _clock_minutes(match.group("time"))
@@ -419,6 +447,55 @@ def _has_invalid_final_time_claim(context, text):
         )
         if any(_clock_minutes(match.group("time")) < actual_end for match in pattern.finditer(text)):
             return True
+    return False
+
+
+def _has_invalid_task_clock_claim(context, text):
+    rows = _timeline_rows(context)
+    for clause in re.split(r"[，。；\n]", text):
+        clocks = re.findall(r"\d{1,2}:\d{2}", clause)
+        if len(clocks) != 1:
+            continue
+        clock = _clock_minutes(clocks[0])
+        if "出发" in clause and context.movements:
+            starts = {_iso_clock_minutes(m.starts_at) for m in context.movements if m.starts_at}
+            if starts and clock not in starts:
+                return True
+        if re.search(re.escape(clocks[0]) + r"\s*(?:开始收拾|收拾|开始准备出发)", clause):
+            starts = {_iso_clock_minutes(m.preparation_starts_at)
+                      for m in context.movements if m.preparation_starts_at}
+            if starts and clock not in starts:
+                return True
+        # A named event's end must not borrow its start, especially while the
+        # end is explicitly unknown. Do not infer subjects across clauses.
+        if re.search(r"下课|结束", clause):
+            named = [c for c in context.fixed_commitments if c.title in clause]
+            classes = [c for c in context.fixed_commitments if c.commitment_kind == "class"]
+            subjects = named or (classes if len(classes) == 1 and "下课" in clause else [])
+            if len(subjects) == 1:
+                title = re.escape(subjects[0].title)
+                time = re.escape(clocks[0])
+                explicit_end = re.search(
+                    time + r"\s*(?:" + title + r"\s*)?(?:结束|下课)|"
+                    + title + r"\s*(?:将于|于|在)?\s*" + time + r"\s*(?:结束|下课)", clause)
+                if explicit_end:
+                    end = subjects[0].ends_at
+                    if end is None or _iso_clock_minutes(end) != clock:
+                        return True
+        for task in context.active_tasks:
+            if task.title not in clause:
+                continue
+            intervals = [(start, end) for start, end, body in rows if task.title in body]
+            if not intervals:
+                continue
+            first, last = min(s for s, _ in intervals), max(e for _, e in intervals)
+            if any(word in clause for word in ("完成", "写完", "结束")):
+                if ("前" in clause and clock < last) or ("前" not in clause and clock != last):
+                    return True
+            elif "开始" in clause and clock != first:
+                return True
+            elif any(word in clause for word in ("接着", "继续")) and not any(s <= clock < e for s, e in intervals):
+                return True
     return False
 
 
@@ -497,8 +574,8 @@ def _candidate_payload(item):
     return {
         "candidate_id": item.candidate_id,
         "timeline": list(item.timeline),
-        "task_completion": list(item.task_completion),
-        "remaining_work": list(item.remaining_work),
+        "planned_minutes_by_task": list(item.task_completion),
+        "unallocated_minutes_after_entire_plan": list(item.remaining_work),
         "concurrency_pairs": list(item.concurrency_pairs),
         "unresolved_questions": list(item.unresolved_questions),
     }

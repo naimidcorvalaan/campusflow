@@ -188,6 +188,44 @@ def _start(caller):
     return stub
 
 
+def test_same_place_strategies_are_not_rejected_for_needing_no_route():
+    class SamePlaceCaller(_P5LiveCaller):
+        def __init__(self):
+            super().__init__()
+            payload = json.loads(self.intake)
+            payload['commitments'] = []
+            payload['current_location'] = '图书馆'
+            payload['tasks'] = payload['tasks'][2:4]
+            for task in payload['tasks']:
+                task.update(location_text='图书馆', total_minutes=20,
+                            after_commitment_index=None, before_commitment_index=None)
+            self.intake = json.dumps(payload, ensure_ascii=False)
+            plan = json.loads(self.plan)
+            plan['task_order'] = ['day_task_001', 'day_task_002']
+            plan['task_estimates'] = []
+            self.plan = json.dumps(plan)
+
+        def __call__(self, system, user):
+            value = super().__call__(system, user)
+            if 'Plan Strategist' in system:
+                parsed = json.loads(value)
+                for strategy in parsed['strategies']:
+                    strategy['priority_order'] = ['day_task_002', 'day_task_001']
+                return json.dumps(parsed)
+            return value
+
+    caller = SamePlaceCaller()
+    stub = _StubSt().set_inputs(reference_hour=14, reference_minute=0,
+        intake='我在图书馆，写作业20分钟、背单词20分钟，都在这里，顺序不限。', intake_submitted=True)
+    stub.session_state[LIVE_CAMPUS_SELECT_KEY] = '卫津路校区'
+    _run_main(stub, caller, now=dt(14))
+    assert not stub.errors
+    bundle = load_live_final_turn(stub.session_state)
+    assert bundle.agent_intelligence is not None
+    assert len(bundle.agent_intelligence.candidates) >= 2
+    assert all(not c.movement_blocks for c in bundle.agent_intelligence.candidates)
+
+
 def test_live_what_if_preview_does_not_commit_and_apply_is_atomic():
     caller = _P5LiveCaller()
     stub = _start(caller)
@@ -276,3 +314,78 @@ def test_live_concurrency_authorize_and_revoke_use_explicit_pair_only():
     assert revoked.execution_context.concurrency_authorizations == ()
     vocab = next(item for item in revoked.state.tasks if item.task_ref == "day_task_004")
     assert vocab.state.value == "active"
+
+
+def test_deferred_feedback_question_survives_final_rebuild_and_clears_when_resolved():
+    from dataclasses import replace
+    from types import SimpleNamespace
+    from src.p4_feedback_decision import parse_feedback_decision
+
+    caller = _P5LiveCaller()
+    stub = _start(caller)
+    session = stub.session_state[LIVE_SESSION_KEY]
+    baseline = session.live_final_turn()
+    question = "新增任务需要多少分钟？"
+    pending = [question]
+
+    def interpret(text, state, movement):
+        return SimpleNamespace(
+            result=replace(baseline.result, updated_state=state,
+                           questions=tuple(pending)),
+            current_location_text=None,
+        )
+
+    session.unified_handler = interpret
+    decision = parse_feedback_decision(_feedback_payload("mixed"), baseline.state)
+    result = session.rebuild_feedback_atomic("新增任务的时长待确认", accepted_decision=decision)
+    assert question in result.extra_questions
+    assert question in result.result.questions
+    assert result.state.tasks == baseline.state.tasks
+
+    unrelated = session.rebuild_feedback_atomic("只重新排一下顺序", accepted_decision=decision, use_unified=False)
+    assert question in unrelated.extra_questions
+
+    pending.clear()
+    resolved = session.rebuild_feedback_atomic("不增加任务了", accepted_decision=decision)
+    assert question not in resolved.extra_questions
+    assert question not in resolved.result.questions
+
+
+def test_feedback_ui_clock_advances_future_windows_without_progress():
+    from src.p4_feedback_decision import parse_feedback_decision
+    caller=_P5LiveCaller();stub=_start(caller)
+    session=stub.session_state[LIVE_SESSION_KEY];before=session.live_final_turn()
+    decision=parse_feedback_decision(_feedback_payload('no_change'),before.state)
+    after=session.rebuild_feedback_atomic('尚未开始，安排剩余时间',accepted_decision=decision,
+                                           use_unified=False,reference_datetime=dt(14,20))
+    assert after.state.now==dt(14,20)
+    assert after.state.reference_datetime==before.state.reference_datetime
+    assert after.state.tasks==before.state.tasks
+    assert all(window.starts_at>=dt(14,20) for window in after.state.windows)
+    assert after.version==before.version+1
+
+
+def test_clock_rebase_remains_private_when_final_rebuild_fails(monkeypatch):
+    import pytest
+    import src.p2_session as session_module
+    from src.p4_feedback_decision import parse_feedback_decision
+    caller=_P5LiveCaller();stub=_start(caller)
+    session=stub.session_state[LIVE_SESSION_KEY];before=session.live_final_turn()
+    movement=stub.session_state[MOVEMENT_DATA_KEY]
+    decision=parse_feedback_decision(_feedback_payload('no_change'),before.state)
+    def fail(*args,**kwargs):raise RuntimeError('simulated candidate failure')
+    monkeypatch.setattr(session_module,'build_live_final_turn',fail)
+    with pytest.raises(RuntimeError,match='simulated candidate failure'):
+        session.rebuild_feedback_atomic('现在更新',accepted_decision=decision,
+                                        use_unified=False,reference_datetime=dt(14,20))
+    assert session.live_final_turn() is before
+    assert stub.session_state[MOVEMENT_DATA_KEY] is movement
+
+
+def test_feedback_clock_cannot_silently_invent_a_new_day_horizon():
+    import pytest
+    caller=_P5LiveCaller();stub=_start(caller)
+    session=stub.session_state[LIVE_SESSION_KEY];before=session.live_final_turn()
+    with pytest.raises(ValueError,match='时间范围'):
+        session.rebuild_feedback_atomic('继续',reference_datetime=before.state.day_end)
+    assert session.live_final_turn() is before

@@ -4,7 +4,7 @@
 不调用路线 provider、不解析地点、不估计路线、不调用 AI。
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Callable, List, Mapping, Optional, Tuple, Union
 
 from src.p1_window_models import AvailabilityLevel, FixedCommitment
@@ -267,7 +267,8 @@ def _validate_derivation_inputs(now, day_end, default_safety_buffer_minutes, com
         raise ValueError("now and day_end must be datetimes")
     if not now < day_end:
         raise ValueError("day_end must be after now")
-    if now.date() != day_end.date():
+    midnight = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+    if now.date() != day_end.date() and day_end != midnight:
         raise ValueError("now and day_end must be on the same planning day")
     if isinstance(default_safety_buffer_minutes, bool) or not isinstance(
         default_safety_buffer_minutes, int

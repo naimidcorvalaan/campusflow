@@ -38,6 +38,62 @@ def _state(tasks=None):
     )
 
 
+def test_feedback_and_critic_share_ownership_of_partial_and_new_tasks():
+    from src.p4_feedback_decision import (build_feedback_interpreter_prompt,
+        build_feedback_critic_prompt,COMPATIBILITY_FEEDBACK_SEMANTICS)
+    from src.p2_session import _feedback_requires_unified_interpreter
+    state=_state()
+    normal,_=build_feedback_interpreter_prompt(state,None,'新增任务','')
+    critic,_=build_feedback_critic_prompt(state,'已经完成一半',FeedbackDecision(intent_type='mixed'))
+    assert COMPATIBILITY_FEEDBACK_SEMANTICS in normal and COMPATIBILITY_FEEDBACK_SEMANTICS in critic
+    assert '本schema没有已做/剩余分钟或新任务详情字段' in critic
+    assert '旧台账不是否定新事实的依据' in critic
+    assert _feedback_requires_unified_interpreter(FeedbackDecision(intent_type='mixed'))
+    assert not _feedback_requires_unified_interpreter(FeedbackDecision(intent_type='complete'))
+
+
+def test_feedback_reviewers_receive_completed_and_remaining_as_separate_facts():
+    from src.p4_feedback_decision import (
+        build_feedback_interpreter_prompt, build_feedback_critic_prompt,
+        build_intent_compliance_prompt,
+    )
+    task = TaskProgress('day_task_001', '课程作业', 80, 25,
+                        SourceKind.USER_STATED, TaskState.ACTIVE, True, 10)
+    state = _state([task])
+    decision = FeedbackDecision(intent_type='mixed', target_task_refs=(task.task_ref,))
+    prompts = [
+        build_feedback_interpreter_prompt(state, None, '已做25分钟，还需20分钟', ''),
+        build_feedback_critic_prompt(state, '已做25分钟，还需20分钟', decision),
+        build_intent_compliance_prompt(state, '已做25分钟，还需20分钟', decision, '', ''),
+    ]
+    for _, user in prompts:
+        assert 'total_minutes=80' in user
+        assert 'completed_minutes=25' in user
+        assert 'remaining_minutes=55' in user
+        assert 'duration=55' not in user
+    assert state.tasks[0] is task and task.completed_minutes == 25
+
+
+def test_critic_has_same_complete_decision_contract_and_keeps_ref_guards():
+    from src.p4_feedback_decision import (
+        FEEDBACK_DECISION_CONTRACT, build_feedback_interpreter_prompt,
+        build_feedback_critic_prompt, parse_feedback_decision_review,
+    )
+    state = _state()
+    decision = FeedbackDecision(intent_type='mixed', target_task_refs=('day_task_001',))
+    normal, _ = build_feedback_interpreter_prompt(state, None, '部分完成', '')
+    critic, _ = build_feedback_critic_prompt(state, '部分完成', decision)
+    assert normal.count(FEEDBACK_DECISION_CONTRACT) == 1
+    assert critic.count(FEEDBACK_DECISION_CONTRACT) == 1
+    assert '原始用户反馈会完整转交下一阶段' in critic
+    with pytest.raises(AgenticParseError):
+        parse_feedback_decision_review(json.dumps({
+            'schema_version': 'p4.feedback-decision-review.v1',
+            'decision': 'repair', 'reason': None,
+            'repaired_decision': _payload(target_task_refs=['foreign_task']),
+        }), state)
+
+
 def _payload(**updates):
     data = {
         "schema_version": "p4.feedback-decision.v1",

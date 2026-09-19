@@ -63,6 +63,7 @@ def build_strategy_prompt(context, analysis):
         "concurrency_pairs:[{{task_ref,commitment_ref}}],rationale_summary:string,"
         "constraints_to_preserve:[string]}}]}}。不要输出内部推理。"
     ).format(STRATEGY_SCHEMA_VERSION)
+    system += "即使只有一个任务也输出两个策略对象，允许 priority_order 相同但说明取舍；所有列表都必须存在，空值用 []，不能省略字段。"
     user = "上下文：\n{}\n情境分析：\n{}".format(
         context.to_json(), json.dumps(situation_payload(analysis), ensure_ascii=False, sort_keys=True)
     )

@@ -740,6 +740,15 @@ class _StubSt:
         self.rerun_called += 1
 
 
+
+def _refresh_existing_page(stub):
+    # Refresh capability remains; its dedicated homepage button was removed.
+    from src.p2_live_main import _refresh_current_plan
+    bundle = load_live_final_turn(stub.session_state)
+    _refresh_current_plan(stub, stub.session_state[LIVE_SESSION_KEY], (), bundle.state.now,
+                          stub.session_state["p2_live_map"],
+                          stub.session_state[SELECTED_CAMPUS_ID_KEY], bundle.state.now)
+
 def _run_main(stub, caller, missing=(), now=None):
     if isinstance(stub.session_state, _StrictSessionState):
         stub.session_state.begin_run()
@@ -911,8 +920,8 @@ def test_live_session_allocator_consumes_saved_meal_duration_on_start_and_refres
     assert refreshed.result.allocation_plan.total_planned_minutes == 40
 
 
-def test_feedback_replaces_assumed_execution_origin_and_rebuilds_sequence():
-    """An assumed origin is a routing fact and a verified correction replaces it."""
+def test_feedback_confirms_unknown_execution_origin_and_rebuilds_sequence():
+    """A task destination is not a current origin; a verified answer supplies it."""
     # The unified model deliberately leaves current_location null: the live
     # controller must still honor the user's explicit correction text.
     caller = CountingCaller(
@@ -928,8 +937,8 @@ def test_feedback_replaces_assumed_execution_origin_and_rebuilds_sequence():
     session = make_live_session(store, FakeAdapter(caller), map_data=map_data, campus_id="weijinlu")
     first = session.start_day(intake.applied.state)
     assumed = load_execution_context(store)
-    assert assumed.current_location.source is CurrentLocationSource.ASSUMED
-    assert assumed.current_location.location.display_name == "图书馆"
+    assert assumed.current_location.source is CurrentLocationSource.UNKNOWN
+    assert assumed.current_location.location is None
     assert all(block.origin_name != "31斋" for block in first.movement_blocks)
     session.refresh()
     assert load_execution_context(store) == assumed
@@ -939,7 +948,7 @@ def test_feedback_replaces_assumed_execution_origin_and_rebuilds_sequence():
     assert context.current_location.source is CurrentLocationSource.USER
     assert context.current_location.location.display_name == "31斋"
     assert not any(
-        item.kind is ExecutionConfirmationKind.CURRENT_LOCATION_ASSUMED
+        item.kind in (ExecutionConfirmationKind.CURRENT_LOCATION_ASSUMED, ExecutionConfirmationKind.CURRENT_LOCATION_REQUIRED)
         for item in context.confirmations
     )
     assert corrected.movement_blocks
@@ -950,7 +959,7 @@ def test_feedback_replaces_assumed_execution_origin_and_rebuilds_sequence():
     assert "你现在是在图书馆吗？" not in corrected_text
 
 
-def test_unresolved_feedback_location_keeps_existing_assumption_and_map_scope():
+def test_unresolved_feedback_location_keeps_unknown_origin_and_map_scope():
     caller = _CurrentLocationFeedbackCaller(
         intake=INTAKE_EXECUTION_SEMANTICS,
         plan=PLAN_REPORT_MEAL_ESTIMATE,
@@ -967,11 +976,11 @@ def test_unresolved_feedback_location_keeps_existing_assumption_and_map_scope():
     turn = session.apply_feedback("我现在在9斋")
     after = load_execution_context(store)
     assert before == after
-    assert after.current_location.source is CurrentLocationSource.ASSUMED
+    assert after.current_location.source is CurrentLocationSource.UNKNOWN
     assert not any(block.origin_name == "9斋" for block in turn.movement_blocks)
 
 
-def test_p4_presentation_renders_assumption_auto_meal_and_class_10_5_facts():
+def test_p4_presentation_asks_origin_and_keeps_auto_meal_and_class_10_5_facts():
     caller = CountingCaller(
         intake=INTAKE_EXECUTION_PRESENTATION,
         plan=PLAN_REPORT_MEAL_ESTIMATE,
@@ -993,8 +1002,8 @@ def test_p4_presentation_renders_assumption_auto_meal_and_class_10_5_facts():
     assert text.startswith("# 当前方案\n")
     assert turn.companion_copy.opening in text
     assert turn.companion_copy.closing in text
-    assert "你没有填写当前位置，我先按你在图书馆来安排。" in text
-    assert "你现在是在图书馆吗？" in text
+    assert "我先按你在" not in text
+    assert "你现在在哪里？" in text
     assert "{}【已为您选择就近食堂】".format(meal.display_name) in text
     assert "吃饭 40 分钟" in text
     assert "14:50" in text and "到教学楼" in text
@@ -1031,11 +1040,10 @@ def test_live_weijinlu_execution_sequence_is_scoped_ordered_and_refresh_safe():
     turn = session.start_day(intake.applied.state)
     context = load_execution_context(store)
     meal = context.binding_for("day_task_002")
-    assert context.current_location.source is CurrentLocationSource.ASSUMED
-    assert context.current_location.location.display_name == "图书馆"
+    assert context.current_location.source is CurrentLocationSource.UNKNOWN
+    assert context.current_location.location is None
     assert meal.execution_location.source.value == "auto_selected_meal"
     assert all(location.campus_id == "weijinlu" for location in (
-        context.current_location.location,
         context.binding_for("day_task_001").execution_location,
         meal.execution_location,
     ))
@@ -1054,7 +1062,7 @@ def test_live_weijinlu_execution_sequence_is_scoped_ordered_and_refresh_safe():
     assert "北洋园校区" not in text
     assert "天津大学北洋园校区郑东图书馆" not in text
     assert "你正在图书馆" not in text
-    assert "你没有填写当前位置，我先按你在图书馆来安排。" in text
+    assert "我先按你在" not in text
     assert "16:50–16:55：进楼 / 找教室" in text
     assert "16:55–17:00：到教室后签到 / 课前准备" in text
     assert "提前10分钟到教室" not in text
@@ -1067,14 +1075,14 @@ def test_live_weijinlu_execution_sequence_is_scoped_ordered_and_refresh_safe():
         "day_task_001", "day_task_002"
     ]
     assert all(block.origin_node_id.startswith("weijinlu_") for block in refreshed.movement_blocks)
-    assert load_execution_context(store).current_location.source is CurrentLocationSource.ASSUMED
+    assert load_execution_context(store).current_location.source is CurrentLocationSource.UNKNOWN
 
     corrected = session.apply_feedback("其实我现在在31斋")
     corrected_context = load_execution_context(store)
     assert corrected_context.current_location.source is CurrentLocationSource.USER
     assert corrected_context.current_location.location.display_name == "31斋"
     assert not any(
-        item.kind is ExecutionConfirmationKind.CURRENT_LOCATION_ASSUMED
+        item.kind in (ExecutionConfirmationKind.CURRENT_LOCATION_ASSUMED, ExecutionConfirmationKind.CURRENT_LOCATION_REQUIRED)
         for item in corrected_context.confirmations
     )
     assert corrected.movement_blocks
@@ -1174,8 +1182,8 @@ def test_streamlit_live_start_and_feedback_share_one_final_execution_turn():
         turn.result.updated_state, turn.result.allocation_plan, turn.movement_blocks
     ) == ()
     page = "\n".join(stub.markdown_calls)
-    assert "你没有填写当前位置，我先按你在图书馆来安排。" in page
-    assert "你现在是在图书馆吗？" in page
+    assert "我先按你在" not in page
+    assert "你现在在哪里？" in page
     assert "就近食堂</span>" in page
     assert "cf-pill-meal" in page
     assert "去第九教学楼" in page
@@ -1242,8 +1250,8 @@ def test_streamlit_unknown_class_end_keeps_one_final_timeline_and_feedback_works
         turn.result.updated_state, turn.result.allocation_plan, turn.movement_blocks
     ) == ()
     page = "\n".join(stub.markdown_calls)
-    assert "你没有填写当前位置，我先按你在图书馆来安排。" in page
-    assert "你现在是在图书馆吗？" in page
+    assert "我先按你在" not in page
+    assert "你现在在哪里？" in page
     assert "就近食堂</span>" in page
     assert "去第九教学楼" in page
     assert "20:50" in page and "到教学楼" in page
@@ -1270,6 +1278,7 @@ def test_streamlit_unknown_class_end_keeps_one_final_timeline_and_feedback_works
     # The single user action triggers an internal rerun; the following normal
     # page render is already the corrected final turn, not a retry request.
     stub.set_inputs(reference_hour=18, reference_minute=0)
+    stub.markdown_calls.clear()  # A completed browser rerun replaces the waiting render.
     _run_main(stub, caller, now=dt(18))
     corrected_page = "\n".join(stub.markdown_calls)
     assert "当前方案正在重新校验，请刷新后重试。" not in corrected_page
@@ -1314,8 +1323,8 @@ def test_live_atomic_final_turn_rebuilds_feedback_from_canonical_facts_once(monk
     context = initial_bundle.execution_context
     meal = context.binding_for("day_task_002")
     assert initial_bundle.state.commitments[0].ends_at is None
-    assert context.current_location.source is CurrentLocationSource.ASSUMED
-    assert context.current_location.location.display_name == "图书馆"
+    assert context.current_location.source is CurrentLocationSource.UNKNOWN
+    assert context.current_location.location is None
     assert meal.duration_source == "meal_default"
     assert meal.effective_duration_minutes == 40
     assert initial.result.allocation_plan.planned_minutes_by_task["day_task_002"] == 40
@@ -1372,7 +1381,7 @@ def test_live_atomic_final_turn_rebuilds_feedback_from_canonical_facts_once(monk
     _run_main(stub, caller, now=dt(14))
     initial_page = "\n".join(stub.markdown_calls)
     assert "就近食堂</span>" in initial_page
-    assert "你没有填写当前位置，我先按你在图书馆来安排。" in initial_page
+    assert "你现在在哪里？" in initial_page
 
     # One feedback submit creates version N+1; the simulated internal rerun
     # only renders that already-committed complete bundle.
@@ -1447,7 +1456,7 @@ def test_live_atomic_final_turn_rebuilds_feedback_from_canonical_facts_once(monk
 
 
 def test_live_near_class_compresses_default_meal_to_one_safe_block_and_publishes_turn():
-    """At 16:04 the default meal may use its 20-minute safety floor."""
+    """An infeasible meal stays unplanned while the class route survives."""
     caller = _CurrentLocationFeedbackCaller(
         intake=INTAKE_LIVE_EXECUTION_REAL_1700_SHAPE,
         plan=PLAN_LONG_REPORT_REVERSED,
@@ -1475,6 +1484,9 @@ def test_live_near_class_compresses_default_meal_to_one_safe_block_and_publishes
     assert meal_allocations == []
     assert turn.result.allocation_plan.planned_minutes_by_task.get("day_task_002", 0) == 0
     assert "day_task_002" in turn.result.allocation_plan.unallocated_task_refs
+    assert turn.movement_blocks
+    assert any(block.destination_activity_ref == "day_commitment_001"
+               for block in turn.movement_blocks)
     assert final_plan_overlap_errors(
         turn.result.updated_state, turn.result.allocation_plan, turn.movement_blocks
     ) == ()
@@ -1620,7 +1632,7 @@ def test_main_time_input_builds_today_reference():
     assert not any("格式" in str(w) or "参考时间" in str(w) for w in stub.warnings)
 
 
-def test_main_refresh_button_triggers():
+def test_retained_refresh_handler_triggers_without_homepage_entry():
     caller = CountingCaller()
     stub = _StubSt().set_inputs(
         reference=time(9, 0),
@@ -1630,7 +1642,8 @@ def test_main_refresh_button_triggers():
     _run_main(stub, caller)
     before = caller.count
     assert stub.session_state[SELECTED_CAMPUS_ID_KEY] == "beiyangyuan"
-    stub.set_inputs(refresh=True)
+    stub.set_inputs()
+    _refresh_existing_page(stub)
     _run_main(stub, caller)
     assert caller.count == before + 7  # 刷新重跑 Day Plan + Review + 5 表达层 Agent（不路由不 reconciliation）
     assert stub.rerun_called == 2
@@ -1786,7 +1799,8 @@ def test_refresh_keeps_persisted_reference_time():
     _run_main(stub, caller)
     stub.set_inputs(intake="今天做计组实验。", intake_submitted=True)
     _run_main(stub, caller)
-    stub.set_inputs(refresh=True)
+    stub.set_inputs()
+    _refresh_existing_page(stub)
     _run_main(stub, caller)
     assert stub.session_state[LIVE_REFERENCE_HOUR_KEY] == 10
     assert stub.session_state[LIVE_REFERENCE_MINUTE_KEY] == 5

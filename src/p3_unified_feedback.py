@@ -29,7 +29,6 @@ from src.p2_agentic_models import MAX_CALLS_PER_ROUND, P2AgenticDayResult, Recon
 from src.p2_agentic_parser import AgenticParseError, extract_json_object, parse_reconciliation
 from src.p2_agentic_pipeline import run_p2_agentic_day_planning
 from src.p2_agentic_prompt_builder import (
-    build_repair_prompt,
     format_history,
     format_task_ledger,
 )
@@ -60,9 +59,30 @@ UNIFIED_FEEDBACK_SCHEMA_VERSION = "p3.unified-feedback.v1"
 
 MAX_LOCATION_TEXT_LENGTH = 80
 MAX_REASON_LENGTH = 200
+# A typed user report, not permission to overwrite the canonical task ledger.
+REPORTED_COMPLETED_FIELD = "reported_completed_minutes"
+REPORTED_REMAINING_FIELD = "reported_remaining_minutes"
 _TIME_RE = re.compile(r"^([01]?\d|2[0-3]):([0-5]\d)$")
 
 WARNING_UNIFIED_FAILED = "本轮反馈暂未完整理解，未应用任何更新，请再说明一次。"
+
+
+class ProgressFidelityError(AgenticParseError):
+    """Numeric source mismatch, with safe, metric-specific repair context."""
+
+    def __init__(self, code, task, field, expected, observed):
+        super().__init__("{} task_ref={} expected={} observed={}".format(
+            code, task.task_ref, expected, observed))
+        self.safe_details = {
+            "code": code, "task_ref": task.task_ref,
+            "source_report_field": field, "expected_report_value": expected,
+            "observed_candidate_value": observed,
+            "recorded_completed_minutes": task.completed_minutes,
+            "value_semantics": (
+                "cumulative_actual_minutes_not_increment"
+                if field == REPORTED_COMPLETED_FIELD else "remaining_work_minutes"
+            ),
+        }
 
 
 @dataclass(frozen=True)
@@ -175,6 +195,13 @@ def build_unified_feedback_prompt(state: DayPlanningState, user_text: str) -> Tu
     if not isinstance(user_text, str) or not user_text.strip():
         raise ValueError("user_text must be a non-empty string")
     system = _unified_system_prompt()
+    background_refs = [task.task_ref for task in state.tasks if task.attention_mode == 'background']
+    if background_refs:
+        system += ('\n后台运行/剩余时间报告的 target_task_ref 只能是现有后台过程：'
+                   + ', '.join(background_refs)
+                   + '。launch_ref是启动动作的引用，不是运行过程自己的引用。'
+                   '报告运行剩余时间不能绑到启动动作，不能重建身份；'
+                   '用户已启动后台过程时程序会同步其启动动作完成，勿重复累计启动进度。')
     user = (
         "当前时间：{now}\n"
         "day_end：{day_end}\n\n"
@@ -195,6 +222,7 @@ def build_unified_feedback_prompt(state: DayPlanningState, user_text: str) -> Tu
 
 
 def _unified_system_prompt() -> str:
+    from src.p3_class_prep import CLASS_ARRIVAL_FEEDBACK_SEMANTICS
     return (
         "你是 CampusFlow 的统一反馈理解器。用户会用自然语言描述对全天计划的调整，"
         "一句话可能同时包含任务更新、固定安排更新和校园移动，你必须一次性全部解析，不能互相吞掉。\n"
@@ -207,19 +235,39 @@ def _unified_system_prompt() -> str:
         '"destination_text": string|null, "mode": "walk"|"bike"|null, '
         '"depart_at": "HH:MM"|null, "arrive_by": "HH:MM"|null},\n'
         ' "current_location": string|null, "questions": [string, ...], "reason": string|null}\n\n'
-        "task_updates 每一项（与任务 reconciliation 的 update 一致）：\n"
+        "task_updates 每一项（复用任务 reconciliation，另支持明确的累计实际进度报告）：\n"
         '{"target_task_ref": string|null, "new_task_title": string|null,\n'
         ' "progress_delta_minutes": int|null, "set_total_minutes": int|null,\n'
+        ' "user_reported_running": bool|null（仅现有后台过程的实际启动报告；后台还剩N分钟时为true，同时用reported_remaining_minutes；不是未来计划）,\n'
+        f' "{REPORTED_COMPLETED_FIELD}": int|null,\n'
+        f' "{REPORTED_REMAINING_FIELD}": int|null,\n'
         ' "set_total_source": "user_text"|"ai_estimate"|null,\n'
         ' "lifecycle_action": "none"|"complete"|"skip_today"|"abandon"|"resume_today",\n'
         ' "is_splittable": bool|null, "minimum_slice_minutes": int|null}\n'
         "- 更新已有任务：target_task_ref 填任务台账中的 ref；新增任务：target_task_ref=null 且 new_task_title 非空。\n"
         "- 同一个任务只能出现一条更新；\"我刚又做了30分钟实验\" → progress_delta_minutes=30。\n"
+        "- progress_delta_minutes 是本轮新增的实际完成分钟，只允许正整数或 null；"
+        "没有实际执行、尚未开始或进度不变时填 null，不能填0，也不能把计划分钟当进度。\n"
+        f"- 用户说已有任务累计已经完成X分钟时，填{REPORTED_COMPLETED_FIELD}=X、progress_delta_minutes=null；"
+        "程序按task_ref与现有台账计算新增量，不要自行把累计数重复当增量。累计报告必须非负且不小于已记录进度；"
+        "没有累计报告时省略该字段或填null，两种进度报告不能同时非null。新增任务仍使用原增量规则。"
+        f"用户明确报告还需/剩余R分钟时，填{REPORTED_REMAINING_FIELD}=R，"
+        "set_total_minutes/set_total_source保持null；程序用本轮完成事实加剩余量计算总时长并记录用户来源，"
+        "不要让模型重新计算总量。只有明确新增执行的报告才使用progress_delta_minutes；"
+        "‘已做/已经做了X分钟’描述截至现在的累计状态，并不等于‘又做/额外做了X分钟’。"
+        "例如台账已完成25分钟，用户说已做25分钟还需40分钟，累计仍是25、剩余40；"
+        "若用户明确说又做了5分钟，才新增5分钟。\n"
+        "- set_total_minutes 与 set_total_source 必须同时提供或同时为 null；"
+        "用户明确时长用 user_text。新增任务尚未开始仍可提供总时长，进度保持 null。\n"
         "- \"今天先不背单词了\" → lifecycle_action=skip_today；\"又想背单词了\" → resume_today。\n\n"
         "commitment_updates 每一项：\n"
-        '{"target_commitment_ref": string|null, "action": "delay"|"add"|"cancel"|"update_time",\n'
+        '{"target_commitment_ref": string|null, "action": "delay"|"add"|"cancel"|"update_time"|"update_location",\n'
         ' "title": string|null, "starts_at": "HH:MM"|null, "ends_at": "HH:MM"|null,\n'
-        ' "delay_minutes": int|null, "class_arrival_lead_minutes": int|null}\n'
+        ' "delay_minutes": int|null, "class_arrival_lead_minutes": int|null, "location_text":string|null}\n'
+        "- 固定安排地点的补充/纠正用 update_location，填 target_commitment_ref 与 location_text；"
+        "若旧标题含已过时地点，title同步成同一活动的中性主题，地点只保存在location_text；"
+        "否则title=null。时间等其他更新字段为null。"
+        "这不是用户当前位置变更，不填写 movement 或 current_location。保留该安排所有时间与任务事实。\n"
         "- \"下课晚20分钟\" → delay（目标安排 + delay_minutes=20）；\n"
         "- \"组会改到3点\" → update_time（starts_at=\"15:00\"）；\n"
         "- \"组会取消了\" → cancel；\n"
@@ -246,11 +294,11 @@ def _unified_system_prompt() -> str:
         "\"progress_delta_minutes\": null, \"set_total_minutes\": null, \"set_total_source\": null, "
         "\"lifecycle_action\": \"skip_today\", \"is_splittable\": null, \"minimum_slice_minutes\": null}],\n"
         "current_location=\"北菜\", questions=[], reason=null\n"
-        "只输出 JSON。"
+        "只输出 JSON。" + CLASS_ARRIVAL_FEEDBACK_SEMANTICS
     )
 
 
-def parse_unified_feedback(text: str) -> UnifiedFeedback:
+def parse_unified_feedback(text: str, state=None) -> UnifiedFeedback:
     """解析统一反馈输出；内嵌数组复用现有 task/commitment 解析器严格校验。"""
     if not isinstance(text, str) or not text.strip():
         raise AgenticParseError("统一反馈输出为空")
@@ -265,7 +313,7 @@ def parse_unified_feedback(text: str) -> UnifiedFeedback:
         task_updates = []
     if not isinstance(task_updates, list):
         raise AgenticParseError("task_updates 必须是数组")
-    task_result = _parse_task_batch(task_updates)
+    task_result = _parse_task_batch(task_updates, state)
 
     commitment_updates = payload.get("commitment_updates")
     if commitment_updates is None:
@@ -312,12 +360,51 @@ def parse_unified_feedback(text: str) -> UnifiedFeedback:
         raise AgenticParseError(str(exc))
 
 
-def _parse_task_batch(items) -> ReconciliationResult:
+def _parse_task_batch(items, state=None) -> ReconciliationResult:
     """复用 P2c 任务解析器（含同 target 去重 / new_task schema 校验）。"""
+    updates = []
+    for item in items:
+        if not isinstance(item, dict) or not any(k in item for k in (REPORTED_COMPLETED_FIELD, REPORTED_REMAINING_FIELD)):
+            updates.append(item)
+            continue
+        item = dict(item)
+        reported = item.pop(REPORTED_COMPLETED_FIELD, None)
+        remaining = item.pop(REPORTED_REMAINING_FIELD, None)
+        if reported is not None:
+            if type(reported) is not int or reported < 0:
+                raise AgenticParseError(REPORTED_COMPLETED_FIELD + " must be a nonnegative integer or null")
+            if item.get('progress_delta_minutes') is not None:
+                raise AgenticParseError("累计报告与进度增量不能同时提供")
+            if not isinstance(state, DayPlanningState):
+                raise AgenticParseError("累计报告需要当前正式任务台账")
+            ref = item.get('target_task_ref')
+            task = next((t for t in state.tasks if isinstance(ref, str) and t.task_ref == ref), None)
+            if task is None:
+                raise AgenticParseError("累计报告必须引用当前已有任务")
+            if reported < task.completed_minutes:
+                raise AgenticParseError("累计实际进度不能低于已记录进度")
+            item['progress_delta_minutes'] = (reported - task.completed_minutes) or None
+        if remaining is not None:
+            if type(remaining) is not int or remaining < 0:
+                raise AgenticParseError(REPORTED_REMAINING_FIELD + " must be a nonnegative integer or null")
+            if item.get('set_total_minutes') is not None or item.get('set_total_source') is not None:
+                raise AgenticParseError("剩余报告与独立总时长不能同时提供")
+            if not isinstance(state, DayPlanningState):
+                raise AgenticParseError("剩余报告需要当前正式任务台账")
+            ref = item.get('target_task_ref')
+            task = next((t for t in state.tasks if isinstance(ref, str) and t.task_ref == ref), None)
+            if task is None:
+                raise AgenticParseError("剩余报告必须引用当前已有任务")
+            delta = item.get('progress_delta_minutes')
+            if delta is not None and (type(delta) is not int or delta <= 0):
+                raise AgenticParseError("进度增量必须为正整数或null")
+            item['set_total_minutes'] = task.completed_minutes + (delta or 0) + remaining
+            item['set_total_source'] = 'user_text'
+        updates.append(item)
     wrapper = json.dumps(
         {
             "schema_version": "p2.task-reconciliation.v1",
-            "updates": list(items),
+            "updates": updates,
             "questions": [],
         },
         ensure_ascii=False,
@@ -366,6 +453,41 @@ def _parse_movement(value) -> UnifiedMovement:
         raise AgenticParseError(str(exc))
 
 
+def validate_explicit_progress_reports(state, user_text, feedback):
+    """Reject contradictions to unambiguous literal reports; never infer updates.
+
+    Only a uniquely named task with an adjacent affirmative cumulative report
+    is checked. Aliases, questions, hypotheticals, deltas and multi-subject
+    sentences remain the interpreter's responsibility. This is a read-only
+    fidelity guard, not a natural-language reconciliation implementation.
+    """
+    updates = {u.target_task_ref: u for u in feedback.task_result.updates}
+    for statement in re.split(r"(?<=[。；;！？!?\n])", user_text):
+        named = [t for t in state.tasks if t.title in statement]
+        if len(named) != 1 or re.search(r"如果|假如|假设|是否|并非|不是|没有|没做|未做|吗|[?？]|(?:又|再|额外|新增)[^，。；]*分钟", statement):
+            continue
+        task = named[0]
+        tail = statement.split(task.title, 1)[1]
+        # Adjacent wording prevents a later incremental/other-subject number
+        # from being borrowed as this task's cumulative actual execution.
+        matched = re.match(r"\s*[：:]?\s*(?:实际)?(?:已经|已)(?:实际)?(?:做|写|读|学习|投入|完成)(?:了)?\s*(\d+)\s*分钟", tail)
+        if matched is None:
+            continue
+        completed = int(matched.group(1))
+        update = updates.get(task.task_ref)
+        actual = task.completed_minutes + ((update.progress_delta_minutes or 0) if update else 0)
+        if completed != actual:
+            raise ProgressFidelityError("explicit_cumulative_progress_mismatch", task,
+                                        REPORTED_COMPLETED_FIELD, completed, actual)
+        remaining = re.findall(r"(?:剩余(?:只需|需要)?|(?:但)?仍需要|还(?:需要|需))\s*(\d+)\s*分钟", tail[matched.end():])
+        if len(remaining) == 1:
+            total = update.set_total_minutes if update and update.set_total_minutes is not None else task.total_minutes
+            actual_remaining = total - actual
+            if int(remaining[0]) != actual_remaining:
+                raise ProgressFidelityError("explicit_remaining_progress_mismatch", task,
+                                            REPORTED_REMAINING_FIELD, int(remaining[0]), actual_remaining)
+
+
 def detect_unified_feedback(
     state: DayPlanningState,
     user_text: str,
@@ -377,15 +499,29 @@ def detect_unified_feedback(
         raise TypeError("caller must be callable")
     repair = repair_caller if repair_caller is not None else caller
     system, user = build_unified_feedback_prompt(state, user_text)
+    raw = caller(system, user)
     try:
-        return parse_unified_feedback(caller(system, user)), None
-    except AgenticParseError:
-        pass
-    repair_system, repair_user = build_repair_prompt(
-        "unified_feedback", "", UNIFIED_FEEDBACK_SCHEMA_VERSION
-    )
+        parsed = parse_unified_feedback(raw, state)
+        validate_explicit_progress_reports(state, user_text, parsed)
+        return parsed, None
+    except AgenticParseError as exc:
+        parse_error = str(exc)
+        parse_error_details = getattr(exc, "safe_details", None)
+    # Use the same contract, identities and latest feedback. The old generic
+    # repair received an empty response and no task context, so it could not
+    # repair even a single invalid optional number without guessing.
+    repair_user = json.dumps({
+        "request_stage": "unified_feedback_repair",
+        "original_context": user,
+        "previous_response": raw,
+        "validation_error": parse_error,
+        "validation_error_details": parse_error_details,
+        "instruction": "按同一正式契约修复失败字段，保持原有用户事实与任务身份；只输出一个完整JSON对象。",
+    }, ensure_ascii=False)
     try:
-        return parse_unified_feedback(repair(repair_system, repair_user)), None
+        parsed = parse_unified_feedback(repair(system, repair_user), state)
+        validate_explicit_progress_reports(state, user_text, parsed)
+        return parsed, None
     except AgenticParseError:
         return None, WARNING_UNIFIED_FAILED
 

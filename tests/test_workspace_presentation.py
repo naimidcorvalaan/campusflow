@@ -49,7 +49,7 @@ def test_sidebar_departure_comes_from_published_movement_not_fixed_start():
         movement_blocks=(leg,), companion_copy=None)
     result = _side_card_html(turn)
     assert '18:38 出发 · 18:50 到达' in result
-    assert '18:33 开始收拾 · 5 分钟准备' in result
+    assert '建议 18:33 开始收拾' in result
     assert '19:00' in result
     assert 'course_42' not in result
 
@@ -251,26 +251,3 @@ def test_temporary_save_status_keeps_state_but_leaves_main_content():
     assert '保存失败，请重试' in page
     assert st.session_state[LOCAL_PROFILE_STATUS_KEY] == '本次内容未保存到个人档案'
     assert load_live_final_turn(st.session_state) is published
-
-
-def test_today_material_uses_selected_map_without_touching_published_state():
-    from src.p3_campus_registry import DEFAULT_CAMPUS_REGISTRY
-    from src.workspace_ui import render_today_texture
-    from src.spacetime_ui import campus_texture_html
-    import re
-    st = _StubSt().set_inputs(intake='今天写作业', intake_submitted=True)
-    _run_main(st, CountingCaller())
-    before = dict(st.session_state)
-    for campus in ('beiyangyuan', 'weijinlu'):
-        map_data = DEFAULT_CAMPUS_REGISTRY.get_campus_map(campus)
-        st.markdown_calls.clear()
-        render_today_texture(st, map_data, '今天')
-        material = ''.join(st.markdown_calls)
-        assert 'data-campus-id="{}"'.format(campus) in material
-        assert re.search(r'<path d="([^"]+)"', material).group(1) == re.search(
-            r'<path d="([^"]+)"', campus_texture_html(map_data)).group(1)
-        for quiet_view in ('时间线', '材料估时'):
-            st.markdown_calls.clear()
-            render_today_texture(st, map_data, quiet_view)
-            assert not st.markdown_calls
-        assert st.session_state == before

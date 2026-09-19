@@ -65,7 +65,13 @@ def main():
         )
     low_input_story = st.query_params.get("low_input")
     material_story = st.query_params.get("material")
-    if st.query_params.get('documents') == '1':
+    if st.query_params.get('confirmation') == 'location':
+        from scripts.confirmation_preview_model import LocationConfirmationPreviewModel
+        model = LocationConfirmationPreviewModel()
+    elif st.query_params.get('confirmation') in ('end', 'next'):
+        from scripts.confirmation_preview_model import ConfirmationPreviewModel
+        model = ConfirmationPreviewModel(st.query_params.get('confirmation') == 'next')
+    elif st.query_params.get('documents') == '1':
         from scripts.document_material_preview import DocumentPreviewModel
         rehearsal=st.query_params.get('estimate_rehearsal','')
         model = DocumentPreviewModel(rehearsal if rehearsal in ('fallback','full','needs_input','exam','action','action_broken','quality','intake_chain','workload','workload_partial','workload_empty','workload_model') else '')
@@ -90,6 +96,10 @@ def main():
         def delayed_response(system, user):
             if 'timetable' in system or '课表文字识别器' in system:
                 time.sleep(1.5)
+            if 'Raw Event Extractor' in system:
+                time.sleep(8)
+            if 'p3.unified-feedback.v1' in system:
+                time.sleep(2)
             return original_response(system, user)
         model._response = delayed_response
     adapter = st.session_state.setdefault("offline_product_adapter", model)
@@ -101,10 +111,10 @@ def main():
     # A fresh browser session shares this temporary profile, just as reopening
     # the local product does. Query time simulates a stale record, not progress.
     now = datetime(2026, 9, 7 if material_story or profile == 'release' else 1, 16 if story == "restored" else 14, 0)
-    presentation = st.query_params.get('presentation') == '1'
-    if presentation:
+    presentation = st.query_params.get('presentation') in ('1', 'readme')
+    if st.query_params.get('presentation') == '1':
         st.caption('展示样例 · 合成数据')
-    else:
+    elif not presentation:
         st.markdown('<div style="position:fixed;bottom:8px;left:12px;z-index:999;font-size:11px;'
                 'color:#715b30;background:#fff8e8;border:1px solid #ebd9af;border-radius:6px;padding:3px 7px">'
                 '离线开发演示 · 合成数据 · 无真实模型调用</div>', unsafe_allow_html=True)
@@ -115,6 +125,10 @@ def main():
     )
     if presentation:
         return  # finite development entry only; production has no demo switch
+    if st.query_params.get('confirmation') == 'next':
+        from scripts.confirmation_preview_model import seed_followup_question
+        if seed_followup_question(st.session_state):
+            st.rerun()
     with st.expander("开发演示 · synthetic demo · 不连接真实模型", expanded=False):
         st.caption("只支持演示指南中的固定材料。所有结果由 mock 响应进入正式业务流程生成；这不是理解能力验收。")
         st.code(STORY_TEXT, language=None)
@@ -134,6 +148,10 @@ def main():
                 widget_dates={k:str(v) for k,v in st.session_state.items() if k.endswith(('semester_first','semester_end'))},
                 plan=hashlib.sha256(repr(bundle).encode()).hexdigest() if bundle else None,
                 calls=len(adapter.calls),
+                roles=adapter.calls,
+                bindings=getattr(adapter, 'bindings', []),
+                commitments=[dict(ref=c.commitment_ref, title=c.title, start=str(c.starts_at), end=str(c.ends_at)) for c in bundle.state.commitments] if bundle else [],
+                tasks=repr(bundle.state.tasks) if bundle else None,
             ), ensure_ascii=False), language='json')
         if material_story is None and getattr(adapter,'rehearsal','') in ('intake_chain','workload','workload_partial','workload_empty','workload_model'):
             import json

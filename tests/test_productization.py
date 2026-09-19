@@ -247,7 +247,9 @@ def test_live_initial_preview_adopt_and_failed_update_keep_same_reliable_plan(tm
     _render_timetable_importer(importer, model.agent_caller)
     importer.pressed = "personal_settings_timetable_import_confirm"
     _render_timetable_importer(importer, model.agent_caller)
-    page.set_inputs(refresh=True)
+    from tests.test_p2_live_main import _refresh_existing_page
+    page.set_inputs()
+    _refresh_existing_page(page)
     render()
     reliable = load_live_final_turn(page.session_state)
     assert any(c.title == "大学英语" for c in reliable.result.updated_state.commitments)

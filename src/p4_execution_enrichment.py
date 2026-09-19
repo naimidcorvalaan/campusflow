@@ -5,6 +5,7 @@ movement, session persistence, or any user-facing presentation.
 """
 
 from typing import Optional
+from dataclasses import replace
 
 from src.p2_day_intake import DayIntakeProposal, IntakeApplied
 from src.p2_models import DayPlanningState
@@ -39,6 +40,7 @@ def enrich_intake_execution_context(
     caller=None,
     repair_caller=None,
     personal_settings=None,
+    user_text=None,
 ) -> ExecutionPlanContext:
     """Return execution bindings for the tasks created by one Day Intake run.
 
@@ -62,7 +64,9 @@ def enrich_intake_execution_context(
 
     enriched = context
     for task, task_ref in zip(proposal.tasks, applied.new_task_refs):
-        if task.activity_kind is None and task.location_text is None:
+        if (task.activity_kind is None and task.location_text is None
+                and task.earliest_start_time is None and task.latest_end_time is None
+                and task.before_commitment_index is None and task.after_commitment_index is None):
             continue
 
         execution_location = None
@@ -75,6 +79,10 @@ def enrich_intake_execution_context(
                 location_text,
                 caller=caller,
                 repair_caller=repair_caller,
+                semantic_context="用户完整表达：{}；用户当前位置：{}；任务：{}；任务地点原文：{}".format(
+                    user_text or "未提供",
+                    current_location_text or proposal.current_location or "未提供",
+                    task.title, task.location_text),
             )
             if resolution.usable:
                 if resolution.campus_id != map_data.campus_id:
@@ -104,8 +112,15 @@ def enrich_intake_execution_context(
                 meal_temporal_source=temporal_source,
                 meal_window_start_minutes=meal_window[0] if meal_window else None,
                 meal_window_end_minutes=meal_window[1] if meal_window else None,
+                earliest_start_time=task.earliest_start_time,
+                latest_end_time=task.latest_end_time,
+                before_commitment_ref=_proposal_commitment_ref(task.before_commitment_index, applied),
+                raw_location_text=task.location_text,
             )
         )
+        if task.location_text and execution_location is None:
+            enriched = enriched.with_confirmations(enriched.confirmations + (
+                ExecutionConfirmation(task_ref, ExecutionConfirmationKind.TASK_LOCATION_REQUIRED),))
     enriched = enriched.with_current_location(
         _current_location_context(
             map_data, current_location_text, caller, repair_caller, personal_settings
@@ -120,21 +135,25 @@ def reconcile_execution_context(context: ExecutionPlanContext, state: DayPlannin
     """Remove bindings only for task refs no longer present in formal state.
 
     Task lifecycle changes do not remove a binding: ``DayPlanningState.tasks``
-    remains the sole existence authority.  No task titles are considered.
+    remains the sole existence authority. Its current split/minimum facts also
+    supersede an older intake execution profile. No task titles are considered.
     """
     if not isinstance(context, ExecutionPlanContext):
         raise TypeError("context 必须是 ExecutionPlanContext")
     if not isinstance(state, DayPlanningState):
         raise TypeError("state 必须是 DayPlanningState")
-    active_refs = {task.task_ref for task in state.tasks}
+    tasks = {task.task_ref: task for task in state.tasks}
+    active_refs = set(tasks)
     commitment_refs = {item.commitment_ref for item in state.commitments}
     return ExecutionPlanContext(
-        tuple(binding for binding in context.bindings if binding.task_ref in active_refs),
+        tuple(_reconcile_execution_profile(binding, tasks[binding.task_ref])
+              for binding in context.bindings if binding.task_ref in active_refs),
         context.current_location,
         tuple(
             item for item in context.confirmations
             if item.task_ref in active_refs
-            or item.kind is ExecutionConfirmationKind.CURRENT_LOCATION_ASSUMED
+            or item.kind in (ExecutionConfirmationKind.CURRENT_LOCATION_ASSUMED,
+                             ExecutionConfirmationKind.CURRENT_LOCATION_REQUIRED)
         ),
         context.transport_mode,
         tuple(
@@ -142,6 +161,20 @@ def reconcile_execution_context(context: ExecutionPlanContext, state: DayPlannin
             if item.task_ref in active_refs and item.commitment_ref in commitment_refs
         ),
     )
+
+
+def _reconcile_execution_profile(binding, task):
+    profile = binding.execution_profile
+    if profile is None or task.is_splittable is None:
+        return binding
+    minimum = task.minimum_slice_minutes or profile.minimum_chunk_minutes
+    updated = replace(
+        profile, splittable=task.is_splittable,
+        minimum_chunk_minutes=minimum,
+        preferred_chunk_minutes=max(minimum, profile.preferred_chunk_minutes),
+        requires_single_session=(profile.requires_single_session and not task.is_splittable),
+    )
+    return replace(binding, execution_profile=updated) if updated != profile else binding
 
 
 def effective_duration_overrides(context: ExecutionPlanContext, state: DayPlanningState):
@@ -160,12 +193,14 @@ def effective_duration_overrides(context: ExecutionPlanContext, state: DayPlanni
 
 def preferred_chunk_overrides(context: ExecutionPlanContext, state: DayPlanningState):
     """Small allocator adapter for task_ref-bound chunk preferences."""
-    state_refs = {task.task_ref for task in state.tasks}
+    tasks = {task.task_ref: task for task in state.tasks}
     return {
-        binding.task_ref: binding.execution_profile.preferred_chunk_minutes
+        binding.task_ref: max(binding.execution_profile.preferred_chunk_minutes,
+                              tasks[binding.task_ref].minimum_slice_minutes or 1)
         for binding in context.bindings
         if (
-            binding.task_ref in state_refs
+            binding.task_ref in tasks
+            and tasks[binding.task_ref].is_splittable
             and binding.execution_profile is not None
             and binding.execution_profile.splittable
         )
@@ -195,7 +230,8 @@ def _enrich_unspecified_meal_locations(proposal, applied, map_data, context, cal
     """Bind each unspecified meal from its ordered, campus-local route context."""
     mode = parse_transport_mode(proposal.transport_mode or TransportMode.WALK)
     task_refs = tuple(applied.new_task_refs)
-    confirmations = []
+    confirmations = [item for item in context.confirmations
+                     if item.kind is not ExecutionConfirmationKind.MEAL_LOCATION_CONTEXT_REQUIRED]
     enriched = context
     for index, (task, task_ref) in enumerate(zip(proposal.tasks, task_refs)):
         binding = enriched.binding_for(task_ref)
@@ -216,20 +252,9 @@ def _enrich_unspecified_meal_locations(proposal, applied, map_data, context, cal
             )
             continue
         enriched = enriched.upsert(
-            ExecutableTaskBinding(
-                task_ref=task_ref,
+            replace(
+                binding,
                 execution_location=_auto_meal_location(map_data, choice.node_id, choice.name),
-                activity_kind=binding.activity_kind,
-                effective_duration_minutes=binding.effective_duration_minutes,
-                duration_source=binding.duration_source,
-                execution_profile=binding.execution_profile,
-                not_before_commitment_ref=binding.not_before_commitment_ref,
-                meal_period=binding.meal_period,
-                meal_before_commitment_ref=binding.meal_before_commitment_ref,
-                meal_explicit_time=binding.meal_explicit_time,
-                meal_temporal_source=binding.meal_temporal_source,
-                meal_window_start_minutes=binding.meal_window_start_minutes,
-                meal_window_end_minutes=binding.meal_window_end_minutes,
             )
         )
     return enriched.with_confirmations(confirmations)
@@ -305,20 +330,24 @@ def _execution_profile_for(task_ref, task):
 def _after_commitment_ref(task, applied):
     """Resolve proposal-local dependency index at the formal apply boundary."""
     index = getattr(task, "after_commitment_index", None)
+    return _proposal_commitment_ref(index, applied)
+
+
+def _proposal_commitment_ref(index, applied):
     if index is None:
         return None
-    if index > len(applied.new_commitment_refs):
-        # Invalid/malformed model linkage must not become a guessed dependency.
-        return None
-    return applied.new_commitment_refs[index - 1]
+    # apply assigns refs from the original index, including when another
+    # invalid commitment was skipped. Never shift onto an adjacent event.
+    ref = "day_commitment_{:03d}".format(index)
+    if ref not in applied.new_commitment_refs:
+        raise ValueError("task relation 指向未应用的固定安排")
+    return ref
 
 
 def _before_commitment_ref(task, applied):
     """Resolve a meal's proposal-local before relation without title matching."""
     index = getattr(task, "meal_before_commitment_index", None)
-    if index is None or index > len(applied.new_commitment_refs):
-        return None
-    return applied.new_commitment_refs[index - 1]
+    return _proposal_commitment_ref(index, applied)
 
 
 def _meal_temporal_source(task, after_ref, before_ref, duration_source):
@@ -349,12 +378,16 @@ def earliest_start_overrides(context: ExecutionPlanContext, state: DayPlanningSt
     for binding in context.bindings:
         ref = binding.not_before_commitment_ref
         commitment = commitments.get(ref) if ref else None
-        if commitment is not None and commitment.ends_at is not None:
-            result[binding.task_ref] = commitment.ends_at
-        if binding.meal_explicit_time is not None:
+        if commitment is not None:
+            # Unknown end is an unresolved dependency, not permission to run
+            # an explicitly after-commitment task before that commitment.
+            result[binding.task_ref] = commitment.ends_at or state.day_end
+        for time_text in (binding.meal_explicit_time, binding.earliest_start_time):
+            if time_text is None:
+                continue
             explicit = state.now.replace(
-                hour=int(binding.meal_explicit_time.split(":")[0]),
-                minute=int(binding.meal_explicit_time.split(":")[1]),
+                hour=int(time_text.split(":")[0]),
+                minute=int(time_text.split(":")[1]),
                 second=0, microsecond=0,
             )
             result[binding.task_ref] = max(result.get(binding.task_ref, explicit), explicit)
@@ -384,9 +417,17 @@ def latest_end_overrides(context: ExecutionPlanContext, state: DayPlanningState)
     # facts are derived from narrative-before relations and real outbound
     # movement in the execution planner, not from the default clock window.
     result = {}
+    commitments = {item.commitment_ref: item for item in state.commitments}
     for binding in context.bindings:
         value = getattr(binding, "latest_end_time", None)
         absolute = getattr(binding, "deadline_at", None)
+        before_ref = getattr(binding, "before_commitment_ref", None)
+        if before_ref is not None:
+            commitment = commitments.get(before_ref)
+            if commitment is None or commitment.starts_at is None:
+                raise ValueError("task deadline 指向未知或缺少开始时间的固定安排")
+            boundary = commitment.starts_at
+            absolute = min(absolute, boundary) if absolute else boundary
         if absolute is not None:
             result[binding.task_ref] = absolute
         if value is None:

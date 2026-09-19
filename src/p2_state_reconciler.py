@@ -99,6 +99,16 @@ def apply_reconciliation(
             new_task_refs.append(new_ref)
             applied_entries.append("新增任务：{}".format(update.new_task_title))
 
+    # An explicit running report proves its launch happened. This is applied
+    # atomically with the process report, never inferred from a planned slot.
+    for update in result.updates:
+        if update.user_reported_running is True and update.target_task_ref in task_by_ref:
+            process = task_by_ref[update.target_task_ref]
+            launch = task_by_ref.get(process.launch_task_ref)
+            if launch is not None and launch.state is not TaskState.COMPLETED:
+                if launch.state is not TaskState.ACTIVE:
+                    raise ValueError('running report conflicts with cancelled launch')
+                task_by_ref[launch.task_ref] = mark_completed(launch)
     new_tasks = _rebuild_task_list(tasks, task_by_ref, new_task_refs)
     updated_state = _rebuild_state(state, tasks=new_tasks)
     return ReconciliationApplied(
@@ -176,6 +186,13 @@ def _apply_update_to_task(task: TaskProgress, update: ReconciliationUpdate) -> T
     if update.progress_delta_minutes is not None:
         current = apply_progress_report(current, update.progress_delta_minutes)
     current = _with_attributes(current, update.is_splittable, update.minimum_slice_minutes)
+    if update.user_reported_running is not None:
+        from dataclasses import replace
+        if current.attention_mode != 'background':
+            raise ValueError('running report requires an existing background process')
+        if current.user_reported_running and not update.user_reported_running:
+            raise ValueError('running process cannot become unstarted; use completion/cancellation')
+        current = replace(current, user_reported_running=update.user_reported_running)
     if update.lifecycle_action == LifecycleAction.SKIP_TODAY:
         current = mark_skipped_today(current)
     elif update.lifecycle_action == LifecycleAction.ABANDON:
@@ -215,6 +232,11 @@ def _with_attributes(
         minimum_slice_minutes=minimum_slice_minutes
         if minimum_slice_minutes is not None
         else task.minimum_slice_minutes,
+        predecessor_task_refs=task.predecessor_task_refs,
+        departure_after_task_refs=task.departure_after_task_refs,
+        overlap_task_ref=task.overlap_task_ref,
+        attention_mode=task.attention_mode, launch_task_ref=task.launch_task_ref,
+        background_reason=task.background_reason, user_reported_running=task.user_reported_running,
     )
 
 

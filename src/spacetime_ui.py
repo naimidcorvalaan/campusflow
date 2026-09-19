@@ -62,6 +62,10 @@ def _projector(nodes, selected, width, height, margin):
 
 
 def _route_label(map_data, node_id, published_name):
+    from src.workspace_ui import place_display_name
+    display_name = place_display_name(map_data.campus_id, node_id, published_name)
+    if display_name != published_name:
+        return display_name
     # Remove only a redundant campus prefix whose remainder resolves to the
     # same real POI. A convenient-looking nickname is never invented.
     if published_name.startswith(map_data.campus):
@@ -163,7 +167,6 @@ def route_map_html(visual):
     start, end = visual.points[0], visual.points[-1]
     labels = []
     svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 330" role="img" aria-label="{}到{}，{}米，{}约{}分钟" data-campus-id="{}" data-path-nodes="{}">'.format(origin, destination, block.distance_m, mode, block.estimated_minutes, escape(visual.campus_id), escape(','.join(visual.path)))
-    svg += '<path class="cf-map-network" d="{}" aria-hidden="true"/>'.format(''.join(_path(edge) for edge in visual.network))
     svg += '<path class="cf-map-underlay" d="{}"/><path class="cf-map-route" d="{}"/>'.format(_path(visual.points), _path(visual.points))
     svg += ''.join('<circle class="cf-map-via" cx="{:.2f}" cy="{:.2f}" r="3"/>'.format(*point) for point in visual.points[1:-1])
     svg += '<circle class="cf-map-origin" cx="{:.2f}" cy="{:.2f}" r="7"/>'.format(*start)
@@ -179,22 +182,3 @@ def route_map_html(visual):
             '<div class="cf-mini-times">{}<span class="cf-mini-depart"><b>{}</b> 出发</span><span><b>{}</b> 预计抵达</span></div></section>').format(
                 escape(visual.campus_id), block.distance_m, block.estimated_minutes, escape(getattr(block.mode, 'value', block.mode)), origin, destination,
                 escape(visual.campus_name), svg, escape(visual.origin_label), escape(visual.destination_label), block.distance_m, mode, block.estimated_minutes, pack, depart, arrive)
-
-
-def campus_texture_html(map_data):
-    if map_data is None or map_data.provenance is not MapDataProvenance.REAL_MAP:
-        return ''
-    nodes = [node for node in map_data.nodes if _has_coordinates(node)]
-    if len(nodes) < 2:
-        return ''
-    by_id = {node.id: node for node in nodes}
-    project = _projector(nodes, nodes, 800, 620, 35)
-    # Coordinate-pair deduplication collapses the loader's co-located access
-    # anchors without inventing edges or changing the real network pattern.
-    points = sorted({project(node) for node in nodes})
-    edges = sorted({tuple(sorted((project(by_id[edge.from_id]), project(by_id[edge.to_id]))))
-                    for edge in map_data.edges if edge.from_id in by_id and edge.to_id in by_id
-                    and _coordinates(by_id[edge.from_id]) != _coordinates(by_id[edge.to_id])})
-    path = ''.join(_path(edge) for edge in edges)
-    dots = ''.join('<circle cx="{:.2f}" cy="{:.2f}" r="2"/>'.format(*point) for point in points)
-    return '<div class="cf-campus-imprint" data-campus-id="{}" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 620" focusable="false"><path d="{}"/>{}</svg></div>'.format(html.escape(map_data.campus_id or '', quote=True), path, dots)

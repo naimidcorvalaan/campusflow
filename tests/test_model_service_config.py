@@ -401,7 +401,7 @@ def test_saved_tju_config_material_original_entry(monkeypatch, kind):
         from tests.test_file_material import response as material_response
         raw = material_response()
     calls = fake_http(monkeypatch, response(raw))
-    adapter = TJUP2CallAdapter()
+    adapter = TJUP2CallAdapter(recognition_tools=False)
     result = extract_material(draft, adapter.agent_caller,
         image_caller=adapter.task_estimation_caller, images_caller=adapter.material_images_caller,
         workload_caller=adapter.workload_estimation_caller, **kwargs)

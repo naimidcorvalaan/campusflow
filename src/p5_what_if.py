@@ -347,6 +347,7 @@ def _order_differences(context, intent, candidate, summary):
             cursor = window.starts_at
             for allocation in sorted((a for a in result.allocation_plan.allocations if a.window_ref == window.window_ref),
                                      key=lambda a: (a.sequence_index, a.allocation_ref)):
+                cursor = allocation.starts_at or cursor
                 end = cursor + timedelta(minutes=allocation.planned_minutes)
                 intervals.setdefault(allocation.task_ref, []).append((cursor, end))
                 cursor = end

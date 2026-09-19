@@ -46,6 +46,13 @@ class AgentTaskFact:
     after_commitment_ref: Optional[str]
     before_commitment_ref: Optional[str]
     explicitly_preferred: bool
+    predecessor_task_refs: Tuple[str, ...] = ()
+    departure_after_task_refs: Tuple[str, ...] = ()
+    overlap_task_ref: Optional[str] = None
+    attention_mode: str = "active"
+    launch_task_ref: Optional[str] = None
+    background_reason: Optional[str] = None
+    user_reported_running: bool = False
 
 
 @dataclass(frozen=True)
@@ -90,6 +97,7 @@ class AgentMovementFact:
     mode: Optional[str]
     origin_name: Optional[str]
     destination_name: Optional[str]
+    preparation_starts_at: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -105,9 +113,11 @@ class AgentConcurrencyFact:
 class AgentPlanFact:
     task_ref: str
     allocation_ref: str
-    window_ref: str
+    window_ref: Optional[str]
     planned_minutes: int
     remaining_after: int
+    starts_at: Optional[str] = None
+    occupies_attention: bool = True
 
 
 @dataclass(frozen=True)
@@ -205,6 +215,7 @@ def build_agent_decision_context(
         raise ValueError("selected_campus_id must be non-empty")
 
     from src.p4_execution_enrichment import earliest_start_overrides, latest_end_overrides
+    from src.p2_allocator import _remaining_for_allocation
     earliest = earliest_start_overrides(execution_context, state)
     latest = latest_end_overrides(execution_context, state)
     preferred = getattr(feedback_decision, "preferred_next_task_ref", None)
@@ -221,7 +232,7 @@ def build_agent_decision_context(
             state=task.state.value,
             total_minutes=task.total_minutes,
             completed_minutes=task.completed_minutes,
-            remaining_minutes=task.remaining_minutes,
+            remaining_minutes=_remaining_for_allocation(task, getattr(binding, "effective_duration_minutes", None)),
             effective_duration_minutes=getattr(binding, "effective_duration_minutes", None),
             duration_source=getattr(binding, "duration_source", None) or _enum_value(task.total_source),
             splittable=(profile.splittable if profile is not None else task.is_splittable),
@@ -233,8 +244,14 @@ def build_agent_decision_context(
             earliest_start=_iso(earliest.get(task.task_ref)),
             latest_end=_iso(latest.get(task.task_ref)),
             after_commitment_ref=getattr(binding, "not_before_commitment_ref", None),
-            before_commitment_ref=getattr(binding, "meal_before_commitment_ref", None),
+            before_commitment_ref=(getattr(binding, "before_commitment_ref", None)
+                                   or getattr(binding, "meal_before_commitment_ref", None)),
             explicitly_preferred=(preferred == task.task_ref),
+            predecessor_task_refs=task.predecessor_task_refs,
+            departure_after_task_refs=task.departure_after_task_refs,
+            overlap_task_ref=task.overlap_task_ref,
+        attention_mode=task.attention_mode, launch_task_ref=task.launch_task_ref,
+        background_reason=task.background_reason, user_reported_running=task.user_reported_running,
         ))
     movement_by_destination = {
         getattr(item, "destination_activity_ref", None): item
@@ -293,6 +310,8 @@ def build_agent_decision_context(
         AgentPlanFact(
             item.task_ref, item.allocation_ref, item.window_ref,
             item.planned_minutes, item.remaining_after,
+            item.starts_at.isoformat() if item.starts_at else None,
+            item.occupies_attention,
         )
         for item in tuple(getattr(allocation_plan, "allocations", ()) or ())
         if item.task_ref in active_task_refs
@@ -380,7 +399,10 @@ def build_agent_decision_context(
 
 
 def _movement_fact(block):
-    start = getattr(block, "transition_start", None) or getattr(block, "window_start", None)
+    # Packing and physical departure are distinct formal timeline events.
+    # Narration and its guard must compare departure against the route start,
+    # not the beginning of the reserved preparation interval.
+    start = getattr(block, "window_start", None)
     end = getattr(block, "end_time", None)
     return AgentMovementFact(
         getattr(block, "origin_activity_ref", None),
@@ -391,6 +413,7 @@ def _movement_fact(block):
         _enum_value(getattr(block, "mode", None)),
         _optional_text(getattr(block, "origin_name", None)),
         _optional_text(getattr(block, "destination_name", None)),
+        _iso(getattr(block, "transition_start", None)),
     )
 
 

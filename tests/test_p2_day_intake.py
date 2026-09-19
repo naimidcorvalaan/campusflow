@@ -12,6 +12,7 @@ from src.p1_models import SourceKind
 from src.p2_agentic_parser import AgenticParseError
 from src.p2_agentic_pipeline import run_p2_agentic_day_planning
 from src.p2_day_intake import (
+    DEFAULT_DAY_END,
     INTAKE_SCHEMA_VERSION,
     apply_day_intake,
     build_day_intake_prompt,
@@ -394,6 +395,21 @@ def test_run_intake_repair_recovers():
     assert len(outcome.applied.state.commitments) == 1
 
 
+def test_intake_repair_retains_one_contract_and_original_time_facts():
+    import json
+    caller=ScriptedCaller(['{not json',INTAKE_OK])
+    source='10:00到11:30上课，计组实验120分钟。'
+    outcome=run_day_intake(REFERENCE,source,caller)
+    assert outcome.applied and outcome.call_count==2
+    assert caller.calls[0][0]==caller.calls[1][0]
+    context=json.loads(caller.calls[1][1])
+    assert source in context['original_context']
+    assert context['previous_response']=='{not json' and context['validation_error']
+    assert outcome.applied.state.commitments[0].ends_at==dt(11,30)
+    from src.p2_day_intake import commitment_end_contract
+    assert commitment_end_contract() in caller.calls[1][0]
+
+
 def test_run_intake_repair_fails_fallback():
     outcome = run_day_intake(
         REFERENCE,
@@ -416,7 +432,7 @@ def test_run_intake_requires_reference_and_text():
 def test_prompt_contains_reference_and_examples():
     system, user = build_day_intake_prompt(REFERENCE, "90分钟后上课。")
     assert "2026-09-01 09:00" in user
-    assert "22:00" in system
+    assert DEFAULT_DAY_END in system
     assert "starts_in_minutes" in system
     assert "参考时间由程序提供" in system
     assert "DayPlanningState(" not in system

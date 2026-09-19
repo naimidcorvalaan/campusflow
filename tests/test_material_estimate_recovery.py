@@ -210,14 +210,16 @@ def test_partial_coverage_survives_repair_reestimate_and_user_confirmation():
     assert confirm_minimal_task(updated,entry['item_id'],'填写分数',4,True).estimate_coverage=='partial'
 
 
-def test_failed_supplement_reestimate_preserves_visible_result():
+def test_failed_model_with_valid_fallback_replaces_visible_result():
     st,session,model,_=live()
     result,_=run()
     save_material_edit(st,MaterialInbox(result),NOW)
     changed=update_source(MaterialInbox(result),FORM,'',NOW,'plan','beiyangyuan','还有自我评价').draft
     model.failure_mode='network'
-    assert not handle_material_action(st,session,model,'extract',NOW,source_draft=changed)
-    assert st.session_state[MATERIAL_INBOX_KEY].draft==result
+    assert handle_material_action(st,session,model,'extract',NOW,source_draft=changed)
+    updated=st.session_state[MATERIAL_INBOX_KEY].draft
+    assert updated!=result and updated.supplemental_context=='还有自我评价'
+    assert updated.estimate_fallbacks[0]['origin']=='local_workload'
 
 
 @pytest.mark.parametrize('kind',['text','image','docx','pdf_text','pdf_vision'])
@@ -237,13 +239,13 @@ def test_unselected_pdf_pages_prevent_whole_material_claim():
     assert result.items[0].minutes==20 and result.estimate_coverage=='partial' and result.source_incomplete
 
 
-def test_empty_supplement_response_cannot_erase_existing_estimate():
+def test_empty_model_response_publishes_valid_source_backed_fallback():
     st,session,model,_=live()
     result,_=run();save_material_edit(st,MaterialInbox(result),NOW)
     model.agent_caller=lambda *args:json.dumps(dict(schema_version='campusflow.material-text.v2',
         items=[],reference_date=None,reference_evidence=None))
-    assert not handle_material_action(st,session,model,'extract',NOW,source_draft=result)
-    assert st.session_state[MATERIAL_INBOX_KEY].draft==result
+    assert handle_material_action(st,session,model,'extract',NOW,source_draft=result)
+    assert st.session_state[MATERIAL_INBOX_KEY].draft.estimate_fallbacks[0]['origin']=='local_workload'
 
 
 @pytest.mark.parametrize('kind',['text','image','docx','pdf_text','pdf_vision'])

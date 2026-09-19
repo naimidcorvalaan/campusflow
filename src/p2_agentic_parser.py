@@ -177,6 +177,7 @@ def _parse_update(item: Any) -> ReconciliationUpdate:
         new_task_title=new_title,
         progress_delta_minutes=progress,
         set_total_minutes=set_total,
+        user_reported_running=_optional_bool(item.get('user_reported_running'), 'user_reported_running'),
         set_total_source=source,
         lifecycle_action=lifecycle,
         is_splittable=splittable,

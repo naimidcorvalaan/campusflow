@@ -124,6 +124,105 @@ def unified_json(task_updates=None, commitment_updates=None, movement=None,
     return json.dumps(payload, ensure_ascii=False)
 
 
+@pytest.mark.parametrize('reported,expected_delta',[(50,None),(60,10)])
+def test_cumulative_report_is_bound_to_current_identity_and_not_double_counted(reported,expected_delta):
+    from src.p3_unified_feedback import parse_unified_feedback
+    from src.p2_state_reconciler import apply_reconciliation
+    state=make_state()
+    item=task_update(ref='day_task_001',total=reported+15,source='user_text')
+    item['reported_completed_minutes']=reported
+    parsed=parse_unified_feedback(unified_json(task_updates=[item]),state)
+    assert parsed.task_result.updates[0].progress_delta_minutes==expected_delta
+    updated=apply_reconciliation(state,parsed.task_result).state
+    task=updated.tasks[0]
+    assert task.completed_minutes==reported and task.remaining_minutes==15
+    assert state.tasks[0].completed_minutes==50
+    assert item['reported_completed_minutes']==reported
+
+
+@pytest.mark.parametrize('value',[-1,True,'50',50.5,49])
+def test_cumulative_report_does_not_coerce_or_rewind(value):
+    from src.p3_unified_feedback import parse_unified_feedback
+    from src.p2_agentic_parser import AgenticParseError
+    item=task_update(ref='day_task_001');item['reported_completed_minutes']=value
+    with pytest.raises(AgenticParseError):parse_unified_feedback(unified_json(task_updates=[item]),make_state())
+
+
+@pytest.mark.parametrize('ref,delta,state',[('missing',None,True),('day_task_001',1,True),('day_task_001',None,False)])
+def test_cumulative_report_requires_one_progress_semantic_and_verified_identity(ref,delta,state):
+    from src.p3_unified_feedback import parse_unified_feedback
+    from src.p2_agentic_parser import AgenticParseError
+    item=task_update(ref=ref,progress=delta);item['reported_completed_minutes']=50
+    with pytest.raises(AgenticParseError):
+        parse_unified_feedback(unified_json(task_updates=[item]),make_state() if state else None)
+
+
+def test_cumulative_report_repair_uses_same_contract_and_canonical_state():
+    from src.p3_unified_feedback import detect_unified_feedback
+    calls=[]
+    def caller(system,user):
+        calls.append(system)
+        item=task_update(ref='day_task_001',progress=10 if len(calls)==1 else None)
+        item['reported_completed_minutes']=50
+        return unified_json(task_updates=[item])
+    parsed,warning=detect_unified_feedback(make_state(),'累计已做50分钟',caller)
+    assert len(calls)==2 and calls[0]==calls[1] and warning is None
+    assert parsed.task_result.updates[0].progress_delta_minutes is None
+
+
+def test_unified_repair_retains_contract_context_and_exact_failed_response():
+    from src.p3_unified_feedback import detect_unified_feedback, build_unified_feedback_prompt
+    broken = unified_json(task_updates=[task_update(title="课程材料核对", total=12,
+                           source="user_text", progress=0)])
+    fixed = unified_json(task_updates=[task_update(title="课程材料核对", total=12,
+                          source="user_text")])
+    state = make_state()
+    text = "新增12分钟课程材料核对，尚未开始。"
+    expected_system, expected_user = build_unified_feedback_prompt(state, text)
+    calls = []
+
+    def caller(system, user):
+        calls.append((system, user))
+        if len(calls) == 1:
+            return broken
+        assert system == expected_system
+        context = json.loads(user)
+        assert context['original_context'] == expected_user
+        assert context['previous_response'] == broken
+        assert 'progress_delta_minutes' in context['validation_error']
+        return fixed
+
+    result, warning = detect_unified_feedback(state, text, caller)
+    assert warning is None and len(calls) == 2
+    assert result.task_result.updates[0].set_total_minutes == 12
+    assert result.task_result.updates[0].progress_delta_minutes is None
+
+
+def test_unified_invalid_zero_remains_strict_and_repair_is_bounded():
+    from src.p3_unified_feedback import detect_unified_feedback, parse_unified_feedback
+    from src.p2_agentic_parser import AgenticParseError
+    broken = unified_json(task_updates=[task_update(title="课程材料核对", progress=0)])
+    with pytest.raises(AgenticParseError, match='progress_delta_minutes'):
+        parse_unified_feedback(broken)
+    calls = []
+    result, warning = detect_unified_feedback(make_state(), "新增任务", lambda *args: (calls.append(args) or broken))
+    assert result is None and warning and len(calls) == 2
+
+
+def test_arrival_feedback_shares_policy_semantics_and_existing_numeric_fact():
+    from dataclasses import replace
+    from src.p3_unified_feedback import build_unified_feedback_prompt
+    from src.p2_commitment_reconciler import build_commitment_reconciliation_prompt
+    from src.p3_class_prep import CLASS_ARRIVAL_FEEDBACK_SEMANTICS
+    state=make_state()
+    state=replace(state,commitments=(replace(state.commitments[0],commitment_kind='class',
+                                           class_arrival_lead_minutes=5),))
+    for builder in (build_unified_feedback_prompt,build_commitment_reconciliation_prompt):
+        system,user=builder(state,'我已经到教学楼了。')
+        assert CLASS_ARRIVAL_FEEDBACK_SEMANTICS in system
+        assert 'class_arrival_lead_minutes=5' in user
+
+
 def time_json(min_m, max_m):
     return (
         '{"schema_version": "' + TIME_ESTIMATE_SCHEMA_VERSION + '", '
@@ -711,3 +810,84 @@ def test_vocab_splittable_judgment_applied_through_feedback(real_map):
     text = render_page_text(turn)
     assert "准备去" not in text
     assert "背单词" in text
+
+@pytest.mark.parametrize('reported,delta,remaining,done,total',[(50,None,15,50,65),(60,None,15,60,75),(None,5,20,55,75),(None,None,25,50,75)])
+def test_remaining_report_uses_canonical_progress(reported,delta,remaining,done,total):
+    from src.p3_unified_feedback import parse_unified_feedback
+    from src.p2_state_reconciler import apply_reconciliation
+    item=task_update(ref='day_task_001',progress=delta)
+    item.update(reported_completed_minutes=reported,reported_remaining_minutes=remaining)
+    state=make_state()
+    result=parse_unified_feedback(unified_json(task_updates=[item]),state)
+    task=apply_reconciliation(state,result.task_result).state.tasks[0]
+    assert (task.completed_minutes,task.total_minutes,task.remaining_minutes)==(done,total,remaining)
+    assert state.tasks[0].completed_minutes==50
+
+
+@pytest.mark.parametrize('remaining,ref,total,delta',[(True,'day_task_001',None,None),('15','day_task_001',None,None),(-1,'day_task_001',None,None),(15,'missing',None,None),(15,'day_task_001',75,None),(15,'day_task_001',None,True)])
+def test_remaining_report_rejects_ambiguous_or_invalid_values(remaining,ref,total,delta):
+    from src.p3_unified_feedback import parse_unified_feedback
+    from src.p2_agentic_parser import AgenticParseError
+    item=task_update(ref=ref,total=total,source='user_text' if total else None,progress=delta)
+    item['reported_remaining_minutes']=remaining
+    with pytest.raises(AgenticParseError):
+        parse_unified_feedback(unified_json(task_updates=[item]),make_state())
+
+@pytest.mark.parametrize('text,bad_delta',[
+    ('计组实验3已实际做了50分钟，剩余只需15分钟。',50),
+    ('计组实验3实际已经做了50分钟，但仍需要15分钟。',None),
+])
+def test_literal_progress_contradiction_gets_one_repair_without_local_rewrite(text,bad_delta):
+    from src.p3_unified_feedback import detect_unified_feedback
+    calls=[]
+    def caller(system,user):
+        calls.append((system,user))
+        item=task_update(ref='day_task_001',progress=bad_delta)
+        if len(calls)==2:
+            item.update(progress_delta_minutes=None,reported_completed_minutes=50,reported_remaining_minutes=15)
+        return unified_json(task_updates=[item])
+    state=make_state()
+    parsed,warning=detect_unified_feedback(state,text,caller)
+    assert warning is None and len(calls)==2
+    assert parsed.task_result.updates[0].set_total_minutes==65
+    assert calls[0][0]==calls[1][0]
+    assert 'progress_mismatch' in calls[1][1]
+    details = json.loads(calls[1][1])['validation_error_details']
+    assert details['task_ref'] == 'day_task_001'
+    assert details['recorded_completed_minutes'] == 50
+    if bad_delta is not None:
+        assert details['source_report_field'] == 'reported_completed_minutes'
+        assert details['expected_report_value'] == 50
+        assert details['observed_candidate_value'] == 100
+        assert details['value_semantics'] == 'cumulative_actual_minutes_not_increment'
+    else:
+        assert details['source_report_field'] == 'reported_remaining_minutes'
+        assert details['expected_report_value'] == 15
+        assert details['value_semantics'] == 'remaining_work_minutes'
+    assert '计组实验' not in json.dumps(details, ensure_ascii=False)
+    assert state.tasks[0].completed_minutes==50
+
+
+def test_literal_progress_failure_is_bounded_and_does_not_apply_wrong_delta():
+    from src.p3_unified_feedback import detect_unified_feedback
+    calls=[]
+    def caller(*args):
+        calls.append(args)
+        return unified_json(task_updates=[task_update(ref='day_task_001',progress=50)])
+    result,warning=detect_unified_feedback(make_state(),'计组实验3已经做了50分钟。',caller)
+    assert result is None and warning and len(calls)==2
+
+
+@pytest.mark.parametrize('text',[
+    '计组实验3又做了5分钟。',
+    '如果计组实验3已做了50分钟，还需要多久？',
+    '计组实验3不是已做了50分钟。',
+    '计组实验3和背单词已做了50分钟。',
+    '计组实验3已经做了50分钟吗？',
+    '计组实验3已做了50分钟，又做了5分钟。',
+])
+def test_literal_guard_does_not_guess_ambiguous_reports(text):
+    from src.p3_unified_feedback import validate_explicit_progress_reports,parse_unified_feedback
+    state=make_state()
+    result=parse_unified_feedback(unified_json(task_updates=[task_update(ref='day_task_001',progress=5)]),state)
+    validate_explicit_progress_reports(state,text,result)

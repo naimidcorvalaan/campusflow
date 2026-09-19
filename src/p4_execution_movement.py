@@ -3,9 +3,9 @@
 This module deliberately does not create a second planner.  It reads the P2
 provisional allocation, obtains real P3 routes for actual location changes,
 reserves those intervals, and performs exactly one deterministic reallocation.
-If that final allocation changes the location-transition order, it degrades to
-the reliable provisional plan instead of publishing a route for the wrong
-activities.
+If that final allocation changes the location-transition order, it returns an
+unapplied candidate. The final publication guard must still reject missing
+routes; returning the provisional allocation does not certify it as safe.
 """
 
 from dataclasses import dataclass
@@ -53,6 +53,21 @@ class ExecutionMovementOutcome:
 
 
 def apply_execution_sequence_movements(
+    state, provisional_allocation_plan, context, map_data, **options
+):
+    """Reserve the primary sequence, then attempt its still-unplanned suffix.
+
+    Continuation reuses the same allocator and route validation, without model
+    calls or progress mutations. A meal/departure is not a workload deadline.
+    """
+    outcome = _apply_execution_sequence_movements(
+        state, provisional_allocation_plan, context, map_data, **options
+    )
+    from src.p4_plan_continuation import continue_execution_work
+    return continue_execution_work(outcome, context, map_data, options, state)
+
+
+def _apply_execution_sequence_movements(
     state,
     provisional_allocation_plan,
     context,
@@ -85,7 +100,7 @@ def apply_execution_sequence_movements(
         return ExecutionMovementOutcome(state, provisional_allocation_plan, (), (), False)
     mode = parse_transport_mode(context.transport_mode or TransportMode.WALK)
     sequence_events = _events_with_meal_temporal_relations(events, context)
-    requests = _sequence_requests(sequence_events, context, map_data, mode, time_caller, state)
+    requests = _sequence_requests(sequence_events, context, map_data, mode, time_caller, state, provisional_allocation_plan)
     if not requests:
         return ExecutionMovementOutcome(state, provisional_allocation_plan, (), (), False)
 
@@ -99,7 +114,7 @@ def apply_execution_sequence_movements(
     if formal is None:
         return ExecutionMovementOutcome(
             state, provisional_allocation_plan, (),
-            ("没有足够窗口容纳执行地点之间的移动，已保留原有可靠计划。",), False,
+            ("没有足够窗口容纳执行地点之间的移动，当前候选尚未通过移动校验。",), False,
         )
     adjusted, final_plan, blocks = formal
     final_events = execution_timeline(
@@ -114,14 +129,14 @@ def apply_execution_sequence_movements(
                 state,
                 provisional_allocation_plan,
                 (),
-                tuple(warnings) + ("执行顺序在重新分配后发生变化，已保留原有可靠计划。",),
+                tuple(warnings) + ("执行顺序在重新分配后发生变化，当前候选尚未通过移动校验。",),
                 False,
             )
         # One deterministic correction is allowed.  A route reservation can
         # shorten a flexible task, so recalculate the actual location changes
         # from that final task sequence instead of returning a stale route.
         corrected_requests = _sequence_requests(
-            final_sequence_events, context, map_data, mode, time_caller, state
+            final_sequence_events, context, map_data, mode, time_caller, adjusted, final_plan
         )
         corrected = _reserve_and_reallocate(
             state,
@@ -154,7 +169,7 @@ def apply_execution_sequence_movements(
             state,
             provisional_allocation_plan,
             (),
-            tuple(warnings) + ("执行顺序在重新分配后发生变化，已保留原有可靠计划。",),
+            tuple(warnings) + ("执行顺序在重新分配后发生变化，当前候选尚未通过移动校验。",),
             False,
         )
     overlap_errors = final_plan_overlap_errors(adjusted, final_plan, blocks)
@@ -163,7 +178,7 @@ def apply_execution_sequence_movements(
             state,
             provisional_allocation_plan,
             (),
-            tuple(warnings) + ("最终时间线存在重叠，已保留原有可靠计划。",),
+            tuple(warnings) + ("最终时间线存在重叠，当前候选尚未通过移动校验。",),
             False,
         )
     return ExecutionMovementOutcome(adjusted, final_plan, tuple(blocks), tuple(warnings), True)
@@ -193,17 +208,21 @@ def _reserve_and_reallocate(
     )
     if not blocks:
         return None
+    presence = _returning_task_presence(state, requests)
     earliest_starts = dict(earliest_start_by_task_ref or {})
     movement_earliest = {
         block.destination_activity_ref: block.end_time
         for block in blocks
         if block.destination_activity_ref is not None
         and block.destination_activity_ref.startswith("day_task_")
+        and block.destination_activity_ref not in presence
     }
     for task_ref, value in movement_earliest.items():
         earliest_starts[task_ref] = max(earliest_starts.get(task_ref, value), value)
     latest_ends = dict(latest_end_by_task_ref or {})
     for task_ref, value in _location_task_departure_boundaries(requests).items():
+        if task_ref in presence:
+            continue
         latest_ends[task_ref] = min(latest_ends.get(task_ref, value), value)
     # TaskAllocation intentionally stores a window ref plus sequence, not an
     # arbitrary wall-clock start.  Hard earliest-start facts therefore become
@@ -242,6 +261,7 @@ def _reserve_and_reallocate(
         latest_end_by_task_ref=latest_ends,
         preferred_chunk_by_task_ref=preferred_chunk_by_task_ref,
         concurrent_minutes_by_task_ref=concurrent_minutes_by_task_ref,
+        presence_intervals_by_task_ref=presence,
     )
     # Default lunch/dinner starts are soft preferences.  Try a separate
     # boundary-aware candidate, but keep the reliable plan when the preferred
@@ -261,6 +281,7 @@ def _reserve_and_reallocate(
             latest_end_by_task_ref=latest_ends,
             preferred_chunk_by_task_ref=preferred_chunk_by_task_ref,
             concurrent_minutes_by_task_ref=concurrent_minutes_by_task_ref,
+            presence_intervals_by_task_ref=presence,
         )
         if _soft_start_candidate_is_better(
             adjusted, final_plan, preferred_state, preferred_plan,
@@ -313,21 +334,9 @@ def _soft_start_candidate_is_better(
 
 
 def _task_allocation_intervals(state, plan):
-    windows = {item.window_ref: item for item in state.windows}
-    offsets = {}
+    from src.task_attention import allocation_spans
     result = {}
-    for allocation in sorted(
-        plan.allocations,
-        key=lambda item: (
-            windows[item.window_ref].starts_at,
-            item.sequence_index,
-            item.allocation_ref,
-        ),
-    ):
-        window = windows[allocation.window_ref]
-        start = window.starts_at + timedelta(minutes=offsets.get(allocation.window_ref, 0))
-        end = start + timedelta(minutes=allocation.planned_minutes)
-        offsets[allocation.window_ref] = offsets.get(allocation.window_ref, 0) + allocation.planned_minutes
+    for allocation, start, end in allocation_spans(state, plan):
         result.setdefault(allocation.task_ref, []).append((start, end))
     return {key: tuple(value) for key, value in result.items()}
 
@@ -397,6 +406,44 @@ def _split_windows_at_earliest_starts(state, earliest_starts):
     )
 
 
+def _returning_task_presence(state, requests):
+    """A repeated task may use each visit, never the interval spent elsewhere.
+
+    Route reservations already split free windows at departure/arrival. Keep
+    user earliest/deadline bounds independent of these visit-scoped limits.
+    Only tasks with a verified departure and return need multiple intervals.
+    Background processes do not describe the person's location.
+    """
+    active = {task.task_ref for task in state.tasks if task.attention_mode == 'active'}
+    nodes = {}
+    for departure in requests:
+        ref = departure.origin_ref
+        if ref not in active:
+            continue
+        if any(arrival.destination_ref == ref
+               and arrival.destination.node_id == departure.origin.node_id
+               and arrival.movement_start > departure.movement_start
+               for arrival in requests):
+            nodes[ref] = departure.origin.node_id
+    result = {}
+    ordered = sorted(requests, key=lambda r: r.movement_start)
+    for ref, node in nodes.items():
+        start = state.now if ordered[0].origin.node_id == node else None
+        intervals = []
+        for request in ordered:
+            leave = request.movement_start - timedelta(minutes=request.transition_minutes)
+            if start is not None:
+                if leave > start:
+                    intervals.append((start, leave))
+                start = None
+            if request.destination.node_id == node:
+                start = request.movement_start + timedelta(minutes=request.route_minutes)
+        if start is not None and start < state.day_end:
+            intervals.append((start, state.day_end))
+        result[ref] = tuple(intervals)
+    return result
+
+
 def _location_task_departure_boundaries(requests):
     """First outbound transition start for each located ordinary task.
 
@@ -451,27 +498,17 @@ def _class_prep_diagnostics(state):
 
 
 def _allocation_diagnostics(state, plan):
-    windows = {item.window_ref: item for item in state.windows}
-    offsets = {}
-    result = []
-    for allocation in sorted(
-        plan.allocations,
-        key=lambda item: (
-            windows[item.window_ref].starts_at,
-            item.sequence_index,
-            item.allocation_ref,
-        ),
-    ):
-        window = windows[allocation.window_ref]
-        start = window.starts_at + timedelta(minutes=offsets.get(allocation.window_ref, 0))
-        end = start + timedelta(minutes=allocation.planned_minutes)
-        offsets[allocation.window_ref] = offsets.get(allocation.window_ref, 0) + allocation.planned_minutes
-        result.append((allocation.task_ref, start.isoformat(), end.isoformat()))
-    return tuple(result)
+    from src.task_attention import allocation_spans
+    return tuple((part.task_ref, start.isoformat(), end.isoformat())
+                 for part, start, end in allocation_spans(state, plan))
 
 
 def assume_current_location_for_timeline(context, events):
-    """Add one explicit assumption only when a routeable execution fact exists."""
+    """Request an origin without promoting a destination into a current fact.
+
+    The legacy function name is retained for callers. An event location,
+    including an automatically selected canteen, is never an origin assertion.
+    """
     if not isinstance(context, ExecutionPlanContext):
         raise TypeError("context must be an ExecutionPlanContext")
     if context.current_location.source is not CurrentLocationSource.UNKNOWN:
@@ -481,11 +518,10 @@ def assume_current_location_for_timeline(context, events):
         return context
     confirmations = tuple(
         item for item in context.confirmations
-        if item.kind is not ExecutionConfirmationKind.CURRENT_LOCATION_ASSUMED
-    ) + (ExecutionConfirmation(first.activity_ref, ExecutionConfirmationKind.CURRENT_LOCATION_ASSUMED),)
-    return context.with_current_location(
-        CurrentLocationContext(first.location, CurrentLocationSource.ASSUMED)
-    ).with_confirmations(confirmations)
+        if item.kind not in (ExecutionConfirmationKind.CURRENT_LOCATION_ASSUMED,
+                             ExecutionConfirmationKind.CURRENT_LOCATION_REQUIRED)
+    ) + (ExecutionConfirmation(first.activity_ref, ExecutionConfirmationKind.CURRENT_LOCATION_REQUIRED),)
+    return context.with_confirmations(confirmations)
 
 
 def replace_assumed_current_location(context, location):
@@ -496,7 +532,8 @@ def replace_assumed_current_location(context, location):
         raise TypeError("location must be an ExecutionLocation")
     confirmations = tuple(
         item for item in context.confirmations
-        if item.kind is not ExecutionConfirmationKind.CURRENT_LOCATION_ASSUMED
+        if item.kind not in (ExecutionConfirmationKind.CURRENT_LOCATION_ASSUMED,
+                             ExecutionConfirmationKind.CURRENT_LOCATION_REQUIRED)
     )
     return context.with_current_location(
         CurrentLocationContext(location, CurrentLocationSource.USER)
@@ -521,25 +558,18 @@ class _SequenceRequest:
     approximate: bool
 
 
-def execution_timeline(state, allocation_plan, context, map_data, location_caller=None, location_repair_caller=None):
+def execution_timeline(state, allocation_plan, context, map_data, location_caller=None, location_repair_caller=None, include_background=False):
     """Merge allocated task slices and fixed commitments in chronological order."""
-    windows = {item.window_ref: item for item in state.windows}
-    task_offsets = {}
+    from src.task_attention import allocation_spans
     events = []
-    for allocation in sorted(
-        getattr(allocation_plan, "allocations", ()),
-        key=lambda item: (windows[item.window_ref].starts_at, item.sequence_index, item.allocation_ref),
-    ):
-        window = windows.get(allocation.window_ref)
-        if window is None:
-            continue
-        offset = task_offsets.get(allocation.window_ref, 0)
-        starts_at = window.starts_at + timedelta(minutes=offset)
-        ends_at = starts_at + timedelta(minutes=allocation.planned_minutes)
-        task_offsets[allocation.window_ref] = offset + allocation.planned_minutes
+    for allocation, starts_at, ends_at in allocation_spans(state, allocation_plan):
         binding = context.binding_for(allocation.task_ref)
+        task = next(item for item in state.tasks if item.task_ref == allocation.task_ref)
+        background = task.attention_mode == 'background'
+        if background and not include_background:
+            continue
         events.append(ExecutionTimelineEvent(
-            allocation.task_ref, "task", starts_at, ends_at,
+            allocation.task_ref, "background" if background else "task", starts_at, ends_at,
             binding.execution_location if binding is not None else None,
         ))
     for commitment in state.commitments:
@@ -616,12 +646,18 @@ def _events_with_meal_temporal_relations(events, context):
     return tuple(ordered)
 
 
-def _sequence_requests(events, context, map_data, mode, time_caller, state):
+def _sequence_requests(events, context, map_data, mode, time_caller, state, allocation_plan=None):
     now = state.now
     anchor = context.current_location.location if context.current_location.source in (CurrentLocationSource.USER, CurrentLocationSource.ASSUMED) else None
     anchor_ref = None
     cursor = now
     requests = []
+    from src.task_attention import allocation_spans
+    finishes = {}
+    if allocation_plan is not None:
+        for part, _, end in allocation_spans(state, allocation_plan):
+            finishes[part.task_ref] = max(finishes.get(part.task_ref, end), end)
+    tasks = {task.task_ref: task for task in state.tasks}
     for event in events:
         # Unlocated tasks execute where the user already is; they do not invent
         # a new position or route.
@@ -672,6 +708,17 @@ def _sequence_requests(events, context, map_data, mode, time_caller, state):
             else:
                 padding = _origin_window_padding(state, cursor) if anchor_ref else 0
                 proposed_start = cursor + timedelta(minutes=5 + padding)
+            # A hard user-specified earliest start is not a reason to make
+            # the user travel immediately and wait at the destination.
+            # Keep all route/preparation costs; only defer this flexible leg.
+            from src.p4_execution_enrichment import earliest_start_overrides
+            hard_start = earliest_start_overrides(context, state).get(event.activity_ref)
+            if hard_start is not None:
+                proposed_start = max(proposed_start, hard_start - timedelta(minutes=base_minutes))
+            task = tasks[event.activity_ref]
+            for parent in task.departure_after_task_refs:
+                if parent in finishes:
+                    proposed_start = max(proposed_start, finishes[parent] + timedelta(minutes=5))
         else:
             proposed_start = event.starts_at - timedelta(minutes=base_minutes)
         proposed_buffer_start = proposed_start - timedelta(minutes=5)
@@ -823,11 +870,15 @@ def _resolution_from_execution_location(location):
 
 
 def _same_physical_place(left, right, map_data):
-    if left.node_id == right.node_id:
+    return _same_physical_nodes(left.node_id, right.node_id, map_data)
+
+
+def _same_physical_nodes(left_id, right_id, map_data):
+    if left_id == right_id:
         return True
     nodes = {node.id: node for node in map_data.nodes}
-    left_anchor = getattr(nodes.get(left.node_id), "physical_anchor_id", None)
-    right_anchor = getattr(nodes.get(right.node_id), "physical_anchor_id", None)
+    left_anchor = getattr(nodes.get(left_id), "physical_anchor_id", None)
+    right_anchor = getattr(nodes.get(right_id), "physical_anchor_id", None)
     return bool(left_anchor and left_anchor == right_anchor)
 
 
@@ -844,6 +895,37 @@ def _transition_signature(events, context, map_data):
             pairs.append((anchor.node_id, event.location.node_id, event.activity_ref))
         anchor = event.location
     return tuple(pairs)
+
+
+def execution_route_coverage_errors(state, plan, blocks, context, map_data):
+    """A known change of physical location needs a reserved incoming route.
+
+    This is a publication guard, not a second route planner. Unknown locations
+    remain unknown; same-building aliases reuse the formal map's anchor.
+    """
+    events = execution_timeline(state, plan, context, map_data)
+    anchor = (context.current_location.location if context.current_location.source in
+              (CurrentLocationSource.USER, CurrentLocationSource.ASSUMED) else None)
+    cursor = state.now
+    unused = list(blocks)
+    errors = []
+    for event in events:
+        if event.location is None:
+            cursor = max(cursor, event.ends_at)
+            continue
+        if anchor is not None and not _same_physical_place(anchor, event.location, map_data):
+            match = next((block for block in unused
+                          if _same_physical_nodes(block.origin_node_id, anchor.node_id, map_data)
+                          and _same_physical_nodes(block.destination_node_id, event.location.node_id, map_data)
+                          and (block.transition_start or block.window_start) >= cursor
+                          and block.end_time <= (event.arrive_by or event.starts_at)), None)
+            if match is None:
+                errors.append("known location transition has no reserved route: {}".format(event.activity_ref))
+            else:
+                unused.remove(match)
+        anchor = event.location
+        cursor = max(cursor, event.ends_at)
+    return tuple(errors)
 
 
 def _transitions_still_match(expected, actual):

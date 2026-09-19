@@ -37,8 +37,8 @@
   --cf-track-fixed: #536b5a;
   --cf-track-move: #85a5c8;
   --cf-font: "Bahnschrift", "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
-  --cf-type-meta: 12px;
-  --cf-type-body: 14px;
+  --cf-type-meta: 14px;
+  --cf-type-body: 16px;
   --cf-type-section: 18px;
   --cf-type-title: 30px;
   --cf-type-display: 72px;
@@ -65,8 +65,7 @@
   content: none;
 }
 
-[data-testid=stFileUploadDropzone] [data-testid=stFileDropzoneInstructions],
-[data-testid=stFileUploadDropzone]>button {
+[data-testid=stFileUploadDropzone] [data-testid=stFileDropzoneInstructions] {
   display: none;
 }
 [data-testid=stFileUploadDropzone] {
@@ -76,14 +75,14 @@
   justify-content: center;
   gap: 5px;
   padding: 18px 20px;
-  min-height: 88px;
+  min-height: 132px;
   cursor: pointer;
   transition: background-color 120ms,transform 120ms,box-shadow 120ms;
-  background: var(--cf-canvas);
-  border-color: var(--cf-line);
+  background: var(--cf-surface);
+  border: 1px dashed var(--cf-border);
 }
 [data-testid=stFileUploadDropzone]:before {
-  content: "选择或拖入图片";
+  content: "拖放图片到这里，或选择文件";
   font-size: var(--cf-type-body);
   color: var(--cf-ink-soft);
 }
@@ -93,10 +92,24 @@
   color: var(--cf-muted);
 }
 [data-testid=stFileUploadDropzone]:has(input[accept*=".docx"]):before {
-  content: "选择或拖入材料";
+  content: "拖放文件到这里，或";
 }
 [data-testid=stFileUploadDropzone]:has(input[accept*=".docx"]):after {
   content: "图片最大 5MB · DOCX / PDF 最大 10MB";
+  flex-basis: 100%;
+  line-height: 1.6;
+}
+/* Keep the native picker beside its instruction; other uploaders are unchanged. */
+[data-testid=stFileUploadDropzone]:has(input[accept*=".docx"]) {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: 0;
+}
+[data-testid=stFileUploadDropzone]:has(input[accept*=".docx"]) > button {
+  margin: 0;
 }
 [data-testid=stFileUploadDropzone]:not(:has(input:disabled)):hover {
   background: var(--cf-blue-050);
@@ -167,7 +180,10 @@ section.main [data-testid=stVerticalBlockBorderWrapper]:has(>div>[data-testid=st
   font-weight: 500;
   line-height: 22px;
   color: var(--cf-ink-soft);
-  margin: 0 0 4px;
+  margin: 0 0 18px;
+}
+.stApp [data-testid=stVerticalBlock]:has(> [data-testid=element-container] .cf-region-environment-campus) .cf-campus-kicker {
+  padding-left: 12px;
 }
 .stApp [data-testid=stVerticalBlock]:has(> [data-testid=element-container] :is(.cf-region-environment-campus,.cf-region-environment-time)) [data-baseweb=select]>div {
   min-height: 42px;
@@ -269,7 +285,7 @@ details:has(>summary [data-testid=stExpanderToggleIcon])>summary:active {
   font-family: var(--cf-font);
 }
 section.main>div.block-container {
-  max-width: 1400px;
+  max-width: 1040px;
   padding: 3.2rem 46px 3rem;
 }
 .stApp [data-testid=stVerticalBlock] {
@@ -370,6 +386,9 @@ section.main>div.block-container {
 [data-testid=stVerticalBlock]:has(> [data-testid=element-container] .cf-region-feedback) [data-testid=stExpander] summary {
   color: var(--cf-blue-700);
   font-weight: 500;
+}
+[data-testid=stVerticalBlock]:has(> [data-testid=element-container] .cf-region-feedback) [data-testid=stExpander] > details {
+  border-top: 0;
 }
 [data-testid=element-container]:has(.cf-rewrite-marker) {
   display: none;
@@ -474,6 +493,30 @@ a {
 [data-testid=stExpander] summary:hover {
   background: var(--cf-sidebar);
 }
+/* Native business disclosures: keep semantics/keyboard behavior, use one
+ * leading triangle. Select menus, navigation and settings tabs are untouched. */
+[data-testid=stExpander] details > summary {
+  justify-content: flex-start;
+  gap: 9px;
+}
+[data-testid=stExpander] details > summary [data-testid=stExpanderToggleIcon] {
+  display: none;
+}
+[data-testid=stExpander] details > summary::before {
+  content: '▸';
+  color: currentColor;
+  width: 12px;
+  flex: 0 0 12px;
+}
+[data-testid=stExpander] details[open] > summary::before { content: '▾'; }
+.cf-confirmation-context { font-size: var(--cf-type-meta); color: var(--cf-ink-soft); }
+[data-testid=stVerticalBlock]:has(> [data-testid=element-container] .cf-confirm-answer-marker) {
+  padding: 0 28px 24px;
+  background: var(--cf-surface);
+  margin-top: -16px;
+}
+[data-testid=element-container]:has(.cf-confirm-answer-marker) { display: none; }
+[data-testid=element-container]:has(.cf-slot-anchor) { display: none; }
 [data-testid=stForm] {
   border: 0;
   border-radius: 0;
@@ -554,6 +597,25 @@ label p {
   margin: 0 0 16px;
   min-width: 0;
 }
+.cf-plan-summary { margin: 0 0 18px; color: var(--cf-ink-soft); }
+.cf-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.cf-plan-summary > span { font-size: var(--cf-type-meta); color: var(--cf-muted); }
+.stApp .cf-plan-summary p { font-size: 17px; line-height: 1.75; margin: 6px 0 0; }
+.cf-action-workspace { display: block; }
+.cf-action-workspace > .cf-side-card { padding: 0 0 10px; font-size: var(--cf-type-body); }
+.cf-action-workspace .cf-next-fixed { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin: 0 0 12px; padding: 0; }
+.cf-action-workspace .cf-side-title { margin: 0; font-size: var(--cf-type-body); font-weight: 400; }
+.cf-action-workspace .cf-next-fixed b { font-size: var(--cf-type-body); color: var(--cf-ink-soft); font-weight: 500; }
+.cf-action-workspace .cf-fixed-departure { margin: 0; font-size: var(--cf-type-body); }
+.cf-route-summary { font-size: var(--cf-type-body); line-height: 1.8; }
+.cf-route-summary > strong { margin-left: 12px; color: var(--cf-ink-soft); font-weight: 500; }
+.cf-route-summary > div { font-size: var(--cf-type-body); }
+.cf-home-movement-hint { font-size: var(--cf-type-body); color: var(--cf-muted); line-height: 1.8; }
+.cf-route-details { margin-top: 8px; }
+.cf-route-details > summary { cursor: pointer; color: var(--cf-blue-700); padding: 5px 0; }
+.cf-route-details .cf-mini-route { max-width: 480px; margin-top: 12px; }
+.cf-action-workspace .cf-focus-next { font-size: var(--cf-type-body); }
+.cf-plan-provisional .cf-plan-opening { font-size: 16px; color: var(--cf-ink-soft); }
 .cf-plan-provisional {
   border-color: var(--cf-warning);
 }
@@ -596,7 +658,10 @@ label p {
 .cf-focus-minutes small {
   font-size: var(--cf-type-meta);
   letter-spacing: 0;
-  margin-left: 8px;
+  display: block;
+  margin-top: 6px;
+  text-align: right;
+  color: var(--cf-muted);
 }
 .cf-focus-location {
   font-size: var(--cf-type-meta);
@@ -665,10 +730,9 @@ label p {
 }
 .cf-route-summary {
   border-top: 1px solid var(--cf-line);
-  border-bottom: 1px solid var(--cf-line);
   padding: 13px 0;
   margin-top: 16px;
-  font-size: var(--cf-type-meta);
+  font-size: var(--cf-type-body);
 }
 .cf-route-summary strong {
   font-weight: 600;
@@ -1197,70 +1261,6 @@ label p {
 .cf-mini-times .cf-mini-depart b {
   color: var(--cf-time);
 }
-/* Local material in today's spare space; no layout or interaction ownership. */
-[data-testid=stVerticalBlock]:has(> [data-testid=element-container] .cf-today-texture) {
-  position: relative;
-  isolation: isolate;
-  min-height: calc(100vh - 180px);
-}
-[data-testid=element-container]:has(.cf-today-texture) {
-  position: absolute;
-  inset: 0 0 auto;
-  height: min(820px, calc(100vh - 160px));
-  overflow: hidden;
-  pointer-events: none;
-  z-index: -1;
-}
-.cf-today-texture {
-  position: absolute;
-  right: -80px;
-  bottom: 0;
-  width: 640px;
-  height: 440px;
-  pointer-events: none;
-  mask-image: radial-gradient(ellipse at 74% 82%, var(--cf-ink) 0%, transparent 68%);
-  -webkit-mask-image: radial-gradient(ellipse at 74% 82%, var(--cf-ink) 0%, transparent 68%);
-}
-.cf-today-texture svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-  opacity: .10;
-}
-.cf-today-texture path {
-  fill: none;
-  stroke: var(--cf-track-node);
-  stroke-width: 1.2;
-}
-.cf-today-texture circle {
-  fill: var(--cf-track-node);
-}
-.cf-campus-imprint {
-  height: 112px;
-  overflow: hidden;
-  border-top: 1px solid var(--cf-imprint-line);
-  margin: 19px 8px 0;
-  pointer-events: none;
-}
-.cf-campus-imprint svg {
-  display: block;
-  width: 100%;
-  height: 122px;
-  opacity: .6;
-}
-.cf-campus-imprint path {
-  stroke: var(--cf-blue-700);
-  stroke-width: 1.3;
-  stroke-opacity: .32;
-  fill: none;
-}
-.cf-campus-imprint circle {
-  fill: var(--cf-blue-700);
-  fill-opacity: .4;
-}
-.cf-campus-imprint+[data-testid=element-container] .cf-nav-environment {
-  margin-top: 5px;
-}
 .cf-fixed .cf-body {
   font-weight: 500;
 }
@@ -1280,7 +1280,7 @@ label p {
   border: 1px solid var(--cf-track-node);
 }
 .cf-timeline-item.cf-movement {
-  min-height: 112px;
+  min-height: 88px;
 }
 .cf-movement:before {
   width: 0;
@@ -1397,15 +1397,6 @@ section.main [data-testid=element-container]:has(.cf-input-heading) {
 }
 
 @media(max-width:800px) {
-  .cf-today-texture {
-    display: none;
-  }
-  [data-testid=element-container]:has(.cf-today-texture) {
-    display: none;
-  }
-  [data-testid=stVerticalBlock]:has(> [data-testid=element-container] .cf-today-texture) {
-    min-height: 0;
-  }
   .stApp [data-testid=stHorizontalBlock]:has(.cf-environment-summary) {
     flex-wrap: wrap;
     justify-content: flex-start;
@@ -1531,7 +1522,7 @@ section.main [data-testid=element-container]:has(.cf-input-heading) {
   button:not(:disabled):active {
     transform: none!important;
   }
-  .cf-mini-route *,.cf-campus-imprint * {
+  .cf-mini-route * {
     animation: none!important;
     transition: none!important;
   }
@@ -1554,4 +1545,10 @@ section.main [data-testid=element-container]:has(.cf-input-heading) {
   :root {
     --cf-type-display: 56px;
   }
+}
+
+/* Align the clock reset text with its label and first native select. */
+.stApp [data-testid=stVerticalBlock]:has(> [data-testid=element-container] .cf-region-environment-time) [data-testid=stButton] button {
+  padding-left: 0;
+  margin-left: 0;
 }

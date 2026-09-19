@@ -56,8 +56,11 @@ class ReconciliationUpdate:
     lifecycle_action: LifecycleAction
     is_splittable: Optional[bool]
     minimum_slice_minutes: Optional[int]
+    user_reported_running: Optional[bool] = None
 
     def __post_init__(self):
+        if self.user_reported_running is not None and not isinstance(self.user_reported_running, bool):
+            raise ValueError('user_reported_running must be bool or None')
         if self.target_task_ref is not None:
             _require_non_empty("target_task_ref", self.target_task_ref)
         if self.new_task_title is not None:

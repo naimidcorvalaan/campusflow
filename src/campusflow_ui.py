@@ -51,6 +51,14 @@ SETTINGS_ACCESSIBILITY_HTML = """
     target.removeAttribute('aria-label'); target.removeAttribute('data-campusflow-dialog');
   };
   const activate = () => {
+    // Localize the real native file-picker button, preserving its handler.
+    for (const button of d.querySelectorAll('[data-testid="stFileUploadDropzone"] > button')) {
+      const walker = d.createTreeWalker(button, w.NodeFilter.SHOW_TEXT);
+      let text;
+      while ((text = walker.nextNode())) {
+        if (text.nodeValue.trim() === 'Browse files') text.nodeValue = '选择文件';
+      }
+    }
     // Mark only the native global label; CSS animates dots, never reruns.
     // Preserve Stop and its handlers, and leave local spinners untouched.
     const thinkingLabels = new Set();

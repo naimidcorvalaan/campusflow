@@ -22,6 +22,17 @@ from src.p2_models import DayPlanningState
 
 MAX_HISTORY_LINES = 10
 
+# One workload ownership definition shared by normal/review/revision prompts.
+# This is a hypothetical measurement boundary, never a user-location update.
+TASK_EFFORT_BOUNDARY = (
+    "工作量的计量场景：假设执行者已经到达任务执行地点，从开始执行任务动作计时，"
+    "到任务动作结束停止。请先理解这一现场动作的范围，再估计现场分钟。"
+    "这是估时边界，不表示用户现在已到达；实际出发、到达和返程由路线阶段另行安排。"
+    "不要添加用户未要求的前置任务。\n"
+    "将已知动作与未知外部等待区分；没有事实依据的排队、审批、额外准备不应作为必然工作量加入。"
+    "按通常完成该动作所需工作量估计，不能为迎合窗口缩短，也不能把最坏情形当确定分钟。\n"
+)
+
 SPLITTABILITY_REVIEW_SCHEMA_VERSION = "p2.splittability-review.v1"
 
 
@@ -48,7 +59,7 @@ def build_reconciliation_prompt(state: DayPlanningState, user_text: str) -> Tupl
 def build_day_plan_prompt(state: DayPlanningState, user_text: str) -> Tuple[str, str]:
     """Day Plan Agent：决定任务顺序与缺失信息估计，不输出具体 allocation。"""
     system = _day_plan_system()
-    user = (
+    user = TASK_EFFORT_BOUNDARY + (
         "当前时间：{now}\n"
         "day_end：{day_end}\n\n"
         "任务台账：\n{ledger}\n\n"
@@ -75,11 +86,11 @@ def build_review_prompt(
 ) -> Tuple[str, str]:
     """Review Agent：审查是否符合用户意图与常识（不重做硬约束校验）。"""
     system = _review_system()
-    user = (
+    user = TASK_EFFORT_BOUNDARY + (
         "用户最新输入：\n{user_text}\n\n"
         "任务台账：\n{ledger}\n\n"
         "Day Plan intent：\n{intent}\n\n"
-        "程序生成的 allocation（已通过全部硬约束）：\n{plan}\n\n"
+        "程序生成的初步 allocation（容量已校验，路线由后续阶段落实）：\n{plan}\n\n"
         "只输出一个符合 schema 的 JSON 对象。"
     ).format(
         user_text=user_text,
@@ -107,7 +118,7 @@ def build_revision_prompt(
     if review.reason:
         suggestions.append("reason: " + review.reason)
     suggestion_text = "\n".join(suggestions) if suggestions else "（无）"
-    user = (
+    user = TASK_EFFORT_BOUNDARY + (
         "用户最新输入：\n{user_text}\n\n"
         "任务台账：\n{ledger}\n\n"
         "原 Day Plan intent：\n{intent}\n\n"
@@ -213,6 +224,8 @@ def format_task_ledger(tasks: Tuple) -> str:
                 _fmt_optional(task.total_source.value if task.total_source is not None else None),
             )
         )
+        lines.append('  attention={} | launch_ref={} | actually_running={} | evidence={}'.format(
+            task.attention_mode, task.launch_task_ref, task.user_reported_running, task.background_reason))
     return "\n".join(lines) if lines else "（无）"
 
 
@@ -324,60 +337,40 @@ def _reconciliation_system() -> str:
 
 def _day_plan_system() -> str:
     return (
-        "你是 CampusFlow 的“全天计划决策（day plan intent）”助手。\n"
-        "输入：核对后的任务台账、今日剩余窗口与容量。\n"
-        "你的输出决定“今天先做哪个任务、是否使用低注意力窗口、缺失信息如何估计”，"
-        "但不输出具体 allocation 分钟表——真正的分钟分配由程序完成。\n\n"
-        "规则：\n"
-        "1. task_order 只包含台账中真实存在的 task_ref，不得重复。\n"
-        "2. completed / skipped_today / abandoned 任务即使出现在 task_order 也不会被安排；"
-        "不要主动选择它们。\n"
-        "3. 只有 total 为“未知”的任务才需要 task_estimates 估计总时长。\n"
-        "只估已理解范围的专注工作量；在 rationale 简述范围和关键假设。"
-        "‘做一点’不是整份任务突然只需很少时间；按可拆分任务处理，保留剩余工作。"
-        "范围不足以估计时不填该项，保留未知供用户使用任务估时；不要统一默认60分钟。"
-        "已有默认补充仅用于相关任务，本次补充优先，不使用固定倍率。\n"
-        "4. 用户已经明确给出的总时长不得覆盖（程序会忽略）。\n"
-        "5. include_low_attention 默认 false；只有确有必要才 true。\n"
-        "6. is_splittable / minimum_slice_minutes 只在原值未知时提供；能判断就不要留 null。"
-        "minimum_slice_minutes 表示“至少做多久才开始产生实际价值”；"
-        "用户说“做一会儿 / 背会儿 / 看一会儿”这类短碎片任务时，"
-        "可合理给出 5~10 分钟这样的小片段。\n"
-        "7. 长任务可以跨多个窗口，但由程序切分；你只需要在 task_order 中排它。\n"
-        "8. is_splittable=false 只用于“如果不能一次完整完成，做一小段几乎没有有效进展”"
-        "的原子任务；连续学习、阅读、写作、编程、实验推进、背诵等任务，做一部分通常仍"
-        "能产生有效进度，应判断 is_splittable=true。\n"
-        "9. 任务剩余时长大于单个窗口容量，不代表当前窗口完全不能执行："
-        "程序会在窗口内先安排一部分（>= minimum_slice），剩余部分在后续窗口继续。"
-        "不要因为放不下整项就把任务整体不安排。\n\n"
-        "schema：" + DAY_PLAN_INTENT_SCHEMA_VERSION + "\n"
-        "输出对象：{\"schema_version\": \"...\", \"task_order\": [ref, ...], "
-        "\"include_low_attention\": bool, \"task_estimates\": ["
-        "{\"task_ref\": \"...\", \"estimated_total_minutes\": int, "
-        "\"is_splittable\": bool|null, \"minimum_slice_minutes\": int|null}], "
-        "\"rationale\": string|null}\n\n"
-        "示例1（长任务跨多个窗口）：计组实验3 remaining=120，今日有两个窗口，"
-        "task_estimates=[{\"task_ref\": \"day_task_001\", \"estimated_total_minutes\": 120, "
-        "\"is_splittable\": true, \"minimum_slice_minutes\": 20}]，程序会先在一个窗口安排一部分，"
-        "剩余在后续窗口继续，不会因为放不下整项就不安排。\n"
-        "示例2（未知总时长）：某任务 total=null 且 completed=20，可以估计："
-        "task_estimates=[{\"task_ref\": \"day_task_003\", \"estimated_total_minutes\": 100, "
-        "\"is_splittable\": true, \"minimum_slice_minutes\": 30}]。\n"
-        "示例3（用户明确总时长不覆盖）：台账中任务 total=120 且来源是用户文本时，"
-        "不得再给该任务估计总时长。\n"
-        "示例4（task_order）：需要“先做 B 再做 A”时：task_order=[\"day_task_002\", \"day_task_001\"]。\n"
-        "示例5（LOW_ATTENTION）：只有低注意力任务需要时 include_low_attention=true，否则 false。\n"
-        "示例6（生命周期防复活）：已 complete / skip_today / abandon 的任务不要放进 task_order。"
+        "你负责 CampusFlow 的任务工作量暂估与顺序提取（day plan intent），不是行程规划员。"
+        "设想执行者已经站在任务执行地点，从开始操作计时到动作结束；"
+        "这里不估去程、返程、赶截止或没有依据的排队。不要根据地理距离推算任务工作量。"
+        "task_order只表达用户顺序或通常动作关系，不在本阶段按窗口安排分钟；"
+        "可行性、路线和具体排程由后续阶段负责。\n"
+        "task_order只用真实task_ref且不重复，涵盖本轮希望安排的活动任务。"
+        "completed / skipped_today / abandoned不安排。用户明确关系优先，缺省顺序由你判断。\n"
+        "task_estimates只补total未知的任务。estimated_total_minutes是任务动作本身的工作量，"
+        "不是含路途的整段行程。路线、出发准备、返程由程序单独计时，绝不能再计入任务分钟。"
+        "不把未要求的额外工作补进任务范围；不能为了填满窗口改变工作量。"
+        "用户已经明确给出的总时长不得覆盖。\n"
+        "is_splittable判断部分执行能否产生有用成果；一次性交接或原子办理不能通过切片声称完成。"
+        "用户要求一次完成就不可拆。minimum_slice_minutes表示有效片段最小分钟；"
+        "不是完整工作量。可拆长任务允许跨多个可用窗口，剩余由程序继续安排。\n"
+        "include_low_attention默认false；只有任务确实适合已有低注意力窗口才true。"
+        "未知必要范围无法估计时保留未知；不要创造精确开始时刻。rationale只简述实际假设。\n"
+        '只返回一个JSON对象，根字段完整且仅有：schema_version="' + DAY_PLAN_INTENT_SCHEMA_VERSION
+        + '"；task_order:string数组；include_low_attention:boolean；task_estimates:数组；rationale:string或null。'
+        'task_estimates每项完整且仅有task_ref:string、estimated_total_minutes:正整数、'
+        'is_splittable:boolean或null、minimum_slice_minutes:正整数或null。'
+        'rationale是根字段，不属于估时元素；说明真实现场动作假设，不为窗口凑分钟。'
     )
 
 
 def _review_system() -> str:
     return (
         "你是 CampusFlow 的“计划审查（review）”助手。\n"
-        "程序已经完成全部硬约束校验（不超 remaining / capacity、不复活 completed / "
+        "程序已经完成台账与容量校验（不超 remaining / capacity、不复活 completed / "
         "skipped_today / abandoned、不可拆任务不拆分等）。\n"
         "你不要重新做数学求解，不要声称“程序路线错了”，不要要求修改 capacity。\n"
         "你只审查：计划是否符合用户意图与常识。\n\n"
+        "先独立核对新AI估时的工作范围，不把候选rationale当事实。若任务分钟含通勤、返程或程序另算的准备，"
+        "或把不能部分交付的原子动作判为可拆，应revise并指出具体范围错误；不能只调整顺序。"
+        "同轮尚未确认的AI暂估可修正，用户明确/采用的分钟和既有进度不能修改。\n"
         "schema：" + REVIEW_SCHEMA_VERSION + "\n"
         "输出对象：{\"schema_version\": \"...\", \"decision\": \"accept|revise\", "
         "\"reason\": string|null, \"suggested_task_order\": [ref, ...]|null, "
@@ -387,15 +380,8 @@ def _review_system() -> str:
 
 
 def _revision_system() -> str:
-    return (
-        "你是 CampusFlow 的“计划修订（revision）”助手。\n"
-        "根据 Review 意见，输出一个新的 day-plan-intent JSON。\n"
-        "只调整任务顺序与 include_low_attention 等意图字段，不输出具体 allocation。\n"
-        "遵守与 Day Plan Agent 相同的规则：task_order 只能引用真实存在的 ref，"
-        "不得重复，不得选择 completed / skipped_today / abandoned。\n"
-        "schema：" + DAY_PLAN_INTENT_SCHEMA_VERSION + "\n"
-        "只输出 JSON。"
-    )
+    return (_day_plan_system() + "\n这是一次有界day-plan-intent修订：依据Review具体问题修正候选，"
+            "仍使用同一字段含义与事实边界，不另造估时或路线规则。")
 
 
 def _fmt_optional(value: Optional[int]) -> str:

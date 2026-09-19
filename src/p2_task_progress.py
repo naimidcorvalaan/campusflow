@@ -106,6 +106,11 @@ def _rebuild(task: TaskProgress, **overrides) -> TaskProgress:
         "state": task.state,
         "is_splittable": task.is_splittable,
         "minimum_slice_minutes": task.minimum_slice_minutes,
+        "predecessor_task_refs": task.predecessor_task_refs,
+        "departure_after_task_refs": task.departure_after_task_refs,
+        "overlap_task_ref": task.overlap_task_ref,
+        "attention_mode": task.attention_mode, "launch_task_ref": task.launch_task_ref,
+        "background_reason": task.background_reason, "user_reported_running": task.user_reported_running,
     }
     values.update(overrides)
     return TaskProgress(**values)

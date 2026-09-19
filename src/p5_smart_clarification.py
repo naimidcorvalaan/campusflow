@@ -92,6 +92,10 @@ def fallback_clarification(context):
     if not context.unresolved_confirmations:
         return SmartClarification(False, generated=False)
     first = context.unresolved_confirmations[0]
+    if first.startswith("current_location_required:"):
+        return SmartClarification(
+            True, "你现在在哪里？", "缺少可信的移动起点", ("movement",), "high", generated=False,
+        )
     if first.startswith("current_location_assumed:") and context.current_location is not None:
         return SmartClarification(
             True,

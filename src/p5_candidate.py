@@ -10,6 +10,8 @@ from typing import Callable, Optional, Tuple
 
 from src.p5_plan_judge import CandidateSummary
 from src.p5_plan_strategy import PlanStrategy
+from src.p2_allocator import _remaining_for_allocation
+from src.p2_models import TaskState
 
 
 @dataclass(frozen=True)
@@ -73,19 +75,27 @@ def summarize_candidate(
     unresolved_questions=(),
     preferred_next_task_ref=None,
     meal_task_refs=(),
+    effective_duration_by_task_ref=None,
+    protected_duration_by_task_ref=None,
 ):
     plan = result.allocation_plan
     completion = tuple(sorted(plan.planned_minutes_by_task.items()))
     task_by_ref = {item.task_ref: item for item in state.tasks}
     remaining = []
     for ref, task in sorted(task_by_ref.items()):
-        value = task.remaining_minutes
+        if task.state != TaskState.ACTIVE:
+            continue
+        value = _remaining_for_allocation(task, (effective_duration_by_task_ref or {}).get(ref))
         if value is not None:
             value = max(0, value - plan.planned_minutes_by_task.get(ref, 0))
             value -= sum(
                 item.planned_minutes for item in concurrent_allocations
                 if getattr(item, "task_ref", None) == ref
             )
+            # The allocator accepts one usable block for a default meal;
+            # its preferred duration is not a second unfinished task.
+            if ref in (protected_duration_by_task_ref or {}) and plan.planned_minutes_by_task.get(ref, 0) > 0:
+                value = 0
             remaining.append((ref, max(0, value)))
     sequence = [item.task_ref for item in plan.allocations]
     switches = sum(1 for left, right in zip(sequence, sequence[1:]) if left != right)

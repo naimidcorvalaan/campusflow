@@ -13,6 +13,8 @@ from dataclasses import dataclass, field, replace
 from typing import Optional, Tuple
 
 from src.p2_agentic_parser import AgenticParseError, extract_json_object
+from src.estimate_arithmetic import (ensure_estimate_arithmetic, check_estimate_arithmetic,
+    response_arithmetic_feedback, ARITHMETIC_INSTRUCTIONS, ARITHMETIC_REPAIR_INSTRUCTIONS)
 
 
 TASK_ESTIMATE_SCHEMA_VERSION = "campusflow.task-estimate.v1"
@@ -301,6 +303,7 @@ def run_task_estimation(
     try:
         result = parse_task_estimate(raw)
     except (AgenticParseError, ValueError):
+        arithmetic_feedback=response_arithmetic_feedback(raw)
         repair = repair_caller or caller
         repair_system, repair_user = build_task_estimate_repair_prompt(raw)
         repaired_raw = repair(repair_system, repair_user)
@@ -308,6 +311,10 @@ def run_task_estimation(
         repaired = True
         try:
             result = parse_task_estimate(repaired_raw)
+            if arithmetic_feedback and result.ready and not check_estimate_arithmetic(
+                    result.recommended_minutes,result.min_focus_minutes,result.max_focus_minutes,
+                    result.basis,result.assumptions).applicable:
+                raise ValueError('minute breakdown removed during repair')
         except (AgenticParseError, ValueError) as exc:
             error_type = (
                 TaskEstimationImageResponseError
@@ -422,6 +429,7 @@ def build_task_estimate_prompt(
         "只需机械计算等更强事实；basis 和 assumptions 必须保留这种不确定程度。"
         "输出严格 JSON，schema_version=campusflow.task-estimate.v1。"
     )
+    system += ARITHMETIC_INSTRUCTIONS
     previous = None
     if isinstance(previous_result, TaskEstimateResult):
         previous = {
@@ -474,7 +482,12 @@ def build_task_estimate_repair_prompt(raw):
         "只修格式和字段，不新增材料里没有的任务内容；无法可靠估算时设置"
         "clarification_needed=true，并把三个分钟字段设为null。"
     )
-    return system, json.dumps({"invalid_output": str(raw)[:12000]}, ensure_ascii=False)
+    payload={"invalid_output": str(raw)[:12000]}
+    feedback=response_arithmetic_feedback(raw)
+    if feedback:
+        system+=ARITHMETIC_REPAIR_INSTRUCTIONS
+        payload['validation_feedback']=feedback
+    return system, json.dumps(payload, ensure_ascii=False)
 
 
 def parse_task_estimate(raw):
@@ -499,7 +512,7 @@ def parse_task_estimate(raw):
     if not isinstance(assumptions, list) or any(not _clean(item) for item in assumptions):
         raise AgenticParseError("assumptions invalid")
     try:
-        return TaskEstimateResult(
+        result = TaskEstimateResult(
             understood=_bool(payload.get("understood"), "understood"),
             task_name=_optional_text(payload.get("task_name")),
             scope_summary=_optional_text(payload.get("scope_summary")),
@@ -523,6 +536,10 @@ def parse_task_estimate(raw):
         )
     except (TypeError, ValueError) as exc:
         raise AgenticParseError(str(exc)) from exc
+    if result.ready:
+        ensure_estimate_arithmetic(result.recommended_minutes,result.min_focus_minutes,result.max_focus_minutes,
+            result.basis,result.assumptions+((result.adjustment_basis,) if result.adjustment_basis else ()),stage='task_estimate')
+    return result
 
 
 def load_task_estimate_draft(store):

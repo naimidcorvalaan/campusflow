@@ -12,7 +12,7 @@ from src.p3_map_schema import MapDataProvenance, TransportMode
 from src.p3_route_provider import plan_route
 from src.p3_route_planner import MovementBlock
 from src.p3_time_estimator import estimate_travel_time
-from src.spacetime_ui import build_next_route, route_map_html, campus_texture_html
+from src.spacetime_ui import build_next_route, route_map_html
 from src.p2_main import _side_card_html, render_page_streamlit, build_current_plan_display
 
 
@@ -68,7 +68,7 @@ def test_unavailable_next_route_does_not_show_a_later_or_example_route(published
     turn.movement_blocks = (later, invalid)
     assert build_next_route(turn, data) is None
     output = _side_card_html(turn, data)
-    assert 'cf-mini-route' not in output and '16:35' in output
+    assert 'cf-mini-route' not in output and '建议 16:30 开始收拾' in output
 
 
 def test_completed_movement_is_hidden_and_next_future_block_is_selected(published):
@@ -131,19 +131,6 @@ def test_coordinate_projection_keeps_real_relative_geometry(published):
 
 
 @pytest.mark.parametrize('campus', ['beiyangyuan', 'weijinlu'])
-def test_sidebar_texture_has_only_source_edges_and_is_decorative(campus):
-    data = DEFAULT_CAMPUS_REGISTRY.get_campus_map(campus)
-    rendered = campus_texture_html(data)
-    root = ET.fromstring(rendered)
-    assert root.attrib['aria-hidden'] == 'true'
-    assert root.attrib['data-campus-id'] == campus
-    assert 'script' not in rendered and 'http' not in rendered.replace('http://www.w3.org/2000/svg', '')
-    assert campus_texture_html(replace(data, provenance=MapDataProvenance.SYNTHETIC_TEST)) == ''
-    other = 'weijinlu' if campus == 'beiyangyuan' else 'beiyangyuan'
-    assert rendered != campus_texture_html(DEFAULT_CAMPUS_REGISTRY.get_campus_map(other))
-
-
-@pytest.mark.parametrize('campus', ['beiyangyuan', 'weijinlu'])
 @pytest.mark.parametrize('scene', ['moving', 'stationary'])
 def test_live_publish_navigation_and_saved_snapshot_keep_formal_facts(campus, scene):
     from scripts.spacetime_preview import SpacetimePreviewModel
@@ -169,12 +156,13 @@ def test_live_publish_navigation_and_saved_snapshot_keep_formal_facts(campus, sc
     assert build_current_plan_display(bundle.turn).entries == original_entries
     page = '\n'.join(st.markdown_calls)
     if scene == 'moving':
-        assert '<section class="cf-mini-route"' in page
+        assert '<section class="cf-mini-route"' not in page
+        assert '查看地图与路线详情' not in page
         visual = build_next_route(bundle.turn, st.session_state['p2_live_map'])
         map_data = st.session_state['p2_live_map']
         assert map_data.resolve_node_id(visual.origin_label) == visual.block.origin_node_id
         assert map_data.resolve_node_id(visual.destination_label) == visual.block.destination_node_id
-        assert 'data-campus-id="{}"'.format(campus) in page
+        assert visual.campus_id == campus
     else:
         assert not bundle.movement_blocks
         assert '<section class="cf-mini-route"' not in page

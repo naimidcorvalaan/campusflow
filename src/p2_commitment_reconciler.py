@@ -11,7 +11,7 @@ identity ambiguous 时返回 questions，不修改任何 commitment。
 """
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Mapping, Optional, Sequence, Tuple
@@ -33,6 +33,7 @@ class CommitmentAction(str, Enum):
     ADD = "add"
     CANCEL = "cancel"
     UPDATE_TIME = "update_time"
+    UPDATE_LOCATION = "update_location"
 
 
 @dataclass(frozen=True)
@@ -46,10 +47,22 @@ class CommitmentUpdate:
     ends_at: Optional[str]
     delay_minutes: Optional[int]
     class_arrival_lead_minutes: Optional[int] = None
+    location_text: Optional[str] = None
 
     def __post_init__(self):
         if not isinstance(self.action, CommitmentAction):
             raise ValueError("action must be a CommitmentAction")
+        if self.action == CommitmentAction.UPDATE_LOCATION:
+            _require_text("target_commitment_ref", self.target_commitment_ref)
+            _require_text("location_text", self.location_text)
+            if self.title is not None:
+                _require_text("title", self.title)
+            if any(value is not None for value in (self.starts_at, self.ends_at,
+                                                   self.delay_minutes, self.class_arrival_lead_minutes)):
+                raise ValueError("update_location 不允许修改时间或提前量")
+            return
+        if self.location_text is not None:
+            raise ValueError("location_text 仅用于 update_location")
         if self.action == CommitmentAction.ADD:
             if self.target_commitment_ref is not None:
                 raise ValueError("add 不允许指定 target_commitment_ref")
@@ -159,15 +172,19 @@ def build_commitment_reconciliation_prompt(state: DayPlanningState, user_text: s
 
 
 def format_commitments(commitments: Sequence[FixedCommitment]) -> str:
+    from src.p3_class_prep import class_arrival_lead_minutes
     lines = []
     for commitment in commitments:
         lines.append(
-            "- ref={} | 标题={} | {} - {} | availability={}".format(
+            "- ref={} | 标题={} | {} - {} | availability={} | kind={} | class_arrival_lead_minutes={} | location={}".format(
                 commitment.commitment_ref,
                 commitment.title,
                 _fmt_time(commitment.starts_at),
                 _fmt_time(commitment.ends_at),
                 commitment.availability_during.value,
+                commitment.commitment_kind,
+                class_arrival_lead_minutes(commitment),
+                commitment.location_text or "unknown",
             )
         )
     return "\n".join(lines) if lines else "（无）"
@@ -257,6 +274,20 @@ def apply_commitment_reconciliation(
             commitments.remove(target)
             by_ref.pop(target.commitment_ref, None)
             applied_entries.append("取消：{}".format(target.title))
+        elif update.action == CommitmentAction.UPDATE_LOCATION:
+            title = update.title if update.title is not None else target.title
+            # A title is a display cache, not a second venue authority. Remove
+            # copies of the exact structured old/new venue values; this does
+            # not resolve aliases or interpret words in any language.
+            for venue in (target.location_text, update.location_text):
+                if venue and venue in title:
+                    remainder = title.replace(venue, '').strip(' ·-—|,，:：@()（）')
+                    if remainder:
+                        title = remainder
+            updated = replace(target, location_text=update.location_text,
+                              title=title)
+            _swap(commitments, by_ref, target, updated)
+            applied_entries.append("地点更新：{} → {}".format(target.title, update.location_text))
         elif update.action == CommitmentAction.UPDATE_TIME:
             if update.class_arrival_lead_minutes is not None and getattr(target, "commitment_kind", None) != "class":
                 warnings.append("“{}”不是课程，无法设置提前到楼时间".format(target.title))
@@ -342,6 +373,7 @@ def _parse_update(item) -> CommitmentUpdate:
             ends_at=ends_at,
             delay_minutes=delay,
             class_arrival_lead_minutes=lead,
+            location_text=_optional_text(item.get("location_text"), "location_text"),
         )
     except ValueError as exc:
         raise AgenticParseError(str(exc))
@@ -466,6 +498,7 @@ def _fmt_time(value: Optional[datetime]) -> str:
 
 
 def _commitment_system_prompt() -> str:
+    from src.p3_class_prep import CLASS_ARRIVAL_FEEDBACK_SEMANTICS
     return (
         "你是 CampusFlow 的“固定安排核对（commitment reconciliation）”助手。\n"
         "你的任务：根据用户最新一句自然语言，判断当天固定安排需要如何更新，并输出 JSON。\n\n"
@@ -474,15 +507,19 @@ def _commitment_system_prompt() -> str:
         "2. 新增安排：target_commitment_ref 必须为 null，action=add，并给出 title / starts_at / ends_at。\n"
         "3. delay：只给 target_commitment_ref + delay_minutes（正整数）。\n"
         "4. cancel：只给 target_commitment_ref。\n"
-        "5. update_time：给 target_commitment_ref + 至少一个时间（starts_at / ends_at）。\n"
+        "5. update_time：给 target_commitment_ref + 至少一个时间（starts_at / ends_at）或课程提前量。\n"
+        "update_location：给 target_commitment_ref + location_text，保留原时间和身份；不要修改用户当前位置。"
+        "若旧标题包含被更新的地点，title同步为同一活动的中性短标题，不再把地点复制进标题；"
+        "否则title=null保留主题，不能借地点更新变成另一件事。\n"
         "6. 时间统一使用 24 小时制 HH:MM（例如 14:00）。\n"
         "7. 同一个结果内不得有两个 update 指向同一 commitment_ref。\n"
         "8. 程序负责时间解析、容量重算与路线事实；你只表达意图。\n"
         "9. 只输出 JSON，不要解释。\n\n"
         "schema：" + COMMITMENT_SCHEMA_VERSION + "\n"
         "输出对象：{\"schema_version\": \"...\", \"updates\": [...], \"questions\": []}\n"
-        "update 字段：target_commitment_ref（string|null）、action（delay|add|cancel|update_time）、"
-        "title（string|null）、starts_at（string|null）、ends_at（string|null）、delay_minutes（int|null）。\n\n"
+        "update 字段：target_commitment_ref（string|null）、action（" + "|".join(item.value for item in CommitmentAction) + "）、"
+        "title（string|null）、starts_at（string|null）、ends_at（string|null）、delay_minutes（int|null）、"
+        "class_arrival_lead_minutes（0到60的整数|null，仅课程update_time可用）、location_text（string|null，仅update_location可用）。\n\n"
         "示例1（推迟下课）：用户说“下课晚了20分钟。”输出："
         "{\"schema_version\": \"p2.commitment-reconciliation.v1\", \"updates\": ["
         "{\"target_commitment_ref\": \"day_commitment_001\", \"action\": \"delay\", "
@@ -505,4 +542,5 @@ def _commitment_system_prompt() -> str:
         "\"questions\": []}\n"
         "示例5（身份不确定）：列表同时有多个相似安排且无法判断时，不要乱选，"
         "在 questions 中返回需要确认的问题。"
+        + CLASS_ARRIVAL_FEEDBACK_SEMANTICS
     )

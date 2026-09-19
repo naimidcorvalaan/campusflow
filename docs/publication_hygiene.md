@@ -25,7 +25,7 @@
 | 根目录 `screenshots/` | 已被新版 README 图片替代，停止跟踪，本地保留 | 6 |
 | `prototype/visual-direction/screenshots/` | 生成输出停止跟踪，本地保留 | 20 |
 
-逐文件决策见 [publication_file_inventory.csv](publication_file_inventory.csv)，含原路径、处理原因和归档目标。76 个原文件均用 SHA-256 对比确认没有改变。
+逐文件决策见 早期内部逐文件清单（不随公开仓库发布），含原路径、处理原因和归档目标。76 个原文件均用 SHA-256 对比确认没有改变。
 
 公开保留：正式源码与测试、启动脚本、依赖声明、三个校园数据文件、部署示例、项目文档、README 正式图片，以及原型的六个源文件。
 四张具有设计沿革价值的原型图按原始字节复制到 [`assets/design-history/`](assets/design-history/)，明确标为历史提案；其余测试帧、失败截图和验证 JSON 不进入新的公开文件树。

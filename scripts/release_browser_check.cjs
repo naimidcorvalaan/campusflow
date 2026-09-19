@@ -82,7 +82,7 @@ const syntheticImage=process.env.CAMPUSFLOW_SYNTHETIC_IMAGE;
    assert(focusBox&&feedbackBox&&timelineBox&&focusBox.y+focusBox.height<=feedbackBox.y&&feedbackBox.y+feedbackBox.height<=timelineBox.y,
       'Current action, feedback and timeline hierarchy is wrong');
    await page.locator('.cf-plan-grid').screenshot({path:path.join(screenshots,'feedback.png')});
-   await page.getByText(estimateEntry,{exact:true}).click();await fill('任务、通知或说明',notice);
+   await page.getByText(estimateEntry,{exact:true}).click();await fill('或用文字描述你的任务',notice);
    await button('帮我看看').click();await page.getByText(/CampusFlow 整理出了/).waitFor();await wait();
    assert(await input('名称').count()===0,'Summary default became an editor');
    await align(page.getByText(/CampusFlow 整理出了/));await check('material-1440');

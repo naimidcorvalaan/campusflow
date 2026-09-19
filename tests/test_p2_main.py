@@ -426,7 +426,7 @@ def test_render_page_streamlit_uses_one_responsive_grid_for_timeline_and_tip():
     stub = _MarkdownStub()
     render_page_streamlit(stub, turn)
     page = "\n".join(stub.calls)
-    assert page.count('class="cf-plan-grid"') == 1
+    assert page.count('class="cf-action-workspace"') == 1
     assert page.count('class="cf-side-card"') == 1
     assert "安排提示" not in page
     assert companion.lifestyle_hint not in page

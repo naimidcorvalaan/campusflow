@@ -80,14 +80,14 @@ class LocationProposal:
 
 
 def build_location_resolver_prompt(
-    map_data: CampusMapData, user_location_text: str
+    map_data: CampusMapData, user_location_text: str, semantic_context: Optional[str] = None
 ) -> Tuple[str, str]:
     """构造 Qwen 地点解析 prompt：只发简化地点目录，不发 repr / 异常 / Key。"""
     lines = []
     # Road waypoints participate in Dijkstra only.  They are not destinations
     # and must never be offered to the model as a normal user location.
     resolvable_nodes = [node for node in map_data.nodes if node.node_kind == "poi"]
-    for node in resolvable_nodes[:MAX_CATALOG_NODES]:
+    for node in resolvable_nodes:
         aliases = "、".join(node.aliases[:8])
         lines.append(
             "- id={}；名称={}；别名={}".format(node.id, node.name, aliases or "无")
@@ -96,6 +96,9 @@ def build_location_resolver_prompt(
     system = (
         "你是校园地点解析器。用户会用自然语言提到校园地点（可能是简称、口语或细粒度说法）。\n"
         "你只能从给定地点目录中选择最匹配的节点，输出 JSON，不要输出其他内容。\n"
+        "先结合完整用户语境理解地点指代，再匹配目录；地点短语不是脱离上下文的搜索词。"
+        "如果语境已经明确指代对象，就使用该对象，不因目录中存在同类地点而再次判为歧义。"
+        "仅有距离近或系统推荐不构成指代依据；语境确实不足时才询问。\n"
         "规则：\n"
         "1. 如果用户说法能确定对应某个节点，输出 status=resolved 与 matched_node_id。\n"
         "2. 如果用户说的是更细粒度的地点，而目录里只有粗粒度节点（例如用户说“三问园30斋”，目录只有“三问园”），"
@@ -115,6 +118,8 @@ def build_location_resolver_prompt(
         '"matched_node_id": "building_31", "display_name": "31教", "question": null}\n'
     )
     user = "地点目录：\n{}\n\n用户地点文本：{}".format(catalog, user_location_text)
+    if semantic_context:
+        user += ("\n已知语境（用于理解地点指代；不得把附近候选当用户事实）：\n" + semantic_context)
     return system, user
 
 
@@ -145,6 +150,7 @@ def resolve_location(
     text: str,
     caller: Optional[AgentCaller] = None,
     repair_caller: Optional[AgentCaller] = None,
+    semantic_context: Optional[str] = None,
 ) -> LocationResolution:
     """解析用户地点文本。
 
@@ -162,7 +168,7 @@ def resolve_location(
         )
     raw = text.strip()
 
-    exact = map_data.resolve_node_id(raw)
+    exact = _scoped_exact_node_id(map_data, raw)
     if exact is not None:
         return _resolved_from_node(map_data, exact, raw, "exact_alias")
 
@@ -174,7 +180,7 @@ def resolve_location(
             campus_id=map_data.campus_id,
         )
 
-    proposal = _call_location_proposal(map_data, raw, caller, repair_caller)
+    proposal = _call_location_proposal(map_data, raw, caller, repair_caller, semantic_context)
     if proposal is None:
         return LocationResolution(
             status=LocationResolutionStatus.UNRESOLVED,
@@ -218,10 +224,37 @@ def resolve_location(
     )
 
 
+def _scoped_exact_node_id(map_data, raw):
+    """Strip only this map's campus qualifier, then match existing aliases.
+
+    No fuzzy matching or cross-campus fallback. An ordinal prefix on a
+    numbered building is spelling, not a different physical destination.
+    """
+    import re
+    exact = map_data.resolve_node_id(raw)
+    if exact is not None:
+        return exact
+    campus = map_data.campus
+    qualifiers = {campus, campus[len("天津大学"):] if campus.startswith("天津大学") else campus}
+    qualifiers |= {value[:-2] for value in tuple(qualifiers) if value.endswith("校区")}
+    candidates = {raw}
+    for prefix in qualifiers:
+        if prefix and raw.startswith(prefix):
+            candidates.add(raw[len(prefix):].strip())
+    matches = set()
+    for candidate in candidates:
+        for spelling in (candidate, re.sub(r"^第(?=\d)", "", candidate)):
+            node_id = map_data.resolve_node_id(spelling)
+            if node_id is not None:
+                matches.add(node_id)
+    return next(iter(matches)) if len(matches) == 1 else None
+
+
 def _call_location_proposal(
-    map_data: CampusMapData, raw: str, caller: AgentCaller, repair_caller: Optional[AgentCaller]
+    map_data: CampusMapData, raw: str, caller: AgentCaller, repair_caller: Optional[AgentCaller],
+    semantic_context: Optional[str] = None,
 ) -> Optional[LocationProposal]:
-    system, user = build_location_resolver_prompt(map_data, raw)
+    system, user = build_location_resolver_prompt(map_data, raw, semantic_context)
     try:
         text = caller(system, user)
         return parse_location_resolution(text)

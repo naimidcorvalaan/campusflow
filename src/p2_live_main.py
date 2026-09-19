@@ -38,7 +38,7 @@ from src.runtime_environment import apply_configured_timezone
 from src.campusflow_ui import BRAND_HEADER_HTML, CAMPUSFLOW_THEME_CSS, SETTINGS_ACCESSIBILITY_HTML
 from src.p2_tju_live_adapter import TJUP2CallAdapter
 from src.p2_day_intake import DayIntakeOutcome, run_day_intake
-from src.workspace_ui import region, quiet_button, setting_row, render_navigation, render_profile_status, render_today_texture, toggle_environment, VIEW_KEY, DeferredDrawerRerun
+from src.workspace_ui import region, quiet_button, setting_row, render_navigation, render_profile_status, toggle_environment, VIEW_KEY, DeferredDrawerRerun, view_label, select_view, place_display_name, stable_slot
 from src.p2_main import render_page_streamlit, render_page_text, sanitize_user_facing_text
 from src.p2_session import (
     LAST_CACHE_KEY,
@@ -286,6 +286,8 @@ def _clear_profile_session(store):
         if isinstance(key, str) and (
             key.startswith("personal_settings_draft_")
             or key.startswith("cf_material_")
+            or key.startswith(("cf_planning_answer_", "cf_confirmation_target_"))
+            or key == "cf_intake_editor_open"
             or key.startswith("personal_settings_timetable_import_")
         ):
             store.pop(key, None)
@@ -880,7 +882,7 @@ def _settings_draft_from_widgets(store, bump_revision=True):
 
 def _render_place_fields(st, campus_id):
     map_data = DEFAULT_CAMPUS_REGISTRY.get_campus_map(campus_id)
-    names = {item.id: item.name for item in map_data.nodes}
+    names = {item.id: place_display_name(map_data.campus_id, item.id, item.name) for item in map_data.nodes}
     for role, role_label in (("dormitory", "宿舍"), ("study", "常用学习地点")):
         key = _settings_widget_key("{}_{}_anchor".format(campus_id, role))
         current = str(st.session_state.get(key, "") or "")
@@ -1272,7 +1274,7 @@ def _render_course_editor(
             st.selectbox("校区", campus_options, index=campus_options.index(row.get("campus_id", "weijinlu")), format_func=lambda x: DEFAULT_CAMPUS_REGISTRY.get_registration(x).display_name, key=_settings_widget_key("course_{}_campus".format(index)))
             campus_id = store.get(_settings_widget_key("course_{}_campus".format(index)), row.get("campus_id", "weijinlu"))
             map_data = DEFAULT_CAMPUS_REGISTRY.get_campus_map(campus_id)
-            names = {item.id: item.name for item in map_data.nodes}
+            names = {item.id: place_display_name(map_data.campus_id, item.id, item.name) for item in map_data.nodes}
             st.text_input("上课地点", value=row.get("location_text", ""), key=_settings_widget_key("course_{}_location".format(index)))
             anchor_options = [""] + list(names)
             anchor_key = _settings_widget_key("course_{}_anchor".format(index))
@@ -2092,6 +2094,11 @@ def run_live_intake(
             # An explicit new intake starts a new semantic contract.  Reusing
             # an old same-ref authorization/preference would attach stale
             # meaning to newly extracted tasks.
+            previous_location = load_execution_context(store).current_location
+            trusted_current = None
+            if (previous_location.source.value == 'user' and previous_location.location
+                    and previous_location.location.campus_id == map_data.campus_id):
+                trusted_current = previous_location.location.display_name
             prior_context = ExecutionPlanContext()
             context = enrich_intake_execution_context(
                 outcome.proposal,
@@ -2100,10 +2107,11 @@ def run_live_intake(
                 context=prior_context,
                 # The page field is authoritative.  Preserve legacy Day
                 # Intake wording only when the page field was left empty.
-                current_location_text=current_location_text or outcome.proposal.current_location,
+                current_location_text=current_location_text or outcome.proposal.current_location or trusted_current,
                 caller=caller,
                 repair_caller=repair_caller,
                 personal_settings=settings,
+                user_text=user_text,
             )
             context = apply_personal_defaults_to_context(
                 context, settings,
@@ -2274,6 +2282,9 @@ def _render_live_page(
         LIVE_ESTIMATE_TEXT_KEY, LIVE_ESTIMATE_SUPPLEMENT_KEY,
     ):
         if key in st.session_state:
+            st.session_state[key] = st.session_state[key]
+    for key in tuple(st.session_state):
+        if key.startswith(('cf_planning_answer_', 'cf_confirmation_target_')):
             st.session_state[key] = st.session_state[key]
     settings_status = st.session_state.get(PERSONAL_SETTINGS_STATUS_KEY)
     if settings_status and not st.session_state.get(PERSONAL_SETTINGS_PANEL_OPEN_KEY):
@@ -2472,121 +2483,123 @@ def _render_live_page(
             st.caption("请联系服务配置者补全配置。")
 
     view = st.session_state.get(VIEW_KEY, '今天')
-    render_today_texture(st, map_data, view)
-    if not has_current_plan and view == '今天':
-        st.markdown('<h1 class="cf-empty-title">接下来有什么安排？</h1>', unsafe_allow_html=True)
-    elif view == '时间线':
-        st.markdown('<h1 class="cf-page-title">{}</h1>'.format(view), unsafe_allow_html=True)
-    focus_slot = st.container() if hasattr(st, 'container') else nullcontext()
-    feedback_slot = st.container() if hasattr(st, 'container') else nullcontext()
-    intake_slot = st.container() if hasattr(st, 'container') else nullcontext()
-    timeline_slot = st.container() if hasattr(st, 'container') else nullcontext()
-    material_slot = st.container() if hasattr(st, 'container') else nullcontext()
+    with stable_slot(st, 'page-title'):
+        if not has_current_plan and view == '今天':
+            st.markdown('<h1 class="cf-empty-title">今天打算做什么？</h1>', unsafe_allow_html=True)
+        elif view == '时间线':
+            st.markdown('<h1 class="cf-page-title">{}</h1>'.format(view_label(view)), unsafe_allow_html=True)
+    focus_slot = stable_slot(st, 'focus')
+    feedback_slot = stable_slot(st, 'feedback')
+    intake_slot = stable_slot(st, 'intake')
+    timeline_slot = stable_slot(st, 'timeline')
+    material_slot = stable_slot(st, 'material')
+    confirmation_submission = []
 
-    # Keep existing widgets alive on rerun, while giving the current action
-    # priority once a reliable plan exists. Collapsing never submits anything.
+    # Fixed topology: opening the editor changes visibility, never reparents
+    # the form or changes widget IDs. Every region mounts before any slow call.
     with intake_slot, region(st, 'intake', view == '今天'):
-        if has_current_plan:
-            st.markdown('<span class="cf-rewrite-marker" hidden></span>', unsafe_allow_html=True)
-        with (st.expander("重写今日安排", expanded=False) if has_current_plan else nullcontext()):
+        with region(st, 'rewrite', has_current_plan):
+            quiet_button(st, '重新填写今日安排', key='cf_rewrite_intake',
+                         on_click=_toggle_intake_editor, args=(st.session_state,))
+        with region(st, 'intake-editor', not has_current_plan or st.session_state.get('cf_intake_editor_open', False)):
             with st.form("p2_live_intake_form"):
                 st.markdown('<span class="cf-input-heading" hidden></span>', unsafe_allow_html=True)
                 first_input = st.text_area(
                     "接下来想做什么？", key=LIVE_INTAKE_KEY,
                     label_visibility="collapsed",
-                    placeholder="下午有课，课前想吃饭，还有一份作业要写",
-                    height=110,
+                    placeholder="下午四点到六点在46教学楼有课，课后想吃饭", height=110,
                 )
-                # Native disclosure stays mounted inside the same form: no
-                # widget identity change or eager submission when opened.
-                # Replanning already has a disclosure; Streamlit forbids
-                # nesting expanders. Only the empty homepage needs this one.
-                with (st.expander("补充当前位置（可选）", expanded=False) if not has_current_plan else nullcontext()):
+                with st.expander("补充当前位置（可选）", expanded=False):
                     current_location = st.text_input("我现在的位置（可选）", key=LIVE_CURRENT_LOCATION_KEY)
                 intake_submitted = st.form_submit_button("帮我安排", type="primary")
-    if intake_submitted:
-        before = _business_snapshot(st.session_state)
-        with (st.spinner("THINKING.......") if callable(getattr(st, "spinner", None)) else nullcontext()):
-            completed = _safe_user_action(
-                st,
-                st.session_state,
-                "intake",
-                lambda: _handle_intake_submit(
-                    st, session, missing, reference,
-                    first_input, map_data=map_data,
-                    campus_id=registration.campus_id,
-                    current_location_text=current_location,
-                    rerun_after_commit=False,
-                ),
-            )
-        if completed and _persist_after_mutation(
-            st, before, reference, registration.campus_id, page_now
-        ):
-            st.session_state[LOCAL_PROFILE_STALE_KEY] = False
-            st.session_state[PERSONAL_SETTINGS_PLAN_STALE_KEY] = False
-            st.session_state.pop(PERSONAL_SETTINGS_STATUS_KEY, None)
-            _rerun(st)
-        else:
-            _restore_business_snapshot(st.session_state, before)
-            _render_retained_plan(st)
-        return
 
     with feedback_slot, region(st, 'feedback', has_current_plan and view != '材料估时'):
-        with st.expander('更新变化', expanded=False):
+        with st.expander('有变化？告诉 CampusFlow', expanded=False):
+            st.markdown('<span class="cf-visually-hidden">更新进度或变化</span>', unsafe_allow_html=True)
             with st.form("p2_live_feedback_form"):
-                st.markdown('<div class="cf-feedback-heading">更新进度或变化</div>', unsafe_allow_html=True)
                 feedback = st.text_input(
                     "进度、位置或临时变化",
                     key=LIVE_FEEDBACK_KEY,
                     placeholder="作业还剩40分钟，我现在已经到图书馆了",
                 )
                 feedback_submitted = st.form_submit_button("更新方案", type="primary")
-    if feedback_submitted:
-        if missing:
-            st.error("请先连接模型服务后更新 · 原方案已保留。")
-        elif not str(feedback).strip():
-            pass
-        elif load_live_final_turn(st.session_state) is None and session.last_turn() is None:
-            st.warning("请先生成全天计划。")
-        else:
-            current_bundle = load_live_final_turn(st.session_state)
-
-            def _apply_feedback_and_publish():
-                _prepare_restored_replan(
-                    st.session_state, reference, session.config
-                )
-                if _bundle_uses_p4_execution(current_bundle):
-                    return session.rebuild_feedback_atomic(str(feedback).strip())
-                legacy_turn = session.apply_feedback(str(feedback).strip())
-                questions = current_bundle.extra_questions if current_bundle is not None else ()
-                return commit_live_final_turn(
-                    st.session_state, legacy_turn, map_data, extra_questions=questions
-                )
-
+    def run_plan_actions():
+        if intake_submitted:
             before = _business_snapshot(st.session_state)
             with (st.spinner("THINKING.......") if callable(getattr(st, "spinner", None)) else nullcontext()):
-                applied = _safe_user_action(
+                completed = _safe_user_action(
                     st,
                     st.session_state,
-                    "apply_feedback",
-                    _apply_feedback_and_publish,
+                    "intake",
+                    lambda: _handle_intake_submit(
+                        st, session, missing, reference,
+                        first_input, map_data=map_data,
+                        campus_id=registration.campus_id,
+                        current_location_text=current_location,
+                        rerun_after_commit=False,
+                    ),
                 )
-            if applied is None:
-                _restore_business_snapshot(st.session_state, before)
-                with focus_slot:
-                    _render_retained_plan(st)
-                return
-            if not _persist_after_mutation(
+            if completed and _persist_after_mutation(
                 st, before, reference, registration.campus_id, page_now
             ):
-                with focus_slot:
-                    _render_retained_plan(st)
-                return
-            st.session_state[LOCAL_PROFILE_STALE_KEY] = False
-            st.session_state[PERSONAL_SETTINGS_PLAN_STALE_KEY] = False
-            st.session_state.pop(PERSONAL_SETTINGS_STATUS_KEY, None)
-            _rerun(st)
+                st.session_state[LOCAL_PROFILE_STALE_KEY] = False
+                st.session_state[PERSONAL_SETTINGS_PLAN_STALE_KEY] = False
+                st.session_state.pop(PERSONAL_SETTINGS_STATUS_KEY, None)
+                st.session_state['cf_intake_editor_open'] = False
+                _rerun(st)
+            else:
+                _restore_business_snapshot(st.session_state, before)
             return
+
+        if feedback_submitted:
+            if missing:
+                st.error("请先连接模型服务后更新 · 原方案已保留。")
+            elif not str(feedback).strip():
+                pass
+            elif load_live_final_turn(st.session_state) is None and session.last_turn() is None:
+                st.warning("请先生成全天计划。")
+            else:
+                current_bundle = load_live_final_turn(st.session_state)
+
+                def _apply_feedback_and_publish():
+                    _prepare_restored_replan(
+                        st.session_state, reference, session.config
+                    )
+                    if _bundle_uses_p4_execution(current_bundle):
+                        return session.rebuild_feedback_atomic(str(feedback).strip(), reference_datetime=reference)
+                    legacy_turn = session.apply_feedback(str(feedback).strip(), reference_datetime=reference)
+                    questions = current_bundle.extra_questions if current_bundle is not None else ()
+                    return commit_live_final_turn(
+                        st.session_state, legacy_turn, map_data, extra_questions=questions
+                    )
+
+                before = _business_snapshot(st.session_state)
+                with (st.spinner("THINKING.......") if callable(getattr(st, "spinner", None)) else nullcontext()):
+                    applied = _safe_user_action(
+                        st,
+                        st.session_state,
+                        "apply_feedback",
+                        _apply_feedback_and_publish,
+                    )
+                if applied is None:
+                    _restore_business_snapshot(st.session_state, before)
+                    return
+                if not _persist_after_mutation(
+                    st, before, reference, registration.campus_id, page_now
+                ):
+                    return
+                st.session_state[LOCAL_PROFILE_STALE_KEY] = False
+                st.session_state[PERSONAL_SETTINGS_PLAN_STALE_KEY] = False
+                st.session_state.pop(PERSONAL_SETTINGS_STATUS_KEY, None)
+                _rerun(st)
+                return
+
+        if confirmation_submission:
+            binding, answer, error_slot = confirmation_submission[0]
+            with error_slot:
+                _submit_planning_confirmation(st, session, binding, answer, missing,
+                                              reference, map_data, registration.campus_id, page_now)
+
 
     from src.material_ui import render_material_inbox
     with material_slot, region(st, 'material', view == '材料估时'):
@@ -2594,10 +2607,11 @@ def _render_live_page(
             return
     if not has_current_plan:
         if view == '时间线':
-            st.caption('去“今天”创建安排。')
+            st.caption('去“制定计划”创建安排。')
         archived = st.session_state.get(LOCAL_PROFILE_STALE_BUNDLE_KEY)
         if archived is not None and view != '材料估时':
             render_page_streamlit(st, archived.turn, extra_questions=archived.extra_questions, saved_snapshot=True)
+        run_plan_actions()
         return
 
     preview = load_what_if_preview(st.session_state)
@@ -2636,41 +2650,6 @@ def _render_live_page(
             _rerun(st)
             return
 
-    with region(st, "refresh", view != "材料估时"):
-        refresh_clicked = quiet_button(st, "刷新方案", key="p2_live_refresh")
-    if refresh_clicked:
-        if not missing:
-            def _refresh_and_publish():
-                _prepare_restored_replan(
-                    st.session_state, reference, session.config
-                )
-                refreshed_turn = session.refresh()
-                previous = load_live_final_turn(st.session_state)
-                questions = previous.extra_questions if previous is not None else ()
-                return commit_live_final_turn(
-                    st.session_state, refreshed_turn, map_data, extra_questions=questions
-                )
-
-            before = _business_snapshot(st.session_state)
-            with (st.spinner("THINKING.......") if callable(getattr(st, "spinner", None)) else nullcontext()):
-                refreshed = _safe_user_action(st, st.session_state, "refresh", _refresh_and_publish)
-            if refreshed is None:
-                _restore_business_snapshot(st.session_state, before)
-                with focus_slot:
-                    _render_retained_plan(st)
-                return
-            if not _persist_after_mutation(
-                st, before, reference, registration.campus_id, page_now
-            ):
-                with focus_slot:
-                    _render_retained_plan(st)
-                return
-            st.session_state[LOCAL_PROFILE_STALE_KEY] = False
-            st.session_state[PERSONAL_SETTINGS_PLAN_STALE_KEY] = False
-            st.session_state.pop(PERSONAL_SETTINGS_STATUS_KEY, None)
-            _rerun(st)
-            return
-
     bundle = load_live_final_turn(st.session_state)
     if bundle is None:
         # Legacy P2/P3 sessions without P4 execution semantics remain
@@ -2699,17 +2678,147 @@ def _render_live_page(
                 st, turn, extra_questions=intake_questions,
                 saved_snapshot=bool(st.session_state.get(LOCAL_PROFILE_STALE_KEY)),
                 default_walk_hint=default_walk_hint, part="focus", map_data=map_data,
+                confirmation_renderer=lambda: _render_planning_confirmation(st, bundle, confirmation_submission),
             ),
         )
-    with timeline_slot, region(st, "timeline", view != "材料估时"):
+    with timeline_slot:
+        if view == '今天':
+            quiet_button(st, '查看今日计划表', key='cf_open_schedule', on_click=select_view,
+                         args=(st.session_state, '时间线'))
+    with timeline_slot, region(st, "timeline", view == "时间线"):
         _safe_user_action(
             st, st.session_state, "render_details",
             lambda: render_page_streamlit(
                 st, turn, extra_questions=intake_questions,
                 saved_snapshot=bool(st.session_state.get(LOCAL_PROFILE_STALE_KEY)),
-                default_walk_hint=default_walk_hint, part="timeline" if view == "时间线" else "summary",
+                default_walk_hint=default_walk_hint, part="timeline", map_data=map_data,
             ),
         )
+
+    run_plan_actions()
+
+
+def _render_planning_confirmation(st, bundle, submissions):
+    from src.planning_confirmation_ui import bind_confirmation
+    binding = bind_confirmation(bundle, st.session_state.get(LATEST_USER_TEXT_KEY, ''))
+    if binding is None:
+        return
+    with st.container() if hasattr(st, 'container') else nullcontext():
+        st.markdown('<span class="cf-confirm-answer-marker"></span>', unsafe_allow_html=True)
+        if len(binding.candidate_refs) > 1:
+            choices = {c.commitment_ref: c for c in bundle.state.commitments}
+            selected = st.selectbox('这次回答对应的安排', (None,) + binding.candidate_refs,
+                                    key='cf_confirmation_target_' + binding.token,
+                                    format_func=lambda ref: '请选择安排' if ref is None else choices[ref].title)
+            binding = bind_confirmation(bundle, binding.original_request, selected)
+        target = next((c for c in bundle.state.commitments if c.commitment_ref == binding.commitment_ref), None)
+        if target is not None:
+            st.markdown('<div class="cf-confirmation-context">{}{} · {}</div>'.format(
+                target.starts_at.strftime('%H:%M ') if target.starts_at else '',
+                html.escape(target.title), '确认结束时间' if binding.field == 'ends_at' else '确认开始时间'), unsafe_allow_html=True)
+        key = 'cf_planning_answer_' + binding.token
+        # Preserve an answer across view switches just like other page drafts.
+        if key in st.session_state:
+            st.session_state[key] = st.session_state[key]
+        with st.form('cf_planning_confirmation_' + binding.token):
+            answer = st.text_input('你的回答', key=key, placeholder='直接回答上面的问题')
+            submitted = st.form_submit_button('确认并继续', type='primary')
+        error_slot = st.container() if hasattr(st, 'container') else nullcontext()
+        if submitted:
+            submissions.append((binding, answer, error_slot))
+
+
+def _submit_planning_confirmation(st, session, binding, answer, missing, reference, map_data, campus_id, page_now):
+    from src.planning_confirmation_ui import answer_message, verify_answer_result
+    if missing:
+        st.warning('请先连接模型服务；你的回答已保留。')
+        return
+    previous = load_live_final_turn(st.session_state)
+    try:
+        message = answer_message(binding, answer, previous)
+    except ValueError as exc:
+        st.warning(str(exc))
+        return
+    before = _business_snapshot(st.session_state)
+    rejection = []
+
+    def apply_bound_answer():
+        _prepare_restored_replan(st.session_state, reference, session.config)
+        if binding.field == 'task_location':
+            from src.p3_location_resolver import resolve_location
+            from src.p4_execution_context import ExecutionLocation, ExecutionLocationSource
+            from src.p4_feedback_decision import FeedbackDecision
+            resolution = resolve_location(map_data, str(answer).strip(), session.caller, session.repair_caller)
+            if not resolution.usable:
+                raise ValueError('还无法匹配这个任务地点，请提供具体校园地点；原方案已保留。')
+            session.rebuild_feedback_atomic('确认任务地点', reference_datetime=reference,
+                accepted_decision=FeedbackDecision(), use_unified=False,
+                confirmed_task_location=(binding.task_ref, ExecutionLocation.from_resolution(
+                    resolution, ExecutionLocationSource.EXPLICIT_TASK_LOCATION)))
+        elif _bundle_uses_p4_execution(previous):
+            session.rebuild_feedback_atomic(message, reference_datetime=reference)
+        else:
+            turn = session.apply_feedback(message, reference_datetime=reference)
+            commit_live_final_turn(st.session_state, turn, map_data, extra_questions=previous.extra_questions)
+        candidate = load_live_final_turn(st.session_state)
+        try:
+            verify_answer_result(binding, previous, candidate)
+        except ValueError as exc:
+            rejection.append(str(exc))
+            return None
+        return candidate
+
+    with st.spinner('THINKING.......') if callable(getattr(st, 'spinner', None)) else nullcontext():
+        accepted = _safe_user_action(st, st.session_state, 'confirmation', apply_bound_answer)
+    if accepted is None:
+        _restore_business_snapshot(st.session_state, before)
+        if rejection:
+            st.warning(rejection[0])
+        return
+    if not _persist_after_mutation(st, before, reference, campus_id, page_now):
+        return
+    st.session_state[LOCAL_PROFILE_STALE_KEY] = False
+    st.session_state[PERSONAL_SETTINGS_PLAN_STALE_KEY] = False
+    st.session_state.pop(PERSONAL_SETTINGS_STATUS_KEY, None)
+    _rerun(st)
+
+
+def _refresh_current_plan(st, session, missing, reference, map_data, campus_id, page_now):
+    """Existing refresh transaction; intentionally has no homepage entry."""
+    if not missing:
+        def _refresh_and_publish():
+            _prepare_restored_replan(
+                st.session_state, reference, session.config
+            )
+            refreshed_turn = session.refresh()
+            previous = load_live_final_turn(st.session_state)
+            questions = previous.extra_questions if previous is not None else ()
+            return commit_live_final_turn(
+                st.session_state, refreshed_turn, map_data, extra_questions=questions
+            )
+
+        before = _business_snapshot(st.session_state)
+        with (st.spinner("THINKING.......") if callable(getattr(st, "spinner", None)) else nullcontext()):
+            refreshed = _safe_user_action(st, st.session_state, "refresh", _refresh_and_publish)
+        if refreshed is None:
+            _restore_business_snapshot(st.session_state, before)
+            _render_retained_plan(st)
+            return
+        if not _persist_after_mutation(
+            st, before, reference, campus_id, page_now
+        ):
+            _render_retained_plan(st)
+            return
+        st.session_state[LOCAL_PROFILE_STALE_KEY] = False
+        st.session_state[PERSONAL_SETTINGS_PLAN_STALE_KEY] = False
+        st.session_state.pop(PERSONAL_SETTINGS_STATUS_KEY, None)
+        _rerun(st)
+        return
+
+
+
+def _toggle_intake_editor(store):
+    store["cf_intake_editor_open"] = not store.get("cf_intake_editor_open", False)
 
 
 def _render_retained_plan(st):
@@ -2719,6 +2828,7 @@ def _render_retained_plan(st):
         _safe_user_action(st, st.session_state, "render", lambda: render_page_streamlit(
             st, bundle.turn, extra_questions=bundle.extra_questions,
             map_data=st.session_state.get(LIVE_MAP_KEY),
+            part='timeline' if st.session_state.get(VIEW_KEY) == '时间线' else 'focus',
             saved_snapshot=bool(st.session_state.get(LOCAL_PROFILE_STALE_KEY)),
         ))
 

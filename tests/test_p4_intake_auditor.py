@@ -89,7 +89,7 @@ class FormatRepairThenAuditCaller:
         self.calls.append((system, user))
         if "Initial Intake Semantic Auditor" in system:
             return self.audit
-        if "格式修复助手" in system:
+        if user.startswith('{') and json.loads(user).get('request_stage') == 'day_intake_repair':
             return self.format_repair
         return self.malformed_extraction
 

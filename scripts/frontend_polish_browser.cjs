@@ -6,12 +6,12 @@ module.exports=async function(browser,base='http://127.0.0.1:8577/'){
   const results=[];let page;
   const record=(name,value=true)=>{results.push({name,value});fs.writeFileSync(path.join(out,'browser-results.json'),JSON.stringify(results,null,2));};
   const assert=(value,message)=>{if(!value)throw Error(message);};
-  const button=name=>page.getByRole('button',{name,exact:true});
+  const button=name=>page.getByRole('button',{name:({'今天':'制定计划','时间线':'今日计划表'}[name]||name),exact:true});
   const idle=async()=>{await page.waitForTimeout(400);await page.locator('[data-testid=stStatusWidget]').waitFor({state:'hidden',timeout:30000});await page.waitForTimeout(200);};
   const side=()=>page.locator('[data-testid=stSidebar]');
   const openSide=async()=>{if(await side().getAttribute('aria-expanded')==='false')await page.locator('[data-testid=collapsedControl]').click();};
   const closeSide=async()=>{if(page.viewportSize().width<800&&await side().getAttribute('aria-expanded')==='true')await page.locator('[data-testid=stSidebarContent]>div:first-child button').click();await page.waitForTimeout(350);};
-  const nav=async(name)=>{await openSide();await button(name).click();await page.waitForFunction(name=>document.querySelector('.cf-workspace-header')?.innerText.includes(name),name);await idle();await closeSide();};
+  const nav=async(name)=>{await openSide();await button(name).click();await idle();await closeSide();};
   const shot=async(name)=>{await page.waitForTimeout(350);await page.evaluate(()=>{document.querySelector('section.main').scrollTop=0;const d=document.querySelector('[data-campusflow-dialog]');if(d)d.scrollTop=0;});await page.screenshot({path:path.join(out,name+'.png')});};
   const open=async(width=1440)=>{const context=await browser.newContext({viewport:{width,height:width===1440?900:844}});context.setDefaultTimeout(6000);page=await context.newPage();await page.goto(base+'?identity=anonymous&ui_probe=1&profile=visual&documents=1&estimate_rehearsal=workload');await button('任务估时').waitFor({timeout:20000});await idle();await closeSide();};
   const probe=async()=>{const exp=page.locator('details').filter({has:page.getByText('开发演示 · synthetic demo · 不连接真实模型',{exact:true})});await exp.locator('summary').first().click();const value=JSON.parse((await page.locator('pre').allTextContents()).find(t=>t.includes('"material_attached"')));await exp.locator('summary').first().click();return value;};
@@ -23,7 +23,7 @@ module.exports=async function(browser,base='http://127.0.0.1:8577/'){
     await button('时间设置').click();await idle();assert(await field('小时').isVisible(),'Time entry requires a second disclosure');
   };
   const align=async()=>{
-    const a=await button('补充我的情况').boundingBox(),b=await button('帮我看看').boundingBox(),c=await page.getByRole('textbox',{name:'任务、通知或说明',exact:true}).boundingBox();
+    const a=await button('补充我的情况').boundingBox(),b=await button('帮我看看').boundingBox(),c=await page.getByRole('textbox',{name:'或用文字描述你的任务',exact:true}).boundingBox();
     assert(Math.abs(a.x-b.x)<=1&&Math.abs(c.x-b.x)<=1,'Action left edges differ');return {quietX:a.x,primaryX:b.x,inputX:c.x,gap:b.y-a.y-a.height};
   };
   try{
